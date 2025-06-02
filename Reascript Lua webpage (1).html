@@ -1,0 +1,891 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReaScript Lua Course</title>
+    <style>
+        /* Basic Reset and Global Styles */
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #E0E0E0; /* Light gray for text */
+            background-color: #1A1A1A; /* Very dark gray for background */
+            display: flex;
+            min-height: 100vh;
+        }
+
+
+        /* Dark Green Theme Colors */
+        :root {
+            --dark-green-bg: #1A362B; /* Darker green for backgrounds */
+            --green-primary: #38A169; /* Primary green for accents */
+            --green-light: #68D395; /* Lighter green for highlights */
+            --gray-text: #E0E0E0; /* Light gray for general text */
+            --darker-gray-bg: #2D3748; /* Darker gray for code blocks/secondary backgrounds */
+            --hover-green: #2F855A; /* Green for hover states */
+            --active-green: #22543D; /* Even darker green for active states */
+            --border-color: #4A5568; /* Gray for borders */
+            --code-bg: #283733; /* Dark green-ish for code blocks */
+            --code-text: #9AE6B4; /* Light green for code text */
+        }
+
+
+        /* Layout */
+        .sidebar {
+            width: 280px;
+            background-color: var(--dark-green-bg);
+            padding: 1.5rem;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border-color);
+        }
+
+
+        .main-content {
+            flex-grow: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            background-color: #1A1A1A; /* Match body background for continuity */
+        }
+
+
+        /* Header */
+        .header {
+            background-color: #1A1A1A; /* Dark gray for header */
+            color: var(--green-light);
+            padding: 1rem 2rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
+        }
+
+
+        /* Search Bar */
+        .search-container {
+            margin-bottom: 1.5rem;
+        }
+
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: var(--darker-gray-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            color: var(--gray-text);
+            font-size: 1rem;
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        }
+
+
+        .search-input::placeholder {
+            color: #A0AEC0; /* Lighter gray for placeholder */
+        }
+
+
+        /* Navigation */
+        .nav-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+
+        .nav-category-item {
+            margin-bottom: 1.5rem;
+        }
+
+
+        .nav-category-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--green-light);
+            margin-bottom: 0.5rem;
+        }
+
+
+        .nav-article-list {
+            list-style: none;
+            padding: 0;
+            margin-left: 0.5rem;
+        }
+
+
+        .nav-article-item {
+            margin-bottom: 0.25rem;
+        }
+
+
+        .nav-article-button {
+            width: 100%;
+            text-align: left;
+            padding: 0.6rem 0.8rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            transition: all 0.2s ease-in-out;
+            background: none;
+            border: none;
+            color: var(--gray-text);
+            cursor: pointer;
+        }
+
+
+        .nav-article-button:hover {
+            background-color: var(--hover-green);
+            color: #FFFFFF;
+        }
+
+
+        .nav-article-button.active {
+            background-color: var(--active-green);
+            color: #FFFFFF;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            font-weight: bold;
+        }
+
+
+        /* Main Content Styling */
+        .content-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            color: var(--green-primary);
+        }
+
+
+        .prose p {
+            margin-bottom: 1rem;
+            color: var(--gray-text);
+        }
+
+
+        .prose h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--green-primary);
+            margin-top: 1.5rem;
+        }
+
+
+        .prose pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 1rem;
+            border-radius: 0.375rem;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', 'Lucida Console', Monaco, monospace;
+            font-size: 0.9rem;
+        }
+
+
+        .prose code {
+            font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', 'Lucida Console', Monaco, monospace;
+            background-color: #2D3748; /* Darker gray for inline code */
+            padding: 0.1rem 0.3rem;
+            border-radius: 0.2rem;
+            color: var(--code-text);
+        }
+
+
+        .prose img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+
+
+        /* Scrollbar Styling for Webkit browsers */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+
+        ::-webkit-scrollbar-track {
+            background: #2D3748; /* Darker gray for scrollbar track */
+            border-radius: 10px;
+        }
+
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--green-primary);
+            border-radius: 10px;
+            border: 2px solid #2D3748; /* Border to make thumb appear thinner */
+        }
+
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--green-light);
+        }
+    </style>
+</head>
+<body>
+
+
+    <header class="header">
+        ReaScript Lua Course
+    </header>
+
+
+    <aside class="sidebar">
+        <div class="search-container">
+            <input type="text" id="search-input" class="search-input" placeholder="Search articles...">
+        </div>
+        <nav>
+            <ul id="nav-categories" class="nav-list">
+                </ul>
+        </nav>
+    </aside>
+
+
+    <main id="main-content" class="main-content">
+        <h1 id="article-title" class="content-title">Select an article from the sidebar</h1>
+        <div id="article-content" class="prose">
+            <p>Welcome to the ReaScript Lua Course! Please select an article from the left sidebar to begin learning.</p>
+        </div>
+    </main>
+
+
+    <script>
+        const courseContent = {
+            beginner: {
+                title: 'Beginner ReaScripting',
+                articles: {
+                    intro: {
+                        title: '1. Introduction to ReaScripting Basics',
+                        content: `
+                            <p class="mb-4">Welcome to the beginner section of the Lua ReaScripting course! Here, you'll learn the fundamental concepts to start automating tasks in REAPER.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">1.1 What is ReaScript?</h3>
+                            <p class="mb-4">ReaScript is REAPER's built-in scripting interface, allowing you to extend its functionality using Lua, Python, or EEL. It's perfect for automating repetitive tasks, creating custom actions, and enhancing your workflow.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">1.2 Running Your First Script: <code>reaper.ShowConsoleMsg()</code></h3>
+                            <p class="mb-4">The simplest way to see ReaScript in action is to print messages to REAPER's console. This is invaluable for debugging.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>reaper.ShowConsoleMsg("Hello, ReaScript World!\\n")</code></pre>
+                            <p class="mb-4">To run this, open REAPER, go to Actions > Show action list, click "New action" > "New ReaScript", save it as a <code>.lua</code> file, and then run it from the Actions list.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">1.3 Executing REAPER Actions: <code>Main_OnCommand()</code></h3>
+                            <p class="mb-4">You can trigger any REAPER action from a script. First, find the action ID by right-clicking an action in the Action List and selecting "Copy selected action ID".</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>-- Example: Toggle metronome (action ID 40364)
+reaper.Main_OnCommand(40364, 0) -- 0 means no keyboard shortcut context</code></pre>
+                            <p class="mb-4">This command is a cornerstone for automating common REAPER functions.</p>
+                        `,
+                    },
+                    track_basics: {
+                        title: '2. Basic Track Manipulation: <code>GetSelectedTrack()</code>',
+                        content: `
+                            <p class="mb-4">Learning to interact with tracks is fundamental. You can get information about selected tracks and modify their basic properties.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">2.1 Getting the Selected Track: <code>reaper.GetSelectedTrack()</code></h3>
+                            <p class="mb-4">This function allows you to get a reference to a selected track. The first parameter is the project index (0 for current project), and the second is the selection index (0 for the first selected track).</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local track = reaper.GetSelectedTrack(0, 0) -- Get the first selected track
+if track then
+  reaper.ShowConsoleMsg("Selected track found!\\n")
+else
+  reaper.ShowConsoleMsg("No track selected.\\n")
+end</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">2.2 Muting/Unmuting Tracks: <code>SetMediaTrackInfo_Value()</code></h3>
+                            <p class="mb-4">You can change various track properties using <code>reaper.SetMediaTrackInfo_Value()</code>. To mute a track, use the "B_MUTE" parameter.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local track = reaper.GetSelectedTrack(0, 0)
+if track then
+  local is_muted = reaper.GetMediaTrackInfo_Value(track, "B_MUTE")
+  if is_muted == 0 then
+    reaper.SetMediaTrackInfo_Value(track, "B_MUTE", 1) -- Mute
+    reaper.ShowConsoleMsg("Track muted.\\n")
+  else
+    reaper.SetMediaTrackInfo_Value(track, "B_MUTE", 0) -- Unmute
+    reaper.ShowConsoleMsg("Track unmuted.\\n")
+  end
+  reaper.TrackList_AdjustWindows(false) -- Refresh UI
+end</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">2.3 Setting Track Volume: <code>SetMediaTrackInfo_Value()</code> with "D_VOL"</h3>
+                            <p class="mb-4">Adjusting track volume is another common task. The "D_VOL" parameter expects a linear volume value (0.0 to 1.0 for -inf to 0dB, higher for boost).</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local track = reaper.GetSelectedTrack(0, 0)
+if track then
+  reaper.SetMediaTrackInfo_Value(track, "D_VOL", 0.5) -- Set volume to -6dB (approx)
+  reaper.ShowConsoleMsg("Track volume set to -6dB.\\n")
+  reaper.TrackList_AdjustWindows(false)
+end</code></pre>
+                        `,
+                    },
+                    item_selection: {
+                        title: '3. Selecting and Deselecting Items: <code>CountSelectedMediaItems()</code>',
+                        content: `
+                            <p class="mb-4">Scripts often need to work with media items. This section covers basic selection and counting of items.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">3.1 Counting Selected Items: <code>reaper.CountSelectedMediaItems()</code></h3>
+                            <p class="mb-4">This function returns the number of selected media items in the current project.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local num_selected_items = reaper.CountSelectedMediaItems(0) -- 0 for current project
+reaper.ShowConsoleMsg("Number of selected items: " .. num_selected_items .. "\\n")</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">3.2 Getting a Selected Item: <code>reaper.GetSelectedMediaItem()</code></h3>
+                            <p class="mb-4">You can retrieve a specific selected media item by its index (0-based).</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local item = reaper.GetSelectedMediaItem(0, 0) -- Get the first selected item
+if item then
+  reaper.ShowConsoleMsg("First selected item found!\\n")
+end</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">3.3 Selecting/Deselecting Items: <code>SetMediaItemInfo_Value()</code> with "B_UISEL"</h3>
+                            <p class="mb-4">To programmatically select or deselect a media item, use the "B_UISEL" property.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local item = reaper.GetSelectedMediaItem(0, 0)
+if item then
+  reaper.SetMediaItemInfo_Value(item, "B_UISEL", 0) -- Deselect the item
+  reaper.ShowConsoleMsg("Item deselected.\\n")
+  reaper.UpdateArrange() -- Refresh UI
+end</code></pre>
+                        `,
+                    },
+                    console_output: {
+                        title: '4. Advanced Console Output & Clearing: <code>reaper.ClearConsole()</code>',
+                        content: `
+                            <p class="mb-4">Effective use of the REAPER console is key for debugging and providing user feedback.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">4.1 Clearing the Console: <code>reaper.ClearConsole()</code></h3>
+                            <p class="mb-4">Before printing new messages, it's often useful to clear the console to avoid clutter.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>reaper.ClearConsole()
+reaper.ShowConsoleMsg("Starting script execution...\\n")</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">4.2 Printing Variables and Types: <code>tostring()</code>, <code>type()</code></h3>
+                            <p class="mb-4">When debugging, you'll frequently need to inspect the values and types of your variables.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local my_number = 123
+local my_string = "hello"
+local my_boolean = true
+
+
+
+
+reaper.ShowConsoleMsg("my_number: " .. tostring(my_number) .. " (type: " .. type(my_number) .. ")\\n")
+reaper.ShowConsoleMsg("my_string: " .. my_string .. " (type: " .. type(my_string) .. ")\\n")
+reaper.ShowConsoleMsg("my_boolean: " .. tostring(my_boolean) .. " (type: " .. type(my_boolean) .. ")\\n")</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">4.3 Formatted Output for Readability</h3>
+                            <p class="mb-4">Use string concatenation and newlines (<code>\\n</code>) to format your console output for better readability.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local track_name = "Vocals"
+local item_count = 5
+
+
+
+
+reaper.ShowConsoleMsg(
+  "--- Script Report ---\\n" ..
+  "Track: " .. track_name .. "\\n" ..
+  "Items Processed: " .. item_count .. "\\n" ..
+  "---------------------\\n"
+)</code></pre>
+                        `,
+                    },
+                    undo_basics: {
+                        title: '5. Basic Undo Points: <code>Undo_BeginBlock()</code> and <code>Undo_EndBlock()</code>',
+                        content: `
+                            <p class="mb-4">Any script that modifies your project should create an undo point so users can easily revert changes.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">5.1 Grouping Actions for Undo: <code>reaper.Undo_BeginBlock()</code></h3>
+                            <p class="mb-4">This function tells REAPER to start grouping subsequent changes into a single undo step.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>reaper.Undo_BeginBlock() -- Start the undo block
+
+
+
+
+-- Perform some modifications here
+-- e.g., create a new track, add an item
+reaper.InsertTrackAtIndex(0, true) -- Insert a new track
+reaper.ShowConsoleMsg("New track added.\\n")</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">5.2 Finalizing the Undo Block: <code>reaper.Undo_EndBlock()</code></h3>
+                            <p class="mb-4">After all modifications are done, call <code>reaper.Undo_EndBlock()</code> to finalize the undo step. Provide a descriptive name for the undo history.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>reaper.Undo_EndBlock("Add New Track via Script", 0) -- 0 for default flags
+reaper.ShowConsoleMsg("Undo point created.\\n")</code></pre>
+                            <p class="mb-4">It's crucial to always pair <code>Undo_BeginBlock()</code> with <code>Undo_EndBlock()</code> to prevent issues with REAPER's undo history.</p>
+                        `,
+                    },
+                    user_input_basics: {
+                        title: '6. Basic User Input: <code>reaper.GetUserInputs()</code>',
+                        content: `
+                            <p class="mb-4">Sometimes your script needs simple input from the user. <code>reaper.GetUserInputs()</code> is perfect for this.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">6.1 Getting a Single Text Input</h3>
+                            <p class="mb-4">This function can display a dialog box and retrieve user input. It takes a title, number of inputs, input string, and default values.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local ret, value = reaper.GetUserInputs("Enter Track Name", 1, "Track Name:", "New Track")
+if ret then
+  reaper.ShowConsoleMsg("User entered: " .. value .. "\\n")
+  -- You could then use this to rename a track, for example
+  -- local track = reaper.GetSelectedTrack(0, 0)
+  -- if track then reaper.GetSetMediaTrackInfo_String(track, "P_NAME", value, true) end
+else
+  reaper.ShowConsoleMsg("User cancelled input.\\n")
+end</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">6.2 Getting Multiple Inputs</h3>
+                            <p class="mb-4">You can request multiple inputs by providing a comma-separated string for the input fields and default values.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local ret, values = reaper.GetUserInputs("Script Settings", 2, "Volume (0-1):,Pan (-1 to 1):", "0.8,0.0")
+if ret then
+  local volume_str, pan_str = values:match("([^,]*),([^,]*)")
+  local volume = tonumber(volume_str)
+  local pan = tonumber(pan_str)
+  reaper.ShowConsoleMsg("Volume: " .. tostring(volume) .. ", Pan: " .. tostring(pan) .. "\\n")
+else
+  reaper.ShowConsoleMsg("User cancelled input.\\n")
+end</code></pre>
+                        `,
+                    },
+                    project_navigation: {
+                        title: '7. Navigating the Project: <code>EnumTracks()</code>',
+                        content: `
+                            <p class="mb-4">Iterating through tracks and items is a common pattern in ReaScripting.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">7.1 Looping Through All Tracks: <code>reaper.CountTracks()</code> and <code>reaper.GetTrack()</code></h3>
+                            <p class="mb-4">You can get the total number of tracks and then access each track by its index.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local num_tracks = reaper.CountTracks(0) -- 0 for current project
+reaper.ShowConsoleMsg("Total tracks: " .. num_tracks .. "\\n")
+
+
+
+
+for i = 0, num_tracks - 1 do
+  local track = reaper.GetTrack(0, i)
+  local track_name = reaper.GetTrackName(track)
+  reaper.ShowConsoleMsg("Track " .. i .. ": " .. track_name .. "\\n")
+end</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">7.2 Iterating Through Items on a Track: <code>CountMediaItemsInTrack()</code></h3>
+                            <p class="mb-4">Once you have a track, you can iterate through its media items.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local track = reaper.GetSelectedTrack(0, 0)
+if track then
+  local num_items = reaper.CountMediaItemsInTrack(track)
+  reaper.ShowConsoleMsg("Items on selected track: " .. num_items .. "\\n")
+
+
+
+
+  for i = 0, num_items - 1 do
+    local item = reaper.GetMediaItem(track, i)
+    reaper.ShowConsoleMsg("  Item " .. i .. " found.\\n")
+  end
+end</code></pre>
+                        `,
+                    },
+                    fx_basics: {
+                        title: '8. Basic FX Control: <code>TrackFX_GetCount()</code>',
+                        content: `
+                            <p class="mb-4">ReaScript can interact with FX on tracks and items, allowing for basic automation of plugin states.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">8.1 Counting FX on a Track: <code>reaper.TrackFX_GetCount()</code></h3>
+                            <p class="mb-4">This function returns the number of FX instances on a given track.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local track = reaper.GetSelectedTrack(0, 0)
+if track then
+  local fx_count = reaper.TrackFX_GetCount(track)
+  reaper.ShowConsoleMsg("FX on selected track: " .. fx_count .. "\\n")
+end</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">8.2 Bypassing/Unbypassing FX: <code>reaper.TrackFX_SetEnabled()</code></h3>
+                            <p class="mb-4">You can enable or disable (bypass) individual FX instances on a track.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local track = reaper.GetSelectedTrack(0, 0)
+if track then
+  local fx_index = 0 -- First FX on the track
+  local is_enabled = reaper.TrackFX_GetEnabled(track, fx_index)
+
+
+
+
+  if is_enabled then
+    reaper.TrackFX_SetEnabled(track, fx_index, false) -- Bypass
+    reaper.ShowConsoleMsg("First FX bypassed.\\n")
+  else
+    reaper.TrackFX_SetEnabled(track, fx_index, true) -- Enable
+    reaper.ShowConsoleMsg("First FX enabled.\\n")
+  end
+end</code></pre>
+                        `,
+                    },
+                    markers_regions: {
+                        title: '9. Working with Markers and Regions: <code>CountProjectMarkers()</code>',
+                        content: `
+                            <p class="mb-4">Markers and regions are essential for project organization. ReaScript can interact with them.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">9.1 Counting Markers and Regions: <code>reaper.CountProjectMarkers()</code></h3>
+                            <p class="mb-4">This function returns the total number of markers and regions in the project.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local num_markers, num_regions = reaper.CountProjectMarkers(0)
+reaper.ShowConsoleMsg("Markers: " .. num_markers .. ", Regions: " .. num_regions .. "\\n")</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">9.2 Adding a Marker: <code>reaper.AddProjectMarker()</code></h3>
+                            <p class="mb-4">You can add new markers at a specific time position.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local time_pos = reaper.GetCursorPosition() -- Current playhead position
+reaper.AddProjectMarker(0, false, time_pos, 0, "New Marker", -1) -- false for marker, -1 for default color
+reaper.ShowConsoleMsg("Marker added at cursor position.\\n")
+reaper.UpdateArrange()</code></pre>
+                        `,
+                    },
+                    custom_actions: {
+                        title: '10. Creating Custom Actions and Menus',
+                        content: `
+                            <p class="mb-4">ReaScript allows you to create your own custom actions that can be assigned to keyboard shortcuts or toolbar buttons.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">10.1 Script as a Custom Action</h3>
+                            <p class="mb-4">Any Lua script saved in REAPER's Scripts directory automatically appears in the Actions list. You can then assign a shortcut or toolbar button to it.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>-- My_Custom_Script.lua
+reaper.ShowConsoleMsg("My custom script was run!\\n")
+-- This script can now be found in the Actions list and assigned.</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">10.2 Integrating with Custom Menus (Conceptual)</h3>
+                            <p class="mb-4">For more complex workflows, you can integrate your scripts into REAPER's custom menus and toolbars. This often involves editing REAPER's menu sets directly or using specialized ReaScript functions for menu manipulation (advanced topic, often done via external tools or very specific API calls).</p>
+                        `,
+                    },
+                },
+            },
+            intermediate: {
+                title: 'Intermediate ReaScripting',
+                articles: {
+                    modular_scripting: {
+                        title: '11. Modular Scripting & Best Practices: <code>require()</code>',
+                        content: `
+                            <p class="mb-4">As scripts grow, organizing your code into reusable modules becomes crucial. Lua's <code>require()</code> function facilitates this.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">11.1 Using <code>require()</code> for Code Organization</h3>
+                            <p class="mb-4">Break down large scripts into smaller, logical files (modules). Each module should return a table containing its functions.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>-- my_main_script.lua
+local utils = require('my_utils_module') -- Assumes my_utils_module.lua is accessible
+utils.log_message("Script started.")
+
+
+
+
+-- my_utils_module.lua
+local M = {} -- Module table
+
+
+
+
+function M.log_message(msg)
+  reaper.ShowConsoleMsg("[UTILS] " .. msg .. "\\n")
+end
+
+
+
+
+return M</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">11.2 Managing <code>package.path</code> for Modules</h3>
+                            <p class="mb-4">If your modules are not in REAPER's default script directory, you might need to adjust Lua's <code>package.path</code> to include your custom module paths.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local _, script_path = reaper.get_action_context()
+local script_dir = script_path:match("^(.*[/\\])") -- Get directory of current script
+package.path = package.path .. ";" .. script_dir .. "?.lua" -- Add script's directory to path</code></pre>
+                        `,
+                    },
+                    persistent_data: {
+                        title: '12. Persistent Data: <code>SetExtState()</code> and <code>GetExtState()</code>',
+                        content: `
+                            <p class="mb-4">Scripts are ephemeral, but you can save data that persists across script runs or even REAPER sessions.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">12.1 Saving Global Data: <code>reaper.SetExtState()</code></h3>
+                            <p class="mb-4">This function stores key-value pairs globally. The last parameter (<code>persist</code>) determines if it survives REAPER restarts.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>-- Save a setting that persists
+reaper.SetExtState("MyScriptID", "LastUsedPreset", "Clean Vocals", true)
+reaper.ShowConsoleMsg("Setting saved.\\n")</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">12.2 Retrieving Global Data: <code>reaper.GetExtState()</code></h3>
+                            <p class="mb-4">Retrieve previously saved data using the same section and key.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local last_preset = reaper.GetExtState("MyScriptID", "LastUsedPreset")
+if last_preset ~= "" then
+  reaper.ShowConsoleMsg("Last used preset: " .. last_preset .. "\\n")
+else
+  reaper.ShowConsoleMsg("No previous preset found.\\n")
+end</code></pre>
+                        `,
+                    },
+                    project_data: {
+                        title: '13. Project-Specific Data: <code>SetProjExtState()</code>',
+                        content: `
+                            <p class="mb-4">For data that should travel with a specific REAPER project file (.RPP), use project extended states.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">13.1 Embedding Data in Project Files: <code>reaper.SetProjExtState()</code></h3>
+                            <p class="mb-4">This is ideal for saving script-specific settings or states related to the current project.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local proj = 0 -- Current project
+local key = "MyProjectSetting"
+local value = "true" -- Example: a flag indicating script has run on this project
+
+
+
+
+reaper.SetProjExtState(proj, "MyScriptProjectID", key, value)
+reaper.ShowConsoleMsg("Project-specific setting saved.\\n")</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">13.2 Retrieving Project Data: <code>reaper.GetProjExtState()</code></h3>
+                            <p class="mb-4">Retrieve data from the current project's extended state.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local proj = 0
+local retrieved_value = reaper.GetProjExtState(proj, "MyScriptProjectID", "MyProjectSetting")
+if retrieved_value ~= "" then
+  reaper.ShowConsoleMsg("Retrieved project data: " .. retrieved_value .. "\\n")
+else
+  reaper.ShowConsoleMsg("No project data found for this script.\\n")
+end</code></pre>
+                        `,
+                    },
+                    midi_notes: {
+                        title: '14. Manipulating MIDI Notes: <code>MIDI_GetNote()</code>, <code>MIDI_SetNote()</code>',
+                        content: `
+                            <p class="mb-4">Deep dive into reading and modifying MIDI notes within a MIDI item.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">14.1 Getting Note Properties: <code>reaper.MIDI_GetNote()</code></h3>
+                            <p class="mb-4">This function retrieves various properties of a MIDI note event, such as its start/end position (PPQ), pitch, and velocity.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+if take then
+  local num_notes = reaper.MIDI_CountEvts(take)
+  for i = 0, num_notes - 1 do
+    local ret, sel, muted, start_ppq, end_ppq, chan, pitch, vel = reaper.MIDI_GetNote(take, i)
+    if ret then
+      reaper.ShowConsoleMsg(string.format("Note %d: Pitch=%d, Vel=%d, Start=%d\\n", i, pitch, vel, start_ppq))
+    end
+  end
+end</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">14.2 Modifying Note Properties: <code>reaper.MIDI_SetNote()</code></h3>
+                            <p class="mb-4">Use this to change any property of an existing MIDI note. Remember to update the display afterward.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+if take then
+  local num_notes = reaper.MIDI_CountEvts(take)
+  for i = 0, num_notes - 1 do
+    local ret, sel, muted, start_ppq, end_ppq, chan, pitch, vel = reaper.MIDI_GetNote(take, i)
+    if ret then
+      -- Example: Increase velocity by 10, clamp at 127
+      vel = math.min(127, vel + 10)
+      reaper.MIDI_SetNote(take, i, sel, muted, start_ppq, end_ppq, chan, pitch, vel)
+    end
+  end
+  reaper.MIDI_UpdateByItem(take) -- Refresh MIDI editor display
+  reaper.UpdateArrange()
+end</code></pre>
+                        `,
+                    },
+                    midi_ccs: {
+                        title: '15. Manipulating MIDI CCs: <code>MIDI_GetCC()</code>, <code>MIDI_SetCC()</code>',
+                        content: `
+                            <p class="mb-4">Control Change (CC) messages are crucial for automation and expression. Learn to read and write them.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">15.1 Reading CC Events: <code>reaper.MIDI_GetCC()</code></h3>
+                            <p class="mb-4">Similar to notes, you can get the properties of a CC event.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+if take then
+  local num_evts = reaper.MIDI_CountEvts(take)
+  for i = 0, num_evts - 1 do
+    local ret, sel, muted, ppq_pos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(take, i)
+    if ret then
+      -- Check if it's a CC message (chanmsg & 0xF0 == 0xB0)
+      if (chanmsg & 0xF0) == 0xB0 then
+        reaper.ShowConsoleMsg(string.format("CC %d: Value=%d at PPQ=%d\\n", msg2, msg3, ppq_pos))
+      end
+    end
+  end
+end</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">15.2 Modifying CC Events: <code>reaper.MIDI_SetCC()</code></h3>
+                            <p class="mb-4">Change the value or position of existing CC events.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+if take then
+  local num_evts = reaper.MIDI_CountEvts(take)
+  for i = 0, num_evts - 1 do
+    local ret, sel, muted, ppq_pos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(take, i)
+    if ret and (chanmsg & 0xF0) == 0xB0 and msg2 == 7 then -- If it's CC7 (Volume)
+      msg3 = math.min(127, msg3 + 5) -- Increase volume CC by 5
+      reaper.MIDI_SetCC(take, i, sel, muted, ppq_pos, chanmsg, chan, msg2, msg3)
+    end
+  end
+  reaper.MIDI_UpdateByItem(take)
+  reaper.UpdateArrange()
+end</code></pre>
+                        `,
+                    },
+                    midi_insert_delete: {
+                        title: '16. Inserting & Deleting MIDI Events: <code>MIDI_InsertNote()</code>',
+                        content: `
+                            <p class="mb-4">Dynamically add or remove MIDI events from a take.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">16.1 Inserting a New MIDI Note: <code>reaper.MIDI_InsertNote()</code></h3>
+                            <p class="mb-4">This function allows you to create new notes with specified properties.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+if take then
+  -- Insert a C3 note (pitch 60) at current cursor position, 1 beat long, velocity 100
+  local cursor_ppq = reaper.TimeMap_timeToQN(reaper.GetCursorPosition()) * reaper.MIDI_GetPPQForTrack(reaper.GetMediaItemTake_Track(take))
+  reaper.MIDI_InsertNote(take, false, false, cursor_ppq, cursor_ppq + reaper.MIDI_GetPPQForTrack(reaper.GetMediaItemTake_Track(take)), 0, 60, 100, false)
+  reaper.MIDI_UpdateByItem(take)
+  reaper.UpdateArrange()
+  reaper.ShowConsoleMsg("C3 note inserted at cursor.\\n")
+end</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">16.2 Deleting MIDI Events: <code>reaper.MIDI_DeleteEvt()</code></h3>
+                            <p class="mb-4">Remove specific events from a MIDI take. It's often best to iterate backwards when deleting.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+if take then
+  local num_evts = reaper.MIDI_CountEvts(take)
+  for i = num_evts - 1, 0, -1 do -- Iterate backwards!
+    local ret, sel, muted, ppq_pos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(take, i)
+    if ret and (chanmsg & 0xF0) == 0xB0 and msg2 == 11 then -- If it's CC11 (Expression)
+      reaper.MIDI_DeleteEvt(take, i)
+      reaper.ShowConsoleMsg("Deleted CC11 event.\\n")
+    end
+  end
+  reaper.MIDI_UpdateByItem(take)
+  reaper.UpdateArrange()
+end</code></pre>
+                        `,
+                    },
+                    item_properties: {
+                        title: '17. Advanced Item Properties: <code>GetSetMediaItemInfo()</code>',
+                        content: `
+                            <p class="mb-4">Beyond basic selection, you can control many aspects of media items.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">17.1 Getting Item Position and Length: "D_POSITION", "D_LENGTH"</h3>
+                            <p class="mb-4">Retrieve the start time and duration of a media item.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local item = reaper.GetSelectedMediaItem(0, 0)
+if item then
+  local pos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+  local len = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+  reaper.ShowConsoleMsg(string.format("Item Pos: %.2f, Length: %.2f\\n", pos, len))
+end</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">17.2 Setting Item Playback Rate: "D_PLAYRATE"</h3>
+                            <p class="mb-4">Adjust the playback rate of a media item, which also affects its length.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local item = reaper.GetSelectedMediaItem(0, 0)
+if item then
+  reaper.SetMediaItemInfo_Value(item, "D_PLAYRATE", 0.5) -- Half speed
+  reaper.ShowConsoleMsg("Item playback rate set to 0.5x.\\n")
+  reaper.UpdateArrange()
+end</code></pre>
+                        `,
+                    },
+                    track_fx_manipulation: {
+                        title: '18. Advanced Track FX Manipulation: <code>TrackFX_AddByName()</code>',
+                        content: `
+                            <p class="mb-4">Programmatically add, remove, and manage FX on tracks.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">18.1 Adding an FX to a Track: <code>reaper.TrackFX_AddByName()</code></h3>
+                            <p class="mb-4">This function allows you to add an FX by its name to a specified track.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local track = reaper.GetSelectedTrack(0, 0)
+if track then
+  local success = reaper.TrackFX_AddByName(track, "ReaComp", false, -1) -- Add ReaComp, false for VST, -1 for last slot
+  if success then
+    reaper.ShowConsoleMsg("ReaComp added to track.\\n")
+  else
+    reaper.ShowConsoleMsg("Failed to add ReaComp.\\n")
+  end
+  reaper.TrackList_AdjustWindows(false)
+end</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">18.2 Removing an FX: <code>reaper.TrackFX_Delete()</code></h3>
+                            <p class="mb-4">Remove an FX instance by its index on the track.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local track = reaper.GetSelectedTrack(0, 0)
+if track then
+  local fx_index = 0 -- First FX on the track
+  if reaper.TrackFX_GetCount(track) > fx_index then
+    reaper.TrackFX_Delete(track, fx_index)
+    reaper.ShowConsoleMsg("First FX removed.\\n")
+    reaper.TrackList_AdjustWindows(false)
+  end
+end</code></pre>
+                        `,
+                    },
+                    track_routing: {
+                        title: '19. Track Routing and Sends: <code>CreateTrackSend()</code>',
+                        content: `
+                            <p class="mb-4">Automate complex routing scenarios between tracks.</p>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">19.1 Creating a Track Send: <code>reaper.CreateTrackSend()</code></h3>
+                            <p class="mb-4">This function creates a new send from a source track to a destination track.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local source_track = reaper.GetSelectedTrack(0, 0)
+local dest_track = reaper.GetTrack(0, 1) -- Assuming second track in project
+if source_track and dest_track then
+  local send_idx = reaper.CreateTrackSend(source_track, dest_track)
+  if send_idx >= 0 then
+    reaper.ShowConsoleMsg(string.format("Send created from '%s' to '%s' (index %d).\\n", reaper.GetTrackName(source_track), reaper.GetTrackName(dest_track), send_idx))
+    reaper.TrackList_AdjustWindows(false)
+  else
+    reaper.ShowConsoleMsg("Failed to create send.\\n")
+  end
+end</code></pre>
+                            <h3 class="text-xl font-semibold mb-2 text-green-400">19.2 Adjusting Send Volume: <code>GetSetTrackSendInfo_Value()</code></h3>
+                            <p class="mb-4">Control the volume of an existing track send.</p>
+                            <pre class="bg-gray-800 text-green-300 p-3 rounded-md overflow-x-auto mb-4"><code>local source_track = reaper.GetSelectedTrack(0, 0)
+if source_track then
+  local send_idx = 0 -- First send on the source track
+  local send_vol = reaper.GetSetTrackSendInfo_Value(source_track, 0, send_idx, "D_VOL", -1) -- Get current volume
+  reaper.ShowConsoleMsg(string.format("Current send volume: %.2f\\n", send_vol))
+  reaper.GetSetTrackSendInfo_Value(source_track, 0, send_idx, "D_VOL", 0.75) -- Set to -2.5dB (approx)
+  reaper.ShowConsoleMsg("Send volume adjusted to 0.75.\\n")
+  reaper.TrackList_AdjustWindows(false)
+end</code></pre>
+                        `,
+                    },
+                },
+            },
+        };
+
+
+        const navCategories = document.getElementById('nav-categories');
+        const searchInput = document.getElementById('search-input');
+        const articleTitle = document.getElementById('article-title');
+        const articleContent = document.getElementById('article-content');
+        let activeSection = 'intro'; // Default active section
+
+
+        function renderNavigation(query = '') {
+            navCategories.innerHTML = ''; // Clear existing navigation
+            let hasResults = false;
+
+
+            for (const categoryKey in courseContent) {
+                const category = courseContent[categoryKey];
+                const categoryElement = document.createElement('li');
+                categoryElement.className = 'nav-category-item';
+
+
+                const categoryTitleElement = document.createElement('h3');
+                categoryTitleElement.className = 'nav-category-title';
+                categoryTitleElement.textContent = category.title;
+                categoryElement.appendChild(categoryTitleElement);
+
+
+                const articleList = document.createElement('ul');
+                articleList.className = 'nav-article-list';
+
+
+                for (const articleKey in category.articles) {
+                    const article = category.articles[articleKey];
+                    const fullContent = (article.title + ' ' + article.content).toLowerCase();
+                    const lowerCaseQuery = query.toLowerCase();
+
+
+                    if (query === '' || fullContent.includes(lowerCaseQuery)) {
+                        hasResults = true;
+                        const articleItem = document.createElement('li');
+                        articleItem.className = 'nav-article-item';
+
+
+                        const articleButton = document.createElement('button');
+                        articleButton.className = `nav-article-button ${activeSection === `${categoryKey}:${articleKey}` ? 'active' : ''}`;
+                        articleButton.textContent = article.title;
+                        articleButton.onclick = () => handleSectionClick(categoryKey, articleKey);
+
+
+                        articleItem.appendChild(articleButton);
+                        articleList.appendChild(articleItem);
+                    }
+                }
+                if (articleList.children.length > 0) { // Only add category if it has matching articles
+                    categoryElement.appendChild(articleList);
+                    navCategories.appendChild(categoryElement);
+                }
+            }
+            if (!hasResults && query !== '') {
+                navCategories.innerHTML = '<li class="nav-category-item"><p style="color:var(--gray-text);">No articles found matching your search.</p></li>';
+            }
+        }
+
+
+        function handleSectionClick(categoryKey, articleKey) {
+            activeSection = `${categoryKey}:${articleKey}`;
+            const selectedArticle = courseContent[categoryKey].articles[articleKey];
+            articleTitle.innerHTML = selectedArticle.title;
+            articleContent.innerHTML = selectedArticle.content;
+
+
+            // Scroll to top of main content
+            document.getElementById('main-content').scrollTop = 0;
+
+
+            // Re-render navigation to update active state
+            renderNavigation(searchInput.value);
+        }
+
+
+        // Initial render
+        renderNavigation();
+        handleSectionClick('beginner', 'intro'); // Load initial article
+
+
+        searchInput.addEventListener('input', (event) => {
+            renderNavigation(event.target.value);
+            // Optionally, if an article was previously active and now doesn't match search,
+            // you might want to clear the main content or revert to a "select article" message.
+            // For now, it will keep the last viewed article if it still matches the search.
+            // If the active section is no longer in the filtered list, we should reset.
+            const currentActiveCategory = activeSection.split(':')[0];
+            const currentActiveArticle = activeSection.split(':')[1];
+            if (!courseContent[currentActiveCategory]?.articles[currentActiveArticle] ||
+                !(courseContent[currentActiveCategory].articles[currentActiveArticle].title + ' ' + courseContent[currentActiveCategory].articles[currentActiveArticle].content).toLowerCase().includes(event.target.value.toLowerCase())) {
+                articleTitle.innerHTML = "Select an article from the sidebar";
+                articleContent.innerHTML = "<p>Please select an article from the left sidebar to begin learning.</p>";
+                activeSection = ''; // Clear active selection
+            }
+        });
+    </script>
+</body>
+</html>
