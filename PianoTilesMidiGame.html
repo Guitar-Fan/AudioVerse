@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Custom MIDI Piano Tiles Demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #f6e5bb 0%, #c29b5e 100%);
+      font-family: 'Georgia', serif;
+      color: #5b3a14;
+      overflow-x: hidden;
+    }
+    header {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: bold;
+      margin-top: 1rem;
+      margin-bottom: 0.6rem;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 8px #fff7, 0 1px 0 #c29b5e;
+    }
+    #desc {
+      text-align: center;
+      margin: 0.8rem auto 0.4rem auto;
+      font-size: 1.07rem;
+      max-width: 540px;
+      color: #7a5724;
+      text-shadow: 0 1px 0 #f9e8c7;
+    }
+    #container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100vw;
+    }
+    #game-canvas {
+      background: linear-gradient(120deg,#f7e5c2 0,#e3b76b 100%);
+      border-radius: 20px;
+      border: 4px solid #b9935e;
+      box-shadow: 0 8px 36px #825f3f40, 0 2px 12px #5b3a1430;
+      display: block;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.6rem;
+      margin-bottom: 1rem;
+      margin-top: 0.6rem;
+    }
+    .lane-label-input {
+      width: 2.6rem;
+      font-size: 1.2rem;
+      text-align: center;
+      border-radius: 6px;
+      border: 1px solid #bfa764;
+      padding: 0.3rem 0.1rem;
+      background: #fffbe8;
+      color: #8d6b36;
+      box-shadow: 0 2px 6px #e7ccb7 inset;
+    }
+    .lane-label-input:focus {
+      outline: 2px solid #cba76d;
+    }
+    #midi-load-controls {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    #playback-controls {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+      font-size: 1.03rem;
+      flex-wrap: wrap;
+    }
+    #play-btn, #stop-btn {
+      font-size: 1rem;
+      background: #ffe065;
+      color: #8b6128;
+      border: 1.5px solid #bfa764;
+      border-radius: 6px;
+      padding: 0.4rem 1.1rem;
+      font-family: 'Georgia', serif;
+      font-weight: bold;
+      cursor: pointer;
+      margin-left: 0.6rem;
+      margin-right: 0.6rem;
+      margin-top: 0.2rem;
+    }
+    #play-btn:active, #stop-btn:active {
+      background: #e3b76b;
+    }
+    input[type="range"] {
+      accent-color: #bfa764;
+    }
+    #midi-upload {
+      font-size: 1rem;
+      background: #fffbe8;
+      border-radius: 6px;
+      border: 1px solid #bfa764;
+      color: #8b6128;
+      padding: 0.3rem 0.6rem;
+      cursor: pointer;
+    }
+    #loading-anim {
+      display: none;
+      position: fixed;
+      left:0; right:0; top:0; bottom:0;
+      background: rgba(255,255,220,0.7);
+      z-index: 99;
+      justify-content: center;
+      align-items: center;
+    }
+    .lds-ring {
+      display: inline-block;
+      position: relative;
+      width: 70px;
+      height: 70px;
+    }
+    .lds-ring div {
+      box-sizing: border-box;
+      display: block;
+      position: absolute;
+      width: 56px;
+      height: 56px;
+      margin: 8px;
+      border: 7px solid #bfa764;
+      border-radius: 50%;
+      animation: lds-ring 1.15s cubic-bezier(0.4,0,0.2,1) infinite;
+      border-color: #bfa764 transparent transparent transparent;
+    }
+    .lds-ring div:nth-child(1) { animation-delay: -0.32s; }
+    .lds-ring div:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes lds-ring {
+      0% { transform: rotate(0deg);}
+      100% { transform: rotate(360deg);}
+    }
+    @media (max-width: 600px) {
+      #game-canvas {
+        width: 96vw !important;
+        height: 66vw !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    Classical Piano Tiles MIDI Demo
+  </header>
+  <div id="desc">
+    Upload a MIDI file, set your keys, and play!<br>
+    Uses a <b>custom MIDI parser</b> for full local support.<br>
+    <b>Playback rate: </b>change to make tiles fall faster/slower, but always non-overlapping.
+  </div>
+  <div id="midi-load-controls">
+    <label>
+      <input type="file" id="midi-upload" accept=".mid,.midi">
+      <span>Upload MIDI</span>
+    </label>
+  </div>
+  <div id="playback-controls">
+    <span>Playback Rate: <span id="rate-value">1.0</span>x</span>
+    <input type="range" id="rate-range" min="0.5" max="2.0" step="0.05" value="1.0">
+    <button id="play-btn">Play</button>
+    <button id="stop-btn">Stop</button>
+  </div>
+  <div id="controls">
+    <div>
+      <label>Lane 1: <input class="lane-label-input" id="label-0" value="D" maxlength="1"></label>
+    </div>
+    <div>
+      <label>Lane 2: <input class="lane-label-input" id="label-1" value="F" maxlength="1"></label>
+    </div>
+    <div>
+      <label>Lane 3: <input class="lane-label-input" id="label-2" value="J" maxlength="1"></label>
+    </div>
+    <div>
+      <label>Lane 4: <input class="lane-label-input" id="label-3" value="K" maxlength="1"></label>
+    </div>
+  </div>
+  <div id="container">
+    <canvas id="game-canvas" width="400" height="620"></canvas>
+  </div>
+
+  <!-- Loading animation overlay with progress feedback -->
+  <div id="loading-anim">
+    <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+    <div style="display:flex;flex-direction:column;align-items:left;margin-left:1.5rem;">
+      <span style="font-size:1.4rem;color:#8b6128;" id="loading-msg">Processing MIDI...</span>
+      <span style="font-size:1.07rem;color:#7a5724;margin-top:0.2rem;" id="loading-progress"></span>
+    </div>
+  </div>
+
+  <script>
+    // --- CONFIG ---
+    const LANES = 4;
+    const LANE_COLORS = ["#ad8d54", "#e3b76b", "#b88949", "#cba76d"];
+    const TILE_WIDTH_RATIO = 0.75;
+    const TILE_HEIGHT = 60;
+    const BASE_TILE_SPEED = 3.2; // px/frame, at 1.0x playback
+    const TILE_SPAWN_GAP = 12; // minimal vertical gap between tiles in a lane (px)
+    const HIT_LINE_Y = 510;
+    const CIRCLE_RADIUS = 36;
+    const CIRCLE_Y = 560;
+    const FPS = 60;
+
+    // --- STATE ---
+    let laneLabels = ["D", "F", "J", "K"];
+    let canvas = document.getElementById('game-canvas');
+    let ctx = canvas.getContext('2d');
+    let W = canvas.width, H = canvas.height;
+    let LANE_WIDTH = W / LANES;
+    let playbackRate = 1.0;
+    let midiNotes = null; // array of {time, midi, lane}
+    let tiles = Array.from({length: LANES}, () => []);
+    let startTime = null;
+    let isPlaying = false;
+    let midiDuration = 0;
+
+    // --- LANE LABEL INPUTS ---
+    for (let i = 0; i < LANES; ++i) {
+      const inp = document.getElementById('label-' + i);
+      inp.value = laneLabels[i];
+      inp.addEventListener('input', e => {
+        let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (val.length > 1) val = val[0];
+        laneLabels[i] = val || "?";
+        e.target.value = laneLabels[i];
+        drawCircles();
+      });
+    }
+
+    // --- PLAYBACK RATE ---
+    const rateRange = document.getElementById('rate-range');
+    const rateValue = document.getElementById('rate-value');
+    rateRange.addEventListener('input', e => {
+      playbackRate = parseFloat(e.target.value);
+      rateValue.textContent = playbackRate.toFixed(2).replace(/\.00$/, "");
+    });
+
+    // --- LOADING ANIMATION + FEEDBACK ---
+    const loadingAnim = document.getElementById('loading-anim');
+    const loadingMsg = document.getElementById('loading-msg');
+    const loadingProgress = document.getElementById('loading-progress');
+    function showLoading(show, msg) {
+      loadingAnim.style.display = show ? "flex" : "none";
+      if (msg) loadingMsg.textContent = msg;
+      loadingProgress.textContent = "";
+    }
+    function setLoadingMsg(msg) {
+      loadingMsg.textContent = msg;
+    }
+    function setLoadingProgress(msg) {
+      loadingProgress.textContent = msg;
+    }
+
+    // --- MIDI UPLOAD & PARSING (CUSTOM PARSER) ---
+    document.getElementById('midi-upload').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      showLoading(true, "Reading file...");
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        try {
+          setTimeout(() => { // simulate async
+            midiNotes = parseMidi(ev.target.result, (stage, detail) => {
+              setLoadingMsg(stage);
+              setLoadingProgress(detail || "");
+            });
+            midiDuration = midiNotes.length > 0 ? midiNotes[midiNotes.length-1].time + 2.0 : 0;
+            resetGame();
+            showLoading(false);
+            alert("MIDI processed! " + midiNotes.length + " tiles generated. Press Play!");
+          }, 100);
+        } catch (err) {
+          showLoading(false);
+          alert("Failed to parse MIDI: " + err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    /**
+     * Custom minimal MIDI parser (Type 0/1 standard, handles note-on, note-off)
+     * Returns array of {time, midi, lane, velocity, duration}
+     * Accepts a progressCallback(stage, detail)
+     */
+    function parseMidi(arrayBuffer, progressCallback) {
+      let bytes = new Uint8Array(arrayBuffer);
+      let view = new DataView(arrayBuffer);
+
+      function progress(stage, detail) {
+        if (progressCallback) progressCallback(stage, detail);
+      }
+
+      function readVarInt(posObj) {
+        let val = 0;
+        for (let i = 0; i < 4; ++i) {
+          let b = bytes[posObj.pos++];
+          val = (val << 7) | (b & 0x7F);
+          if (!(b & 0x80)) break;
+        }
+        return val;
+      }
+
+      let pos = 0;
+      progress("Parsing header...", "");
+      if (String.fromCharCode(...bytes.slice(pos, pos+4)) !== "MThd") throw "Invalid MIDI header";
+      pos += 4;
+      let headerLen = view.getUint32(pos); pos += 4;
+      let format = view.getUint16(pos); pos += 2;
+      let nTracks = view.getUint16(pos); pos += 2;
+      let division = view.getUint16(pos); pos += 2;
+      let ppq = (division & 0x8000) ? 480 : division;
+      pos = 14; // start of first track
+
+      let tracks = [];
+      progress("Scanning tracks...", "Tracks: " + nTracks);
+      for (let t = 0; t < nTracks; ++t) {
+        progress("Scanning tracks...", `Track ${t+1} of ${nTracks}`);
+        if (String.fromCharCode(...bytes.slice(pos, pos+4)) !== "MTrk") throw "Missing track header";
+        pos += 4;
+        let trackLen = view.getUint32(pos); pos += 4;
+        tracks.push({start: pos, end: pos + trackLen});
+        pos += trackLen;
+      }
+
+      let allNotes = [];
+      for (let t = 0; t < tracks.length; ++t) {
+        progress("Parsing tracks...", `Track ${t+1} of ${tracks.length}`);
+        let {start, end} = tracks[t];
+        let posObj = {pos: start};
+        let absTime = 0;
+        let tempo = 500000; // default 120bpm
+        let noteOns = {};
+        let lastStatus = 0;
+        let events = 0;
+
+        while (posObj.pos < end) {
+          ++events;
+          if (events % 500 === 0) progress("Parsing track events...", `Track ${t+1} event ${events}`);
+          let delta = readVarInt(posObj);
+          absTime += delta;
+          let status = bytes[posObj.pos];
+          if (status < 0x80) {
+            status = lastStatus;
+          } else {
+            posObj.pos++;
+            lastStatus = status;
+          }
+          if (status === 0xFF) {
+            let type = bytes[posObj.pos++];
+            let len = readVarInt(posObj);
+            if (type === 0x51) {
+              tempo = (bytes[posObj.pos]<<16) | (bytes[posObj.pos+1]<<8) | bytes[posObj.pos+2];
+            }
+            posObj.pos += len;
+          } else if ((status & 0xF0) === 0x90) {
+            let note = bytes[posObj.pos++];
+            let vel = bytes[posObj.pos++];
+            if (vel > 0) {
+              noteOns[note] = {start: absTime, velocity: vel};
+            } else if (noteOns[note]) {
+              let on = noteOns[note];
+              let duration = absTime - on.start;
+              allNotes.push({
+                midi: note,
+                time: ticksToSeconds(on.start, ppq, tempo),
+                duration: ticksToSeconds(duration, ppq, tempo),
+                velocity: on.velocity / 127
+              });
+              delete noteOns[note];
+            }
+          } else if ((status & 0xF0) === 0x80) {
+            let note = bytes[posObj.pos++];
+            let vel = bytes[posObj.pos++];
+            if (noteOns[note]) {
+              let on = noteOns[note];
+              let duration = absTime - on.start;
+              allNotes.push({
+                midi: note,
+                time: ticksToSeconds(on.start, ppq, tempo),
+                duration: ticksToSeconds(duration, ppq, tempo),
+                velocity: on.velocity / 127
+              });
+              delete noteOns[note];
+            }
+          } else if ((status & 0xF0) === 0xA0 || (status & 0xF0) === 0xB0 ||
+                     (status & 0xF0) === 0xE0 || (status & 0xF0) === 0xD0) {
+            let dataLen = ((status & 0xF0) === 0xD0) ? 1 : 2;
+            posObj.pos += dataLen;
+          } else {
+            posObj.pos++;
+          }
+        }
+      }
+      progress("Mapping notes to lanes...", "");
+      allNotes.sort((a, b) => a.time - b.time);
+      if (!allNotes.length) throw "No notes found in MIDI.";
+      let minPitch = Math.min(...allNotes.map(n => n.midi));
+      let maxPitch = Math.max(...allNotes.map(n => n.midi));
+      let pitchRange = maxPitch - minPitch + 1;
+      let laneSize = Math.ceil(pitchRange / LANES);
+
+      let noteTiles = allNotes.map((note, i) => {
+        if (i % 100 === 0) progress("Assigning lanes...", `Note ${i+1} of ${allNotes.length}`);
+        let midiVal = note.midi - minPitch;
+        let lane = Math.floor(midiVal / laneSize);
+        lane = Math.max(0, Math.min(LANES - 1, lane));
+        return {
+          lane: lane,
+          time: note.time,
+          midi: note.midi,
+          duration: note.duration,
+          velocity: note.velocity
+        };
+      });
+      progress("Done! Ready to play.", `Total notes: ${noteTiles.length}`);
+      return noteTiles;
+    }
+
+    function ticksToSeconds(ticks, ppq, tempo) {
+      // tempo is microseconds per quarter, ppq is ticks/quarter
+      return (ticks * tempo) / (ppq * 1000000);
+    }
+
+    // --- GAME BUTTONS ---
+    document.getElementById('play-btn').onclick = () => {
+      if (midiNotes && midiNotes.length > 0 && !isPlaying) {
+        resetGame();
+        isPlaying = true;
+        startTime = performance.now();
+      }
+    };
+    document.getElementById('stop-btn').onclick = () => {
+      isPlaying = false;
+      resetGame();
+      drawAll();
+    };
+
+    function resetGame() {
+      tiles = Array.from({length: LANES}, () => []);
+      pendingMidi = midiNotes && midiNotes.length > 0 ? midiNotes.slice() : []; // FIXED: always an array
+      startTime = null;
+      earlyPressAnim = Array(LANES).fill(0);
+    }
+
+    // --- TILE SCHEDULING ---
+    let pendingMidi = []; // FIXED: always an array
+    function scheduleTiles(elapsed) {
+      if (!pendingMidi || !isPlaying) return;
+      let t = elapsed * playbackRate; // "musical" time
+      // For each lane, schedule next tile if it's time and spacing is ok
+      for (let lane = 0; lane < LANES; ++lane) {
+        // Find next note for this lane
+        let idx = pendingMidi.findIndex(n => n.lane === lane && n.time <= t + tileLeadTime());
+        if (idx === -1) continue;
+        let note = pendingMidi[idx];
+        // Last tile y in this lane
+        let arr = tiles[lane];
+        let lastY = arr.length > 0 ? arr[arr.length-1].y : -TILE_HEIGHT;
+        // Avoid overlap - ensure gap
+        if (lastY < -TILE_HEIGHT - TILE_SPAWN_GAP) {
+          // Place tile so it hits the line at note.time/playbackRate
+          let spawnY = -TILE_HEIGHT;
+          let tile = {
+            lane: lane,
+            color: LANE_COLORS[lane],
+            y: spawnY,
+            width: LANE_WIDTH * TILE_WIDTH_RATIO,
+            x: lane * LANE_WIDTH + LANE_WIDTH*(1-TILE_WIDTH_RATIO)/2,
+            height: TILE_HEIGHT,
+            state: "falling",
+            anim: 0,
+            hit: false,
+            scheduledTime: note.time / playbackRate,
+            played: false
+          };
+          arr.push(tile);
+          pendingMidi.splice(idx, 1);
+        }
+      }
+    }
+
+    function tileLeadTime() {
+      return (HIT_LINE_Y + TILE_HEIGHT) / (BASE_TILE_SPEED * playbackRate) / FPS;
+    }
+
+    // --- DRAWING ---
+    function drawBackground() {
+      ctx.clearRect(0, 0, W, H);
+      let grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, "#f6e5bb");
+      grad.addColorStop(1, "#c29b5e");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+      // Stripes
+      ctx.save();
+      ctx.globalAlpha = 0.09;
+      for (let i = 0; i < LANES; ++i) {
+        ctx.fillStyle = "#a87b3e";
+        ctx.fillRect(i * LANE_WIDTH, 0, 10, H);
+      }
+      ctx.restore();
+    }
+    function drawLanes() {
+      ctx.save();
+      for (let i = 1; i < LANES; ++i) {
+        ctx.beginPath();
+        ctx.strokeStyle = "#bfa76455";
+        ctx.lineWidth = 3;
+        ctx.moveTo(i * LANE_WIDTH, 0);
+        ctx.lineTo(i * LANE_WIDTH, H);
+        ctx.stroke();
+      }
+      ctx.restore();
+      // Hit line (gold gradient)
+      let grad = ctx.createLinearGradient(0, HIT_LINE_Y, W, HIT_LINE_Y);
+      grad.addColorStop(0, "#ffe065");
+      grad.addColorStop(0.5, "#ad8d54");
+      grad.addColorStop(1, "#ffe065");
+      ctx.save();
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(0, HIT_LINE_Y);
+      ctx.lineTo(W, HIT_LINE_Y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawTiles() {
+      for (let lane = 0; lane < LANES; ++lane) {
+        for (let tile of tiles[lane]) {
+          // Shadow
+          ctx.save();
+          ctx.globalAlpha = 0.19;
+          ctx.fillStyle = "#694116";
+          ctx.fillRect(tile.x+4, tile.y+7, tile.width, tile.height);
+          ctx.restore();
+
+          // Main tile
+          ctx.save();
+          if (tile.state === "hit") {
+            ctx.globalAlpha = Math.max(0, 0.9 - tile.anim/11);
+            ctx.fillStyle = "#ffe065";
+            ctx.strokeStyle = "#bfa764";
+          } else if (tile.state === "missed" || tile.state === "early") {
+            ctx.globalAlpha = Math.max(0, 0.92 - tile.anim/9);
+            ctx.fillStyle = "#cf6e5e";
+            ctx.strokeStyle = "#b24636";
+          } else {
+            ctx.globalAlpha = 0.94;
+            ctx.fillStyle = tile.color;
+            ctx.strokeStyle = "#8b6128";
+          }
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.roundRect(tile.x, tile.y, tile.width, tile.height, 10);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+
+          // Highlight
+          if (tile.state === "falling") {
+            ctx.save();
+            ctx.globalAlpha = 0.13;
+            ctx.fillStyle = "#fffbe8";
+            ctx.beginPath();
+            ctx.roundRect(tile.x+4, tile.y+7, tile.width-8, 13, 7);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      }
+    }
+
+    function drawCircles() {
+      for (let i = 0; i < LANES; ++i) {
+        let cx = i * LANE_WIDTH + LANE_WIDTH/2;
+        // Circle
+        ctx.save();
+        ctx.beginPath();
+        let grad = ctx.createRadialGradient(cx, CIRCLE_Y, 8, cx, CIRCLE_Y, CIRCLE_RADIUS);
+        grad.addColorStop(0, "#fffbe8");
+        grad.addColorStop(0.85, "#ffe065");
+        grad.addColorStop(1, "#bfa764");
+        ctx.fillStyle = grad;
+        ctx.arc(cx, CIRCLE_Y, CIRCLE_RADIUS, 0, Math.PI*2);
+        ctx.shadowColor = "#bfa764";
+        ctx.shadowBlur = 12;
+        ctx.fill();
+        ctx.restore();
+        // Circle border
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, CIRCLE_Y, CIRCLE_RADIUS, 0, Math.PI*2);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "#8b6128";
+        ctx.stroke();
+        ctx.restore();
+        // Letter
+        ctx.save();
+        ctx.font = "bold 2.4rem Georgia";
+        ctx.fillStyle = "#8b6128";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "#fffbe8";
+        ctx.shadowBlur = 2;
+        ctx.fillText(laneLabels[i], cx, CIRCLE_Y);
+        ctx.restore();
+      }
+    }
+
+    function drawAll() {
+      drawBackground();
+      drawLanes();
+      drawTiles();
+      drawCircles();
+      drawEarlyPress();
+    }
+
+    // --- GAMEPLAY ---
+    // For early keypress animation
+    let earlyPressAnim = Array(LANES).fill(0);
+
+    // Detect if a tile is hittable (overlaps hit line)
+    function isTileHittable(tile) {
+      return (
+        tile.state === "falling" &&
+        tile.y + tile.height > HIT_LINE_Y - 18 &&
+        tile.y < HIT_LINE_Y + 18
+      );
+    }
+    // Detect if a tile is too high to be hit (for early press)
+    function isTileEarly(tile) {
+      return (
+        tile.state === "falling" &&
+        tile.y + tile.height < HIT_LINE_Y - 30
+      );
+    }
+
+    function handleHit(lane) {
+      let arr = tiles[lane];
+      // Find first falling and hittable tile in this lane
+      let idx = arr.findIndex(isTileHittable);
+      if (idx !== -1) {
+        arr[idx].state = "hit";
+        arr[idx].anim = 0;
+        arr[idx].hit = true;
+      } else {
+        // If pressing too early, show early animation (red circle)
+        let hasEarly = arr.find(isTileEarly);
+        if (hasEarly) {
+          earlyPressAnim[lane] = 10; // frames to show red
+          // Also mark tile as early for fade out if desired
+          if (hasEarly.state === "falling") {
+            hasEarly.state = "early";
+            hasEarly.anim = 0;
+            hasEarly.hit = false;
+          }
+        }
+      }
+    }
+
+    // Handle key events
+    document.addEventListener('keydown', e => {
+      let pressed = e.key.toUpperCase();
+      let idx = laneLabels.findIndex(lab => lab === pressed);
+      if (idx !== -1) {
+        handleHit(idx);
+      }
+    });
+
+    // Handle circle clicks
+    canvas.addEventListener('mousedown', e => {
+      let rect = canvas.getBoundingClientRect();
+      let mx = e.clientX - rect.left;
+      let my = e.clientY - rect.top;
+      for (let i = 0; i < LANES; ++i) {
+        let cx = i * LANE_WIDTH + LANE_WIDTH/2;
+        let dx = mx - cx, dy = my - CIRCLE_Y;
+        if (dx*dx + dy*dy <= CIRCLE_RADIUS*CIRCLE_RADIUS) {
+          handleHit(i);
+          break;
+        }
+      }
+    });
+
+    function drawEarlyPress() {
+      for (let i = 0; i < LANES; ++i) {
+        if (earlyPressAnim[i] > 0) {
+          let cx = i * LANE_WIDTH + LANE_WIDTH/2;
+          ctx.save();
+          ctx.beginPath();
+          ctx.globalAlpha = 0.23 + 0.25 * (earlyPressAnim[i] / 10);
+          ctx.arc(cx, CIRCLE_Y, CIRCLE_RADIUS, 0, Math.PI*2);
+          ctx.fillStyle = "#cf6e5e";
+          ctx.fill();
+          ctx.restore();
+          earlyPressAnim[i]--;
+        }
+      }
+    }
+
+    // --- MAIN ANIMATION LOOP ---
+    function animate(now) {
+      drawAll();
+      if (isPlaying && midiNotes && midiNotes.length > 0) {
+        if (!startTime) startTime = now;
+        let elapsed = (now - startTime) / 1000; // seconds
+
+        // Schedule tiles according to midiNotes and current playback rate
+        scheduleTiles(elapsed);
+
+        // Move and animate tiles per lane
+        for (let lane = 0; lane < LANES; ++lane) {
+          for (let tile of tiles[lane]) {
+            if (tile.state === "falling") {
+              tile.y += BASE_TILE_SPEED * playbackRate;
+              // If passed hit line and not hit, mark as missed
+              if (tile.y > HIT_LINE_Y + 32 && tile.state === "falling") {
+                tile.state = "missed";
+                tile.anim = 0;
+              }
+            } else if (tile.state === "hit" || tile.state === "missed" || tile.state === "early") {
+              tile.anim++;
+            }
+          }
+          // Remove tiles that are fully faded out
+          tiles[lane] = tiles[lane].filter(tile =>
+            (tile.state === "falling") ||
+            (tile.state === "hit" && tile.anim < 12) ||
+            (tile.state === "missed" && tile.anim < 9) ||
+            (tile.state === "early" && tile.anim < 9)
+          );
+        }
+        // If song is done and all tiles are gone, stop
+        if ((!pendingMidi || pendingMidi.length === 0) && tiles.every(arr => arr.length === 0)) {
+          isPlaying = false;
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    // --- INITIAL DEMO (optional, remove if not needed) ---
+    function randomDemoNotes() {
+      midiNotes = [];
+      let t = 0;
+      for (let i = 0; i < 40; ++i) {
+        let lane = Math.floor(Math.random() * LANES);
+        midiNotes.push({
+          time: t, midi: 60 + lane, velocity: 0.9, duration: 0.4, lane: lane
+        });
+        t += 0.35 + Math.random() * 0.25;
+      }
+      midiDuration = t;
+      resetGame();
+    }
+    randomDemoNotes();
+    animate();
+
+  </script>
+</body>
+</html>
