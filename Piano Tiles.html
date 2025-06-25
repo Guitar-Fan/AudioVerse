@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Classical Piano Tiles Game Demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #f6e5bb 0%, #c29b5e 100%);
+      font-family: 'Georgia', serif;
+      color: #5b3a14;
+      overflow-x: hidden;
+    }
+    header {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: bold;
+      margin-top: 1rem;
+      margin-bottom: 0.6rem;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 8px #fff7, 0 1px 0 #c29b5e;
+    }
+    #desc {
+      text-align: center;
+      margin: 0.8rem auto 0.4rem auto;
+      font-size: 1.07rem;
+      max-width: 540px;
+      color: #7a5724;
+      text-shadow: 0 1px 0 #f9e8c7;
+    }
+    #container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100vw;
+      margin-top: 0.2rem;
+    }
+    #game-canvas {
+      background: linear-gradient(120deg,#f7e5c2 0,#e3b76b 100%);
+      border-radius: 20px;
+      border: 4px solid #b9935e;
+      box-shadow: 0 8px 36px #825f3f40, 0 2px 12px #5b3a1430;
+      display: block;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    #controls {
+      display: flex;
+      justify-content: center;
+      gap: 1.6rem;
+      margin-bottom: 1rem;
+      margin-top: 0.6rem;
+    }
+    .lane-label-input {
+      width: 2.6rem;
+      font-size: 1.2rem;
+      text-align: center;
+      border-radius: 6px;
+      border: 1px solid #bfa764;
+      padding: 0.3rem 0.1rem;
+      background: #fffbe8;
+      color: #8d6b36;
+      box-shadow: 0 2px 6px #e7ccb7 inset;
+    }
+    .lane-label-input:focus {
+      outline: 2px solid #cba76d;
+    }
+    @media (max-width: 600px) {
+      #game-canvas {
+        width: 96vw !important;
+        height: 66vw !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    Classical Piano Tiles Game Demo
+  </header>
+  <div id="desc">
+    Press the matching key or click a circle to catch tiles on the gold line.<br>
+    <span style="font-size:1.05em;">Set your preferred letters for each lane below.</span>
+  </div>
+  <div id="controls">
+    <div>
+      <label>Lane 1: <input class="lane-label-input" id="label-0" value="D" maxlength="1"></label>
+    </div>
+    <div>
+      <label>Lane 2: <input class="lane-label-input" id="label-1" value="F" maxlength="1"></label>
+    </div>
+    <div>
+      <label>Lane 3: <input class="lane-label-input" id="label-2" value="J" maxlength="1"></label>
+    </div>
+    <div>
+      <label>Lane 4: <input class="lane-label-input" id="label-3" value="K" maxlength="1"></label>
+    </div>
+  </div>
+  <div id="container">
+    <canvas id="game-canvas" width="400" height="620"></canvas>
+  </div>
+  <script>
+    // Config
+    const LANES = 4;
+    const LANE_COLORS = ["#ad8d54", "#e3b76b", "#b88949", "#cba76d"];
+    const TILE_WIDTH_RATIO = 0.75;
+    const TILE_HEIGHT = 60;
+    const TILE_SPEED = 3.2; // px per frame
+    const TILE_SPAWN_INTERVAL = 40; // frames per new tile in each lane
+
+    // Lane label state
+    let laneLabels = ["D", "F", "J", "K"];
+
+    // Set up lane label inputs
+    for (let i = 0; i < LANES; ++i) {
+      const inp = document.getElementById('label-' + i);
+      inp.value = laneLabels[i];
+      inp.addEventListener('input', e => {
+        let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (val.length > 1) val = val[0];
+        laneLabels[i] = val || "?";
+        e.target.value = laneLabels[i];
+        drawCircles();
+      });
+    }
+
+    // Set up canvas and context
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const LANE_WIDTH = W / LANES;
+    const HIT_LINE_Y = H-110;
+    const CIRCLE_RADIUS = 36;
+    const CIRCLE_Y = H-60;
+
+    // Tiles, one queue per lane for non-overlapping tiles
+    let tiles = Array.from({length: LANES}, () => []);
+    let tileTimers = Array(LANES).fill(0);
+
+    // Tile object: { y, color, state }
+    // state: "falling", "hit", "missed"
+    function makeTile(lane, color) {
+      // Place above last tile in this lane
+      let last = tiles[lane].length > 0 ? tiles[lane][tiles[lane].length-1] : null;
+      let minY = last ? last.y - TILE_HEIGHT - 18 : -TILE_HEIGHT;
+      return {
+        lane,
+        color,
+        y: Math.min(-TILE_HEIGHT, minY),
+        width: LANE_WIDTH * TILE_WIDTH_RATIO,
+        x: lane * LANE_WIDTH + LANE_WIDTH*(1-TILE_WIDTH_RATIO)/2,
+        height: TILE_HEIGHT,
+        state: "falling",
+        anim: 0 // used for hit/miss animation
+      }
+    }
+
+    // Spawning logic: spawn a tile per interval, but ensure no overlap
+    function spawnTiles() {
+      for (let lane = 0; lane < LANES; ++lane) {
+        tileTimers[lane]++;
+        if (tileTimers[lane] >= TILE_SPAWN_INTERVAL + Math.floor(Math.random()*30)) {
+          tileTimers[lane] = 0;
+          tiles[lane].push(makeTile(lane, LANE_COLORS[lane]));
+        }
+      }
+    }
+
+    // Draw background: simple, elegant, gold-cream with subtle vertical stripes
+    function drawBackground() {
+      ctx.clearRect(0, 0, W, H);
+      let grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, "#f6e5bb");
+      grad.addColorStop(1, "#c29b5e");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Stripes
+      ctx.save();
+      ctx.globalAlpha = 0.09;
+      for (let i = 0; i < LANES; ++i) {
+        ctx.fillStyle = "#a87b3e";
+        ctx.fillRect(i * LANE_WIDTH, 0, 10, H);
+      }
+      ctx.restore();
+    }
+
+    // Draw gold lanes and hit line
+    function drawLanes() {
+      ctx.save();
+      for (let i = 1; i < LANES; ++i) {
+        ctx.beginPath();
+        ctx.strokeStyle = "#bfa76455";
+        ctx.lineWidth = 3;
+        ctx.moveTo(i * LANE_WIDTH, 0);
+        ctx.lineTo(i * LANE_WIDTH, H);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Hit line (gold gradient)
+      let grad = ctx.createLinearGradient(0, HIT_LINE_Y, W, HIT_LINE_Y);
+      grad.addColorStop(0, "#ffe065");
+      grad.addColorStop(0.5, "#ad8d54");
+      grad.addColorStop(1, "#ffe065");
+      ctx.save();
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(0, HIT_LINE_Y);
+      ctx.lineTo(W, HIT_LINE_Y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Draw tiles
+    function drawTiles() {
+      for (let lane = 0; lane < LANES; ++lane) {
+        for (let tile of tiles[lane]) {
+          // Shadow
+          ctx.save();
+          ctx.globalAlpha = 0.19;
+          ctx.fillStyle = "#694116";
+          ctx.fillRect(tile.x+4, tile.y+7, tile.width, tile.height);
+          ctx.restore();
+
+          // Main tile
+          ctx.save();
+          if (tile.state === "hit") {
+            ctx.globalAlpha = Math.max(0, 0.9 - tile.anim/11);
+            ctx.fillStyle = "#ffe065";
+            ctx.strokeStyle = "#bfa764";
+          } else if (tile.state === "missed") {
+            ctx.globalAlpha = Math.max(0, 0.92 - tile.anim/9);
+            ctx.fillStyle = "#cf6e5e";
+            ctx.strokeStyle = "#b24636";
+          } else {
+            ctx.globalAlpha = 0.94;
+            ctx.fillStyle = tile.color;
+            ctx.strokeStyle = "#8b6128";
+          }
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.roundRect(tile.x, tile.y, tile.width, tile.height, 10);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+
+          // Highlight
+          if (tile.state === "falling") {
+            ctx.save();
+            ctx.globalAlpha = 0.13;
+            ctx.fillStyle = "#fffbe8";
+            ctx.beginPath();
+            ctx.roundRect(tile.x+4, tile.y+7, tile.width-8, 13, 7);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      }
+    }
+
+    // Draw bottom circles with letters
+    function drawCircles() {
+      for (let i = 0; i < LANES; ++i) {
+        let cx = i * LANE_WIDTH + LANE_WIDTH/2;
+        // Circle
+        ctx.save();
+        ctx.beginPath();
+        let grad = ctx.createRadialGradient(cx, CIRCLE_Y, 8, cx, CIRCLE_Y, CIRCLE_RADIUS);
+        grad.addColorStop(0, "#fffbe8");
+        grad.addColorStop(0.85, "#ffe065");
+        grad.addColorStop(1, "#bfa764");
+        ctx.fillStyle = grad;
+        ctx.arc(cx, CIRCLE_Y, CIRCLE_RADIUS, 0, Math.PI*2);
+        ctx.shadowColor = "#bfa764";
+        ctx.shadowBlur = 12;
+        ctx.fill();
+        ctx.restore();
+        // Circle border
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, CIRCLE_Y, CIRCLE_RADIUS, 0, Math.PI*2);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "#8b6128";
+        ctx.stroke();
+        ctx.restore();
+        // Letter
+        ctx.save();
+        ctx.font = "bold 2.4rem Georgia";
+        ctx.fillStyle = "#8b6128";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "#fffbe8";
+        ctx.shadowBlur = 2;
+        ctx.fillText(laneLabels[i], cx, CIRCLE_Y);
+        ctx.restore();
+      }
+    }
+
+    // Detect if a tile is hittable (overlaps hit line)
+    function isTileHittable(tile) {
+      return (
+        tile.state === "falling" &&
+        tile.y + tile.height > HIT_LINE_Y - 18 &&
+        tile.y < HIT_LINE_Y + 18
+      );
+    }
+
+    // Handle key press or click
+    function handleHit(lane) {
+      let arr = tiles[lane];
+      // Find first falling and hittable tile in this lane
+      let idx = arr.findIndex(isTileHittable);
+      if (idx !== -1) {
+        arr[idx].state = "hit";
+        arr[idx].anim = 0;
+      }
+    }
+
+    // Handle key events
+    document.addEventListener('keydown', e => {
+      let pressed = e.key.toUpperCase();
+      let idx = laneLabels.findIndex(lab => lab === pressed);
+      if (idx !== -1) {
+        handleHit(idx);
+      }
+    });
+
+    // Handle circle clicks
+    canvas.addEventListener('mousedown', e => {
+      let rect = canvas.getBoundingClientRect();
+      let mx = e.clientX - rect.left;
+      let my = e.clientY - rect.top;
+      for (let i = 0; i < LANES; ++i) {
+        let cx = i * LANE_WIDTH + LANE_WIDTH/2;
+        let dx = mx - cx, dy = my - CIRCLE_Y;
+        if (dx*dx + dy*dy <= CIRCLE_RADIUS*CIRCLE_RADIUS) {
+          handleHit(i);
+          break;
+        }
+      }
+    });
+
+    // Animation loop
+    let frameCount = 0;
+    function animate() {
+      drawBackground();
+      drawLanes();
+      drawTiles();
+      drawCircles();
+
+      spawnTiles();
+
+      // Move tiles and animate hit/miss
+      for (let lane = 0; lane < LANES; ++lane) {
+        for (let tile of tiles[lane]) {
+          if (tile.state === "falling") {
+            tile.y += TILE_SPEED;
+            // If passed hit line and not hit, mark as missed
+            if (tile.y > HIT_LINE_Y + 30 && tile.state === "falling") {
+              tile.state = "missed";
+              tile.anim = 0;
+            }
+          } else if (tile.state === "hit" || tile.state === "missed") {
+            tile.anim++;
+          }
+        }
+        // Remove tiles that are fully faded out
+        tiles[lane] = tiles[lane].filter(tile =>
+          (tile.state === "falling") ||
+          (tile.state === "hit" && tile.anim < 12) ||
+          (tile.state === "missed" && tile.anim < 9)
+        );
+      }
+
+      frameCount++;
+      requestAnimationFrame(animate);
+    }
+
+    // Start with one tile per lane
+    for (let i = 0; i < LANES; ++i) {
+      tiles[i].push(makeTile(i, LANE_COLORS[i]));
+    }
+    animate();
+  </script>
+</body>
+</html>

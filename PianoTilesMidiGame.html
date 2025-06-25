@@ -192,7 +192,8 @@
       <label>Lane 4: <input class="lane-label-input" id="label-3" value="K" maxlength="1"></label>
     </div>
   </div>
-  <div id="container">
+  <div id="container" style="display:flex;flex-direction:row;align-items:center;justify-content:center;width:100vw;">
+    <div id="piano-vertical" style="display:flex;flex-direction:column;align-items:center;margin-right:12px;"></div>
     <canvas id="game-canvas" width="400" height="620"></canvas>
   </div>
 
@@ -801,8 +802,41 @@
       return tiles;
     }
 
-    // --- MAIN ANIMATION LOOP ---
+    // --- RANDOM TILE SPAWNING LOGIC (from Piano Tiles.html) ---
+    const TILE_SPAWN_INTERVAL = 40; // frames per new tile in each lane
+    let tileTimers = Array(LANES).fill(0);
+    function makeTile(lane, color) {
+      let last = tiles[lane].length > 0 ? tiles[lane][tiles[lane].length-1] : null;
+      let minY = last ? last.y - TILE_HEIGHT - 18 : -TILE_HEIGHT;
+      return {
+        lane,
+        color,
+        y: Math.min(-TILE_HEIGHT, minY),
+        width: LANE_WIDTH * TILE_WIDTH_RATIO,
+        x: lane * LANE_WIDTH + LANE_WIDTH*(1-TILE_WIDTH_RATIO)/2,
+        height: TILE_HEIGHT,
+        state: "falling",
+        anim: 0
+      }
+    }
+    function spawnTiles() {
+      for (let lane = 0; lane < LANES; ++lane) {
+        // Only spawn if last tile is far enough below the spawn point (no overlap)
+        let last = tiles[lane].length > 0 ? tiles[lane][tiles[lane].length-1] : null;
+        let canSpawn = !last || last.y <= -TILE_HEIGHT - 18;
+        tileTimers[lane]++;
+        if (canSpawn && tileTimers[lane] >= TILE_SPAWN_INTERVAL + Math.floor(Math.random()*30)) {
+          tileTimers[lane] = 0;
+          tiles[lane].push(makeTile(lane, LANE_COLORS[lane]));
+        }
+      }
+    }
+    // --- MODIFIED MAIN ANIMATION LOOP ---
     function animate(now) {
+      // If midiNotes is empty or not initialized, use random tile fallback
+      if (!midiNotes || midiNotes.length === 0) {
+        spawnTiles();
+      }
       drawAll();
       if (isPlaying && midiNotes && midiNotes.length > 0) {
         if (!startTime) startTime = now;
@@ -837,56 +871,92 @@
         if ((!pendingMidi || pendingMidi.length === 0) && tiles.every(arr => arr.length === 0)) {
           isPlaying = false;
         }
+      } else if (!midiNotes || midiNotes.length === 0) {
+        // Move and animate random tiles
+        for (let lane = 0; lane < LANES; ++lane) {
+          for (let tile of tiles[lane]) {
+            if (tile.state === "falling") {
+              tile.y += BASE_TILE_SPEED;
+              if (tile.y > HIT_LINE_Y + 32 && tile.state === "falling") {
+                tile.state = "missed";
+                tile.anim = 0;
+              }
+            } else if (tile.state === "hit" || tile.state === "missed") {
+              tile.anim++;
+            }
+          }
+          tiles[lane] = tiles[lane].filter(tile =>
+            (tile.state === "falling") ||
+            (tile.state === "hit" && tile.anim < 12) ||
+            (tile.state === "missed" && tile.anim < 9)
+          );
+        }
       }
       requestAnimationFrame(animate);
     }
-
-    // --- INITIAL RANDOM TILES ON LOAD ---
-    function startInitialRandomTiles() {
-      let notes = [];
-      let t = 0;
-      let minGap = 0.32; // seconds between notes in same lane
-      let lastTime = Array(LANES).fill(-100);
-      let totalNotes = 40;
-      for (let i = 0; i < totalNotes; ++i) {
-        let lane = Math.floor(Math.random() * LANES);
-        t = Math.max(t, lastTime[lane] + minGap);
-        notes.push({
-          time: t,
-          midi: 60 + lane,
-          velocity: 0.9,
-          duration: 0.4,
-          lane: lane
-        });
-        lastTime[lane] = t;
-        t += 0.18 + Math.random() * 0.22;
+    // Start with one tile per lane for fallback
+    if (!midiNotes || midiNotes.length === 0) {
+      for (let i = 0; i < LANES; ++i) {
+        tiles[i].push(makeTile(i, LANE_COLORS[i]));
       }
-      midiNotes = notes;
-      midiDuration = t;
-      resetGame();
-      isPlaying = true;
-      startTime = performance.now();
     }
-    // Start random tiles on page load
-    startInitialRandomTiles();
-
-    // --- INITIAL DEMO (optional, remove if not needed) ---
-    // function randomDemoNotes() {
-    //   midiNotes = [];
-    //   let t = 0;
-    //   for (let i = 0; i < 40; ++i) {
-    //     let lane = Math.floor(Math.random() * LANES);
-    //     midiNotes.push({
-    //       time: t, midi: 60 + lane, velocity: 0.9, duration: 0.4, lane: lane
-    //     });
-    //     t += 0.35 + Math.random() * 0.25;
-    //   }
-    //   midiDuration = t;
-    //   resetGame();
-    // }
-    // randomDemoNotes();
     animate();
 
+    // --- VERTICAL PIANO UI ---
+    // Piano keys: C4 (60) to B4 (71), 12 keys
+    const PIANO_KEYS = [60,61,62,63,64,65,66,67,68,69,70,71];
+    const PIANO_KEY_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    const PIANO_LANE_MAP = [0,0,1,1,2,2,3,3,0,1,2,3]; // Map keys to lanes (simple round-robin)
+    const pianoDiv = document.getElementById('piano-vertical');
+    function renderPiano() {
+      pianoDiv.innerHTML = '';
+      for (let i = 0; i < PIANO_KEYS.length; ++i) {
+        let midi = PIANO_KEYS[i];
+        let name = PIANO_KEY_NAMES[i];
+        let isSharp = name.includes('#');
+        let keyDiv = document.createElement('div');
+        keyDiv.className = 'piano-key' + (isSharp ? ' sharp' : '');
+        keyDiv.textContent = name;
+        keyDiv.style.width = isSharp ? '32px' : '44px';
+        keyDiv.style.height = '38px';
+        keyDiv.style.margin = '1px 0';
+        keyDiv.style.background = isSharp ? '#444' : '#fffbe8';
+        keyDiv.style.color = isSharp ? '#fff' : '#8b6128';
+        keyDiv.style.border = '1.5px solid #bfa764';
+        keyDiv.style.borderRadius = '7px';
+        keyDiv.style.textAlign = 'center';
+        keyDiv.style.lineHeight = '38px';
+        keyDiv.style.fontWeight = 'bold';
+        keyDiv.style.fontFamily = 'Georgia,serif';
+        keyDiv.style.cursor = 'pointer';
+        keyDiv.style.boxShadow = isSharp ? '0 2px 6px #2228' : '0 2px 6px #e7ccb7 inset';
+        keyDiv.setAttribute('data-midi', midi);
+        keyDiv.setAttribute('data-lane', PIANO_LANE_MAP[i]);
+        keyDiv.addEventListener('mousedown', function() {
+          triggerPianoKey(midi, i);
+        });
+        pianoDiv.appendChild(keyDiv);
+      }
+    }
+    renderPiano();
+    // --- PIANO KEY TRIGGER LOGIC ---
+    function triggerPianoKey(midi, keyIdx) {
+      // Visually highlight key
+      const keys = pianoDiv.children;
+      keys[keyIdx].style.background = '#ffe065';
+      setTimeout(() => {
+        keys[keyIdx].style.background = PIANO_KEY_NAMES[keyIdx].includes('#') ? '#444' : '#fffbe8';
+      }, 180);
+      // Map to lane
+      const lane = PIANO_LANE_MAP[keyIdx];
+      // Only spawn if last tile is far enough below the spawn point (no overlap)
+      let last = tiles[lane].length > 0 ? tiles[lane][tiles[lane].length-1] : null;
+      let canSpawn = !last || last.y <= -TILE_HEIGHT - 18;
+      if (canSpawn) {
+        tiles[lane].push(makeTile(lane, LANE_COLORS[lane]));
+      }
+      // Optionally: play a sound here if you have a synth
+    }
   </script>
 </body>
 </html>
