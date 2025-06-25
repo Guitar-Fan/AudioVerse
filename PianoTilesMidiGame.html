@@ -169,6 +169,8 @@
       <input type="file" id="midi-upload" accept=".mid,.midi">
       <span>Upload MIDI</span>
     </label>
+    <button id="demo-midi-btn" style="font-size:1rem;background:#e3b76b;color:#8b6128;border:1.5px solid #bfa764;border-radius:6px;padding:0.4rem 1.1rem;font-family:'Georgia',serif;font-weight:bold;cursor:pointer;">Load Demo MIDI</button>
+    <button id="random-sample-btn" style="font-size:1rem;background:#e3b76b;color:#8b6128;border:1.5px solid #bfa764;border-radius:6px;padding:0.4rem 1.1rem;font-family:'Georgia',serif;font-weight:bold;cursor:pointer;">Random Sample</button>
   </div>
   <div id="playback-controls">
     <span>Playback Rate: <span id="rate-value">1.0</span>x</span>
@@ -290,6 +292,58 @@
         }
       };
       reader.readAsArrayBuffer(file);
+    });
+
+    // --- DEMO MIDI BUTTON ---
+    document.getElementById('demo-midi-btn').addEventListener('click', async function() {
+      showLoading(true, "Loading demo MIDI...");
+      try {
+        const response = await fetch('/Demo midi/Super Mario Galaxy - Gusty Garden Galaxy.mid');
+        if (!response.ok) throw new Error('Demo MIDI not found');
+        const arrayBuffer = await response.arrayBuffer();
+        midiNotes = parseMidi(arrayBuffer, (stage, detail) => {
+          setLoadingMsg(stage);
+          setLoadingProgress(detail || "");
+        });
+        midiDuration = midiNotes.length > 0 ? midiNotes[midiNotes.length-1].time + 2.0 : 0;
+        resetGame();
+        showLoading(false);
+        isPlaying = true;
+        startTime = performance.now();
+        alert("Demo MIDI loaded! " + midiNotes.length + " tiles generated. Playing now!");
+      } catch (err) {
+        showLoading(false);
+        alert("Failed to load demo MIDI: " + err);
+      }
+    });
+
+    // --- RANDOM SAMPLE BUTTON ---
+    document.getElementById('random-sample-btn').addEventListener('click', function() {
+      // Generate random, non-overlapping sample tiles
+      let notes = [];
+      let t = 0;
+      let minGap = 0.32; // seconds between notes in same lane
+      let lastTime = Array(LANES).fill(-100);
+      let totalNotes = 40;
+      for (let i = 0; i < totalNotes; ++i) {
+        let lane = Math.floor(Math.random() * LANES);
+        // Ensure no overlap in this lane
+        t = Math.max(t, lastTime[lane] + minGap);
+        notes.push({
+          time: t,
+          midi: 60 + lane,
+          velocity: 0.9,
+          duration: 0.4,
+          lane: lane
+        });
+        lastTime[lane] = t;
+        t += 0.18 + Math.random() * 0.22;
+      }
+      midiNotes = notes;
+      midiDuration = t;
+      resetGame();
+      isPlaying = true;
+      startTime = performance.now();
     });
 
     /**
@@ -715,6 +769,38 @@
       }
     }
 
+    /**
+     * Converts parsed MIDI notes into falling tile objects for the game.
+     * @param {Array} midiNotes - Array of {time, midi, lane, velocity, duration}
+     * @param {number} lanes - Number of lanes in the game
+     * @param {number} laneWidth - Width of each lane (pixels)
+     * @param {number} tileWidthRatio - Ratio of tile width to lane width
+     * @param {number} tileHeight - Height of each tile (pixels)
+     * @returns {Array[]} Array of arrays, each containing tile objects for a lane
+     */
+    function convertMidiNotesToTiles(midiNotes, lanes, laneWidth, tileWidthRatio, tileHeight) {
+      // Initialize empty arrays for each lane
+      let tiles = Array.from({length: lanes}, () => []);
+      for (let note of midiNotes) {
+        let lane = note.lane;
+        let tile = {
+          lane: lane,
+          color: LANE_COLORS[lane],
+          y: -tileHeight, // start above the screen
+          width: laneWidth * tileWidthRatio,
+          x: lane * laneWidth + laneWidth * (1 - tileWidthRatio) / 2,
+          height: tileHeight,
+          state: "falling",
+          anim: 0,
+          hit: false,
+          scheduledTime: note.time, // when the tile should hit the line
+          played: false
+        };
+        tiles[lane].push(tile);
+      }
+      return tiles;
+    }
+
     // --- MAIN ANIMATION LOOP ---
     function animate(now) {
       drawAll();
@@ -755,21 +841,50 @@
       requestAnimationFrame(animate);
     }
 
-    // --- INITIAL DEMO (optional, remove if not needed) ---
-    function randomDemoNotes() {
-      midiNotes = [];
+    // --- INITIAL RANDOM TILES ON LOAD ---
+    function startInitialRandomTiles() {
+      let notes = [];
       let t = 0;
-      for (let i = 0; i < 40; ++i) {
+      let minGap = 0.32; // seconds between notes in same lane
+      let lastTime = Array(LANES).fill(-100);
+      let totalNotes = 40;
+      for (let i = 0; i < totalNotes; ++i) {
         let lane = Math.floor(Math.random() * LANES);
-        midiNotes.push({
-          time: t, midi: 60 + lane, velocity: 0.9, duration: 0.4, lane: lane
+        t = Math.max(t, lastTime[lane] + minGap);
+        notes.push({
+          time: t,
+          midi: 60 + lane,
+          velocity: 0.9,
+          duration: 0.4,
+          lane: lane
         });
-        t += 0.35 + Math.random() * 0.25;
+        lastTime[lane] = t;
+        t += 0.18 + Math.random() * 0.22;
       }
+      midiNotes = notes;
       midiDuration = t;
       resetGame();
+      isPlaying = true;
+      startTime = performance.now();
     }
-    randomDemoNotes();
+    // Start random tiles on page load
+    startInitialRandomTiles();
+
+    // --- INITIAL DEMO (optional, remove if not needed) ---
+    // function randomDemoNotes() {
+    //   midiNotes = [];
+    //   let t = 0;
+    //   for (let i = 0; i < 40; ++i) {
+    //     let lane = Math.floor(Math.random() * LANES);
+    //     midiNotes.push({
+    //       time: t, midi: 60 + lane, velocity: 0.9, duration: 0.4, lane: lane
+    //     });
+    //     t += 0.35 + Math.random() * 0.25;
+    //   }
+    //   midiDuration = t;
+    //   resetGame();
+    // }
+    // randomDemoNotes();
     animate();
 
   </script>
