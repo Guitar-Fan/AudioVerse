@@ -278,14 +278,16 @@
       reader.onload = function(ev) {
         try {
           setTimeout(() => { // simulate async
-            midiNotes = parseMidi(ev.target.result, (stage, detail) => {
-              setLoadingMsg(stage);
-              setLoadingProgress(detail || "");
-            });
-            midiDuration = midiNotes.length > 0 ? midiNotes[midiNotes.length-1].time + 2.0 : 0;
-            resetGame();
+            // midiNotes = parseMidi(ev.target.result, (stage, detail) => {
+            //   setLoadingMsg(stage);
+            //   setLoadingProgress(detail || "");
+            // });
+            // midiDuration = midiNotes.length > 0 ? midiNotes[midiNotes.length-1].time + 2.0 : 0;
+            // resetGame();
+            // showLoading(false);
+            // alert("MIDI processed! " + midiNotes.length + " tiles generated. Press Play!");
             showLoading(false);
-            alert("MIDI processed! " + midiNotes.length + " tiles generated. Press Play!");
+            alert("MIDI parser has been removed.");
           }, 100);
         } catch (err) {
           showLoading(false);
@@ -302,16 +304,18 @@
         const response = await fetch('/Demo midi/Super Mario Galaxy - Gusty Garden Galaxy.mid');
         if (!response.ok) throw new Error('Demo MIDI not found');
         const arrayBuffer = await response.arrayBuffer();
-        midiNotes = parseMidi(arrayBuffer, (stage, detail) => {
-          setLoadingMsg(stage);
-          setLoadingProgress(detail || "");
-        });
-        midiDuration = midiNotes.length > 0 ? midiNotes[midiNotes.length-1].time + 2.0 : 0;
-        resetGame();
+        // midiNotes = parseMidi(arrayBuffer, (stage, detail) => {
+        //   setLoadingMsg(stage);
+        //   setLoadingProgress(detail || "");
+        // });
+        // midiDuration = midiNotes.length > 0 ? midiNotes[midiNotes.length-1].time + 2.0 : 0;
+        // resetGame();
+        // showLoading(false);
+        // isPlaying = true;
+        // startTime = performance.now();
+        // alert("Demo MIDI loaded! " + midiNotes.length + " tiles generated. Playing now!");
         showLoading(false);
-        isPlaying = true;
-        startTime = performance.now();
-        alert("Demo MIDI loaded! " + midiNotes.length + " tiles generated. Playing now!");
+        alert("MIDI parser has been removed.");
       } catch (err) {
         showLoading(false);
         alert("Failed to load demo MIDI: " + err);
@@ -346,150 +350,6 @@
       isPlaying = true;
       startTime = performance.now();
     });
-
-    /**
-     * Custom minimal MIDI parser (Type 0/1 standard, handles note-on, note-off)
-     * Returns array of {time, midi, lane, velocity, duration}
-     * Accepts a progressCallback(stage, detail)
-     */
-    function parseMidi(arrayBuffer, progressCallback) {
-      let bytes = new Uint8Array(arrayBuffer);
-      let view = new DataView(arrayBuffer);
-
-      function progress(stage, detail) {
-        if (progressCallback) progressCallback(stage, detail);
-      }
-
-      function readVarInt(posObj) {
-        let val = 0;
-        for (let i = 0; i < 4; ++i) {
-          let b = bytes[posObj.pos++];
-          val = (val << 7) | (b & 0x7F);
-          if (!(b & 0x80)) break;
-        }
-        return val;
-      }
-
-      let pos = 0;
-      progress("Parsing header...", "");
-      if (String.fromCharCode(...bytes.slice(pos, pos+4)) !== "MThd") throw "Invalid MIDI header";
-      pos += 4;
-      let headerLen = view.getUint32(pos); pos += 4;
-      let format = view.getUint16(pos); pos += 2;
-      let nTracks = view.getUint16(pos); pos += 2;
-      let division = view.getUint16(pos); pos += 2;
-      let ppq = (division & 0x8000) ? 480 : division;
-      pos = 14; // start of first track
-
-      let tracks = [];
-      progress("Scanning tracks...", "Tracks: " + nTracks);
-      for (let t = 0; t < nTracks; ++t) {
-        progress("Scanning tracks...", `Track ${t+1} of ${nTracks}`);
-        if (String.fromCharCode(...bytes.slice(pos, pos+4)) !== "MTrk") throw "Missing track header";
-        pos += 4;
-        let trackLen = view.getUint32(pos); pos += 4;
-        tracks.push({start: pos, end: pos + trackLen});
-        pos += trackLen;
-      }
-
-      let allNotes = [];
-      for (let t = 0; t < tracks.length; ++t) {
-        progress("Parsing tracks...", `Track ${t+1} of ${tracks.length}`);
-        let {start, end} = tracks[t];
-        let posObj = {pos: start};
-        let absTime = 0;
-        let tempo = 500000; // default 120bpm
-        let noteOns = {};
-        let lastStatus = 0;
-        let events = 0;
-
-        while (posObj.pos < end) {
-          ++events;
-          if (events % 500 === 0) progress("Parsing track events...", `Track ${t+1} event ${events}`);
-          let delta = readVarInt(posObj);
-          absTime += delta;
-          let status = bytes[posObj.pos];
-          if (status < 0x80) {
-            status = lastStatus;
-          } else {
-            posObj.pos++;
-            lastStatus = status;
-          }
-          if (status === 0xFF) {
-            let type = bytes[posObj.pos++];
-            let len = readVarInt(posObj);
-            if (type === 0x51) {
-              tempo = (bytes[posObj.pos]<<16) | (bytes[posObj.pos+1]<<8) | bytes[posObj.pos+2];
-            }
-            posObj.pos += len;
-          } else if ((status & 0xF0) === 0x90) {
-            let note = bytes[posObj.pos++];
-            let vel = bytes[posObj.pos++];
-            if (vel > 0) {
-              noteOns[note] = {start: absTime, velocity: vel};
-            } else if (noteOns[note]) {
-              let on = noteOns[note];
-              let duration = absTime - on.start;
-              allNotes.push({
-                midi: note,
-                time: ticksToSeconds(on.start, ppq, tempo),
-                duration: ticksToSeconds(duration, ppq, tempo),
-                velocity: on.velocity / 127
-              });
-              delete noteOns[note];
-            }
-          } else if ((status & 0xF0) === 0x80) {
-            let note = bytes[posObj.pos++];
-            let vel = bytes[posObj.pos++];
-            if (noteOns[note]) {
-              let on = noteOns[note];
-              let duration = absTime - on.start;
-              allNotes.push({
-                midi: note,
-                time: ticksToSeconds(on.start, ppq, tempo),
-                duration: ticksToSeconds(duration, ppq, tempo),
-                velocity: on.velocity / 127
-              });
-              delete noteOns[note];
-            }
-          } else if ((status & 0xF0) === 0xA0 || (status & 0xF0) === 0xB0 ||
-                     (status & 0xF0) === 0xE0 || (status & 0xF0) === 0xD0) {
-            let dataLen = ((status & 0xF0) === 0xD0) ? 1 : 2;
-            posObj.pos += dataLen;
-          } else {
-            posObj.pos++;
-          }
-        }
-      }
-      progress("Mapping notes to lanes...", "");
-      allNotes.sort((a, b) => a.time - b.time);
-      if (!allNotes.length) throw "No notes found in MIDI.";
-      let minPitch = Math.min(...allNotes.map(n => n.midi));
-      let maxPitch = Math.max(...allNotes.map(n => n.midi));
-      let pitchRange = maxPitch - minPitch + 1;
-      let laneSize = Math.ceil(pitchRange / LANES);
-
-      let noteTiles = allNotes.map((note, i) => {
-        if (i % 100 === 0) progress("Assigning lanes...", `Note ${i+1} of ${allNotes.length}`);
-        let midiVal = note.midi - minPitch;
-        let lane = Math.floor(midiVal / laneSize);
-        lane = Math.max(0, Math.min(LANES - 1, lane));
-        return {
-          lane: lane,
-          time: note.time,
-          midi: note.midi,
-          duration: note.duration,
-          velocity: note.velocity
-        };
-      });
-      progress("Done! Ready to play.", `Total notes: ${noteTiles.length}`);
-      return noteTiles;
-    }
-
-    function ticksToSeconds(ticks, ppq, tempo) {
-      // tempo is microseconds per quarter, ppq is ticks/quarter
-      return (ticks * tempo) / (ppq * 1000000);
-    }
 
     // --- GAME BUTTONS ---
     document.getElementById('play-btn').onclick = () => {

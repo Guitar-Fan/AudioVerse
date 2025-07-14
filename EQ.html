@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Music Player with Parametric EQ & Spectrum</title>
+    <style>
+        body { font-family: sans-serif; background: #181818; color: #eee; margin: 0; padding: 0; }
+        .container { max-width: 700px; margin: 40px auto; background: #232323; border-radius: 12px; padding: 24px; box-shadow: 0 2px 16px #0008; }
+        .controls { margin: 16px 0; }
+        .eq-controls { display: flex; gap: 16px; margin: 24px 0; }
+        .eq-band { flex: 1; text-align: center; }
+        .eq-band input[type="range"] { width: 100%; }
+        svg { display: block; margin: 0 auto; background: #111; border-radius: 8px; }
+        label { font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Music Player with Parametric Equalizer</h2>
+        <input type="file" id="audioFile" accept="audio/*">
+        <div class="controls">
+            <button id="playBtn" disabled>Play</button>
+            <button id="pauseBtn" disabled>Pause</button>
+        </div>
+        <div class="eq-controls" id="eqControls"></div>
+        <svg id="spectrum" width="650" height="180" style="cursor:crosshair"></svg>
+    </div>
+    <audio id="audio" style="display:none"></audio>
+    <script>
+        // EQ band settings
+        let eqBands = [
+            { freq: 60,   gain: 0, q: 1.0, label: "60Hz", type: "peaking" },
+            { freq: 170,  gain: 0, q: 1.0, label: "170Hz", type: "peaking" },
+            { freq: 350,  gain: 0, q: 1.0, label: "350Hz", type: "peaking" },
+            { freq: 1000, gain: 0, q: 1.0, label: "1kHz", type: "peaking" },
+            { freq: 3500, gain: 0, q: 1.0, label: "3.5kHz", type: "peaking" },
+            { freq: 10000,gain: 0, q: 1.0, label: "10kHz", type: "peaking" }
+        ];
+
+        // DOM elements
+        const audioFile = document.getElementById('audioFile');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const eqControls = document.getElementById('eqControls');
+        const spectrumSVG = document.getElementById('spectrum');
+        const audio = document.getElementById('audio');
+
+        // Audio context and nodes
+        let ctx, source, analyser, eqFilters = [];
+
+        // Remove old EQ controls UI
+        eqControls.style.display = "none";
+
+        // Utility: freq <-> x, gain <-> y
+        function freqToX(freq, width) {
+            const minF = 40, maxF = 20000;
+            const logMin = Math.log10(minF), logMax = Math.log10(maxF);
+            return ((Math.log10(freq) - logMin) / (logMax - logMin)) * width;
+        }
+        function xToFreq(x, width) {
+            const minF = 40, maxF = 20000;
+            const logMin = Math.log10(minF), logMax = Math.log10(maxF);
+            return Math.pow(10, logMin + (x / width) * (logMax - logMin));
+        }
+        function gainToY(gain, height) {
+            // -60dB (bottom) to +12dB (top)
+            return ((12 - gain) / 72) * (height - 30) + 10;
+        }
+        function yToGain(y, height) {
+            return 12 - ((y - 10) / (height - 30)) * 72;
+        }
+
+        // File upload
+        audioFile.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) {
+                audio.src = URL.createObjectURL(file);
+                playBtn.disabled = false;
+                pauseBtn.disabled = false;
+            }
+        });
+
+        // Play/Pause
+        playBtn.onclick = () => audio.play();
+        pauseBtn.onclick = () => audio.pause();
+
+        // Setup audio context and EQ
+        function setupAudioNodes() {
+            if (!ctx) {
+                ctx = new (window.AudioContext || window.webkitAudioContext)();
+                source = ctx.createMediaElementSource(audio);
+            }
+            // Remove old filters
+            if (eqFilters.length) eqFilters.forEach(f => f.disconnect());
+            eqFilters = eqBands.map(band => {
+                const filter = ctx.createBiquadFilter();
+                filter.type = band.type || 'peaking';
+                filter.frequency.value = band.freq;
+                filter.gain.value = band.gain;
+                filter.Q.value = band.q || 1.0;
+                return filter;
+            });
+            // Chain filters
+            let node = source;
+            eqFilters.forEach(filter => {
+                node.connect(filter);
+                node = filter;
+            });
+            // Analyser for spectrum
+            if (!analyser) {
+                analyser = ctx.createAnalyser();
+                analyser.fftSize = 2048;
+            }
+            node.connect(analyser);
+            analyser.connect(ctx.destination);
+        }
+
+        audio.onplay = async () => {
+            setupAudioNodes();
+            drawSpectrum();
+        };
+
+        let selectedIdx = null;
+
+        // Redraw EQ and spectrum
+        function drawSpectrum() {
+            if (!analyser) return;
+            const width = spectrumSVG.width.baseVal.value;
+            const height = spectrumSVG.height.baseVal.value;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            analyser.getByteFrequencyData(dataArray);
+
+            // Clear SVG
+            spectrumSVG.innerHTML = '';
+
+            // Draw axes
+            drawAxes(width, height);
+
+            // Draw spectrum bars (logarithmic mapping, interpolate bins)
+            const barCount = 100;
+            const barWidth = width / barCount;
+            const minF = 40, maxF = 20000;
+            const nyquist = ctx ? ctx.sampleRate / 2 : 22050;
+            for (let i = 0; i < barCount; i++) {
+                // Logarithmic frequency for this bar
+                const freq = minF * Math.pow(maxF / minF, i / (barCount - 1));
+                if (freq < minF || freq > maxF) continue;
+                // Find corresponding bin (linear interpolation)
+                const bin = freq / nyquist * bufferLength;
+                const bin0 = Math.floor(bin);
+                const bin1 = Math.min(bufferLength - 1, bin0 + 1);
+                const frac = bin - bin0;
+                const value = (1 - frac) * dataArray[bin0] + frac * dataArray[bin1];
+                // Map value to dB: 0 = -60dB, 255 = +12dB
+                const db = (value / 255) * (12 + 60) - 60;
+                const barHeight = ((db + 60) / 72) * (height - 30);
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', i * barWidth);
+                rect.setAttribute('y', height - barHeight - 10);
+                rect.setAttribute('width', barWidth - 1);
+                rect.setAttribute('height', barHeight);
+                rect.setAttribute('fill', `hsl(${180 + value}, 80%, 60%)`);
+                spectrumSVG.appendChild(rect);
+            }
+
+            // Draw EQ curve (sum dB, not linear gain)
+            const eqPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            let path = '';
+            for (let x = 0; x < width; x++) {
+                const freq = xToFreq(x, width);
+                let gain = 0;
+                eqBands.forEach(band => {
+                    gain += getBandGainAtFreq(band, freq);
+                });
+                const y = gainToY(Math.max(-60, Math.min(12, gain)), height);
+                path += (x === 0 ? 'M' : 'L') + x + ',' + y + ' ';
+            }
+            eqPath.setAttribute('d', path);
+            eqPath.setAttribute('stroke', '#ff0');
+            eqPath.setAttribute('stroke-width', '2');
+            eqPath.setAttribute('fill', 'none');
+            spectrumSVG.appendChild(eqPath);
+
+            // Draw EQ band dots
+            eqBands.forEach((band, i) => {
+                const x = freqToX(band.freq, width);
+                const y = gainToY(band.gain, height);
+                const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                dot.setAttribute('cx', x);
+                dot.setAttribute('cy', y);
+                dot.setAttribute('r', 8);
+                dot.setAttribute('fill', band.type === "lowshelf" ? "#0af" : band.type === "highshelf" ? "#fa0" : "#f44");
+                dot.setAttribute('stroke', '#fff');
+                dot.setAttribute('stroke-width', selectedIdx === i ? '4' : '2');
+                dot.style.cursor = "pointer";
+                dot.setAttribute('data-idx', i);
+                dot.addEventListener('mousedown', ev => {
+                    selectedIdx = i;
+                });
+                spectrumSVG.appendChild(dot);
+
+                // Label
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', x + 10);
+                label.setAttribute('y', y - 10);
+                label.setAttribute('fill', '#fff');
+                label.setAttribute('font-size', '11');
+                label.textContent = band.type === "lowshelf" ? "LS" : band.type === "highshelf" ? "HS" : "B";
+                spectrumSVG.appendChild(label);
+            });
+
+            requestAnimationFrame(drawSpectrum);
+        }
+
+        // Draw axes and labels
+        function drawAxes(width, height) {
+            const svgNS = "http://www.w3.org/2000/svg";
+            // X axis (frequency)
+            const axis = document.createElementNS(svgNS, 'line');
+            axis.setAttribute('x1', 0);
+            axis.setAttribute('y1', height - 10);
+            axis.setAttribute('x2', width);
+            axis.setAttribute('y2', height - 10);
+            axis.setAttribute('stroke', '#888');
+            axis.setAttribute('stroke-width', '1');
+            spectrumSVG.appendChild(axis);
+
+            // Y axis (gain)
+            const yAxis = document.createElementNS(svgNS, 'line');
+            yAxis.setAttribute('x1', 0);
+            yAxis.setAttribute('y1', 10);
+            yAxis.setAttribute('x2', 0);
+            yAxis.setAttribute('y2', height - 10);
+            yAxis.setAttribute('stroke', '#888');
+            yAxis.setAttribute('stroke-width', '1');
+            spectrumSVG.appendChild(yAxis);
+
+            // X axis labels (log scale)
+            const freqs = [40, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+            freqs.forEach(f => {
+                const x = freqToX(f, width);
+                const label = document.createElementNS(svgNS, 'text');
+                label.setAttribute('x', x);
+                label.setAttribute('y', height - 2);
+                label.setAttribute('fill', '#aaa');
+                label.setAttribute('font-size', '11');
+                label.setAttribute('text-anchor', 'middle');
+                label.textContent = f >= 1000 ? (f/1000) + "k" : f;
+                spectrumSVG.appendChild(label);
+
+                // Tick
+                const tick = document.createElementNS(svgNS, 'line');
+                tick.setAttribute('x1', x);
+                tick.setAttribute('y1', height - 10);
+                tick.setAttribute('x2', x);
+                tick.setAttribute('y2', height - 15);
+                tick.setAttribute('stroke', '#aaa');
+                tick.setAttribute('stroke-width', '1');
+                spectrumSVG.appendChild(tick);
+            });
+
+            // Y axis labels
+            const gains = [12, 6, 0, -12, -24, -36, -48, -60];
+            gains.forEach(g => {
+                const y = gainToY(g, height);
+                const label = document.createElementNS(svgNS, 'text');
+                label.setAttribute('x', 2);
+                label.setAttribute('y', y + 4);
+                label.setAttribute('fill', '#aaa');
+                label.setAttribute('font-size', '11');
+                label.textContent = g + "dB";
+                spectrumSVG.appendChild(label);
+
+                // Tick
+                const tick = document.createElementNS(svgNS, 'line');
+                tick.setAttribute('x1', 0);
+                tick.setAttribute('y1', y);
+                tick.setAttribute('x2', 8);
+                tick.setAttribute('y2', y);
+                tick.setAttribute('stroke', '#aaa');
+                tick.setAttribute('stroke-width', '1');
+                spectrumSVG.appendChild(tick);
+            });
+        }
+
+        // Improved shelf shapes and peaking (fix: lowshelf boosts below f0, highshelf boosts above f0)
+        function getBandGainAtFreq(band, freq) {
+            const f0 = band.freq;
+            const Q = band.q || 1.0;
+            const G = band.gain;
+            if (band.type === "lowshelf") {
+                // Lowshelf: sigmoid, boosts/cuts below f0
+                const x = Math.log2(freq / f0) * 4;
+                return G / (1 + Math.exp(x));
+            } else if (band.type === "highshelf") {
+                // Highshelf: sigmoid, boosts/cuts above f0
+                const x = Math.log2(freq / f0) * 4;
+                return G / (1 + Math.exp(-x));
+            } else {
+                // Peaking
+                const w = freq / f0;
+                return G / (1 + Math.pow((w - 1) / Q, 2));
+            }
+        }
+
+        // SVG interaction: drag, right-click add/cycle
+        let draggingIdx = null, dragOffset = {};
+        spectrumSVG.onmousedown = function(e) {
+            if (e.button !== 0) return; // left only
+            const pt = spectrumSVG.createSVGPoint();
+            pt.x = e.offsetX; pt.y = e.offsetY;
+            const width = spectrumSVG.width.baseVal.value;
+            const height = spectrumSVG.height.baseVal.value;
+            // Find dot under mouse
+            let found = false;
+            eqBands.forEach((band, i) => {
+                const x = freqToX(band.freq, width);
+                const y = gainToY(band.gain, height);
+                if (Math.hypot(x - pt.x, y - pt.y) < 12) {
+                    draggingIdx = i;
+                    dragOffset = { dx: x - pt.x, dy: y - pt.y };
+                    selectedIdx = i;
+                    found = true;
+                }
+            });
+            if (!found) {
+                draggingIdx = null;
+                selectedIdx = null;
+            }
+        };
+        spectrumSVG.onmousemove = function(e) {
+            if (draggingIdx === null) return;
+            const width = spectrumSVG.width.baseVal.value;
+            const height = spectrumSVG.height.baseVal.value;
+            let x = e.offsetX + (dragOffset.dx || 0);
+            let y = e.offsetY + (dragOffset.dy || 0);
+            x = Math.max(0, Math.min(width, x));
+            y = Math.max(10, Math.min(height - 10, y));
+            eqBands[draggingIdx].freq = Math.max(40, Math.min(20000, xToFreq(x, width)));
+            eqBands[draggingIdx].gain = Math.max(-60, Math.min(12, yToGain(y, height)));
+            if (eqFilters[draggingIdx]) {
+                eqFilters[draggingIdx].frequency.value = eqBands[draggingIdx].freq;
+                eqFilters[draggingIdx].gain.value = eqBands[draggingIdx].gain;
+            }
+        };
+        spectrumSVG.onmouseup = function(e) {
+            draggingIdx = null;
+        };
+        spectrumSVG.onmouseleave = function(e) {
+            draggingIdx = null;
+        };
+
+        // Right click: add band or cycle type
+        spectrumSVG.oncontextmenu = function(e) {
+            e.preventDefault();
+            const pt = spectrumSVG.createSVGPoint();
+            pt.x = e.offsetX; pt.y = e.offsetY;
+            const width = spectrumSVG.width.baseVal.value;
+            const height = spectrumSVG.height.baseVal.value;
+            // Check if on dot
+            let onDot = false;
+            eqBands.forEach((band, i) => {
+                const x = freqToX(band.freq, width);
+                const y = gainToY(band.gain, height);
+                if (Math.hypot(x - pt.x, y - pt.y) < 12) {
+                    // Cycle type
+                    if (band.type === "peaking") band.type = "lowshelf";
+                    else if (band.type === "lowshelf") band.type = "highshelf";
+                    else band.type = "peaking";
+                    if (eqFilters[i]) eqFilters[i].type = band.type;
+                    onDot = true;
+                }
+            });
+            if (!onDot) {
+                // Add new band
+                const freq = Math.max(40, Math.min(20000, xToFreq(pt.x, width)));
+                const gain = Math.max(-60, Math.min(12, yToGain(pt.y, height)));
+                eqBands.push({ freq, gain, q: 1.0, type: "peaking" });
+                setupAudioNodes();
+            }
+        };
+
+        // Remove band with double click on dot
+        spectrumSVG.ondblclick = function(e) {
+            const pt = spectrumSVG.createSVGPoint();
+            pt.x = e.offsetX; pt.y = e.offsetY;
+            const width = spectrumSVG.width.baseVal.value;
+            const height = spectrumSVG.height.baseVal.value;
+            eqBands.forEach((band, i) => {
+                const x = freqToX(band.freq, width);
+                const y = gainToY(band.gain, height);
+                if (Math.hypot(x - pt.x, y - pt.y) < 12) {
+                    eqBands.splice(i, 1);
+                    setupAudioNodes();
+                }
+            });
+        };
+
+        // Keyboard delete/backspace to remove selected band
+        document.addEventListener('keydown', function(e) {
+            if ((e.key === "Delete" || e.key === "Backspace") && selectedIdx !== null && eqBands[selectedIdx]) {
+                eqBands.splice(selectedIdx, 1);
+                selectedIdx = null;
+                setupAudioNodes();
+            }
+        });
+    </script>
+</body>
+</html>
