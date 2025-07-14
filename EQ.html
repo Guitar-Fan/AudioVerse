@@ -12,6 +12,158 @@
         .eq-band input[type="range"] { width: 100%; }
         svg { display: block; margin: 0 auto; background: #111; border-radius: 8px; }
         label { font-size: 0.9em; }
+        .band-panel {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            top: auto !important;
+            transform: translateX(-50%) scale(0.95);
+            background: linear-gradient(90deg, #ffe066 0%, #ffb700 100%);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px #000b, 0 1px 0 #fff2 inset;
+            padding: 18px 32px 12px 32px;
+            display: flex;
+            gap: 32px;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s cubic-bezier(.4,2,.6,1), transform 0.25s cubic-bezier(.4,2,.6,1);
+        }
+        .band-panel.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) scale(1);
+        }
+        .dial-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 90px;
+        }
+        .dial-label {
+            color: #232323;
+            font-size: 1em;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+            text-shadow: 0 1px 2px #fff8;
+        }
+        .dial-value {
+            margin-top: 4px;
+            color: #232323;
+            font-size: 1.1em;
+            font-family: monospace;
+            text-shadow: 0 1px 2px #fff8;
+        }
+        .band-panel input[type="range"] {
+            width: 80px;
+            accent-color: #ff0;
+            margin: 0 0 0 0;
+            transition: box-shadow 0.2s;
+            box-shadow: 0 0 0 #ff0;
+            border-radius: 8px;
+            background: #fff;
+        }
+        .band-panel input[type="range"]:focus {
+            box-shadow: 0 0 8px #ff0b;
+            outline: none;
+        }
+        /* Stylish buttons */
+        button, .icon-btn {
+            background: linear-gradient(90deg, #ffe066 0%, #ffb700 100%);
+            color: #232323;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 24px;
+            font-size: 1.2em;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin: 0 8px;
+            box-shadow: 0 2px 8px #0006, 0 1px 0 #fff2 inset;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.13s, box-shadow 0.2s, color 0.2s;
+        }
+        button:enabled:hover, button:enabled:focus, .icon-btn:enabled:hover, .icon-btn:enabled:focus {
+            background: linear-gradient(90deg, #ffb700 0%, #ffe066 100%);
+            color: #fff;
+            transform: scale(1.12);
+            box-shadow: 0 4px 16px #ffe066a0, 0 1px 0 #fff2 inset;
+        }
+        button:disabled, .icon-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .icon-btn {
+            padding: 10px 16px;
+            font-size: 1.5em;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffe066 60%, #ffb700 100%);
+            color: #232323;
+            margin: 0 6px;
+            box-shadow: 0 2px 8px #0004, 0 1px 0 #fff2 inset;
+        }
+        .icon-btn.active, .icon-btn[aria-pressed="true"] {
+            background: linear-gradient(135deg, #ffb700 0%, #ffe066 100%);
+            color: #fff;
+            box-shadow: 0 0 16px #ffe066cc;
+        }
+        .transport-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: 32px auto 0 auto;
+            padding: 12px 18px;
+            background: linear-gradient(90deg, #232323 60%, #444 100%);
+            border-radius: 16px;
+            box-shadow: 0 2px 16px #0008;
+            max-width: 650px;
+            position: relative;
+        }
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 220px;
+        }
+        #progressBar {
+            width: 120px;
+            accent-color: #ffb700;
+            border-radius: 8px;
+            background: #fff;
+            height: 6px;
+            transition: box-shadow 0.2s;
+        }
+        #progressBar:focus {
+            box-shadow: 0 0 8px #ffb70088;
+            outline: none;
+        }
+        #currentTime, #duration {
+            color: #ffe066;
+            font-family: monospace;
+            font-size: 1em;
+            min-width: 38px;
+            text-align: center;
+        }
+        /* Fabfilter-like EQ dot and curve */
+        svg circle {
+            filter: drop-shadow(0 0 8px #fff8);
+            transition: r 0.15s, filter 0.2s;
+        }
+        svg circle[data-idx]:hover, svg circle[data-idx]:focus {
+            r: 12;
+            filter: drop-shadow(0 0 16px #ff0b);
+        }
+        svg .eq-dot-selected {
+            stroke: #ffe066;
+            stroke-width: 5;
+            filter: drop-shadow(0 0 16px #ffe066cc);
+        }
+        svg .eq-curve {
+            stroke: url(#eq-gradient);
+            stroke-width: 3.5;
+            filter: drop-shadow(0 0 10px #ffe06688);
+        }
     </style>
 </head>
 <body>
@@ -24,6 +176,35 @@
         </div>
         <div class="eq-controls" id="eqControls"></div>
         <svg id="spectrum" width="650" height="180" style="cursor:crosshair"></svg>
+        <div id="bandPanel" class="band-panel">
+            <div class="dial-group">
+                <div class="dial-label">Freq</div>
+                <input type="range" id="freqDial" min="40" max="20000" step="1">
+                <div class="dial-value" id="freqValue"></div>
+            </div>
+            <div class="dial-group">
+                <div class="dial-label">Gain</div>
+                <input type="range" id="gainDial" min="-60" max="12" step="0.1">
+                <div class="dial-value" id="gainValue"></div>
+            </div>
+            <div class="dial-group">
+                <div class="dial-label">Q</div>
+                <input type="range" id="qDial" min="0.1" max="10" step="0.01">
+                <div class="dial-value" id="qValue"></div>
+            </div>
+        </div>
+        <div class="transport-bar">
+            <button id="rewindBtn" class="icon-btn" title="Rewind">&#9194;</button>
+            <button id="playPauseBtn" class="icon-btn" title="Play/Pause">&#9654;</button>
+            <button id="stopBtn" class="icon-btn" title="Stop">&#9632;</button>
+            <button id="ffBtn" class="icon-btn" title="Fast Forward">&#9193;</button>
+            <div class="progress-container">
+                <span id="currentTime">0:00</span>
+                <input type="range" id="progressBar" min="0" max="100" value="0" step="0.01">
+                <span id="duration">0:00</span>
+            </div>
+            <button id="loopBtn" class="icon-btn" title="Loop">&#128257;</button>
+        </div>
     </div>
     <audio id="audio" style="display:none"></audio>
     <script>
@@ -122,7 +303,116 @@
 
         let selectedIdx = null;
 
-        // Redraw EQ and spectrum
+        // --- Transport controls logic ---
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const rewindBtn = document.getElementById('rewindBtn');
+        const ffBtn = document.getElementById('ffBtn');
+        const loopBtn = document.getElementById('loopBtn');
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeSpan = document.getElementById('currentTime');
+        const durationSpan = document.getElementById('duration');
+
+        let isPlaying = false;
+        let isLoop = false;
+
+        function formatTime(sec) {
+            sec = Math.max(0, sec|0);
+            return Math.floor(sec/60) + ":" + (sec%60).toString().padStart(2, "0");
+        }
+
+        playPauseBtn.onclick = function() {
+            if (audio.paused) audio.play();
+            else audio.pause();
+        };
+        stopBtn.onclick = function() {
+            audio.pause();
+            audio.currentTime = 0;
+        };
+        rewindBtn.onclick = function() {
+            audio.currentTime = Math.max(0, audio.currentTime - 5);
+        };
+        ffBtn.onclick = function() {
+            audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 5);
+        };
+        loopBtn.onclick = function() {
+            isLoop = !isLoop;
+            audio.loop = isLoop;
+            loopBtn.classList.toggle('active', isLoop);
+            loopBtn.setAttribute('aria-pressed', isLoop ? "true" : "false");
+        };
+
+        audio.addEventListener('play', () => {
+            isPlaying = true;
+            playPauseBtn.innerHTML = "&#10073;&#10073;"; // Pause icon
+        });
+        audio.addEventListener('pause', () => {
+            isPlaying = false;
+            playPauseBtn.innerHTML = "&#9654;"; // Play icon
+        });
+        audio.addEventListener('ended', () => {
+            playPauseBtn.innerHTML = "&#9654;";
+        });
+
+        audio.addEventListener('timeupdate', () => {
+            progressBar.value = (audio.currentTime / (audio.duration || 1)) * 100;
+            currentTimeSpan.textContent = formatTime(audio.currentTime);
+            durationSpan.textContent = formatTime(audio.duration || 0);
+        });
+        audio.addEventListener('loadedmetadata', () => {
+            durationSpan.textContent = formatTime(audio.duration || 0);
+        });
+
+        progressBar.addEventListener('input', () => {
+            if (audio.duration) {
+                audio.currentTime = (progressBar.value / 100) * audio.duration;
+            }
+        });
+
+        // --- Band Panel logic ---
+        const bandPanel = document.getElementById('bandPanel');
+        const freqDial = document.getElementById('freqDial');
+        const gainDial = document.getElementById('gainDial');
+        const qDial = document.getElementById('qDial');
+        const freqValue = document.getElementById('freqValue');
+        const gainValue = document.getElementById('gainValue');
+        const qValue = document.getElementById('qValue');
+
+        function updateBandPanel() {
+            if (selectedIdx === null || !eqBands[selectedIdx]) {
+                bandPanel.classList.remove('active');
+                bandPanel.style.pointerEvents = "none";
+                return;
+            }
+            bandPanel.style.pointerEvents = "auto";
+            bandPanel.classList.add('active');
+            freqDial.value = eqBands[selectedIdx].freq;
+            gainDial.value = eqBands[selectedIdx].gain;
+            qDial.value = eqBands[selectedIdx].q;
+            freqValue.textContent = Math.round(eqBands[selectedIdx].freq) + " Hz";
+            gainValue.textContent = (eqBands[selectedIdx].gain > 0 ? "+" : "") + eqBands[selectedIdx].gain.toFixed(1) + " dB";
+            qValue.textContent = eqBands[selectedIdx].q.toFixed(2);
+        }
+        freqDial.oninput = function() {
+            if (selectedIdx === null) return;
+            eqBands[selectedIdx].freq = +freqDial.value;
+            updateBandPanel();
+            if (eqFilters[selectedIdx]) eqFilters[selectedIdx].frequency.value = eqBands[selectedIdx].freq;
+        };
+        gainDial.oninput = function() {
+            if (selectedIdx === null) return;
+            eqBands[selectedIdx].gain = +gainDial.value;
+            updateBandPanel();
+            if (eqFilters[selectedIdx]) eqFilters[selectedIdx].gain.value = eqBands[selectedIdx].gain;
+        };
+        qDial.oninput = function() {
+            if (selectedIdx === null) return;
+            eqBands[selectedIdx].q = +qDial.value;
+            updateBandPanel();
+            if (eqFilters[selectedIdx]) eqFilters[selectedIdx].Q.value = eqBands[selectedIdx].q;
+        };
+
+        // --- Draw SVG with Fabfilter-like look ---
         function drawSpectrum() {
             if (!analyser) return;
             const width = spectrumSVG.width.baseVal.value;
@@ -135,6 +425,20 @@
             // Clear SVG
             spectrumSVG.innerHTML = '';
 
+            // Gradient for EQ curve
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+            grad.setAttribute('id', 'eq-gradient');
+            grad.setAttribute('x1', '0%'); grad.setAttribute('x2', '100%');
+            grad.setAttribute('y1', '0%'); grad.setAttribute('y2', '0%');
+            grad.innerHTML = `
+                <stop offset="0%" stop-color="#ffe066"/>
+                <stop offset="50%" stop-color="#ffb700"/>
+                <stop offset="100%" stop-color="#ffe066"/>
+            `;
+            defs.appendChild(grad);
+            spectrumSVG.appendChild(defs);
+
             // Draw axes
             drawAxes(width, height);
 
@@ -144,16 +448,13 @@
             const minF = 40, maxF = 20000;
             const nyquist = ctx ? ctx.sampleRate / 2 : 22050;
             for (let i = 0; i < barCount; i++) {
-                // Logarithmic frequency for this bar
                 const freq = minF * Math.pow(maxF / minF, i / (barCount - 1));
                 if (freq < minF || freq > maxF) continue;
-                // Find corresponding bin (linear interpolation)
                 const bin = freq / nyquist * bufferLength;
                 const bin0 = Math.floor(bin);
                 const bin1 = Math.min(bufferLength - 1, bin0 + 1);
                 const frac = bin - bin0;
                 const value = (1 - frac) * dataArray[bin0] + frac * dataArray[bin1];
-                // Map value to dB: 0 = -60dB, 255 = +12dB
                 const db = (value / 255) * (12 + 60) - 60;
                 const barHeight = ((db + 60) / 72) * (height - 30);
                 const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -161,7 +462,8 @@
                 rect.setAttribute('y', height - barHeight - 10);
                 rect.setAttribute('width', barWidth - 1);
                 rect.setAttribute('height', barHeight);
-                rect.setAttribute('fill', `hsl(${180 + value}, 80%, 60%)`);
+                rect.setAttribute('fill', `url(#eq-gradient)`);
+                rect.setAttribute('opacity', '0.32');
                 spectrumSVG.appendChild(rect);
             }
 
@@ -178,8 +480,7 @@
                 path += (x === 0 ? 'M' : 'L') + x + ',' + y + ' ';
             }
             eqPath.setAttribute('d', path);
-            eqPath.setAttribute('stroke', '#ff0');
-            eqPath.setAttribute('stroke-width', '2');
+            eqPath.setAttribute('class', 'eq-curve');
             eqPath.setAttribute('fill', 'none');
             spectrumSVG.appendChild(eqPath);
 
@@ -190,23 +491,26 @@
                 const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 dot.setAttribute('cx', x);
                 dot.setAttribute('cy', y);
-                dot.setAttribute('r', 8);
+                dot.setAttribute('r', 10);
                 dot.setAttribute('fill', band.type === "lowshelf" ? "#0af" : band.type === "highshelf" ? "#fa0" : "#f44");
                 dot.setAttribute('stroke', '#fff');
-                dot.setAttribute('stroke-width', selectedIdx === i ? '4' : '2');
+                dot.setAttribute('stroke-width', selectedIdx === i ? '5' : '2');
+                dot.setAttribute('class', selectedIdx === i ? 'eq-dot-selected' : '');
                 dot.style.cursor = "pointer";
                 dot.setAttribute('data-idx', i);
                 dot.addEventListener('mousedown', ev => {
                     selectedIdx = i;
+                    updateBandPanel();
                 });
                 spectrumSVG.appendChild(dot);
 
                 // Label
                 const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                label.setAttribute('x', x + 10);
-                label.setAttribute('y', y - 10);
+                label.setAttribute('x', x + 14);
+                label.setAttribute('y', y - 12);
                 label.setAttribute('fill', '#fff');
-                label.setAttribute('font-size', '11');
+                label.setAttribute('font-size', '13');
+                label.setAttribute('font-weight', 'bold');
                 label.textContent = band.type === "lowshelf" ? "LS" : band.type === "highshelf" ? "HS" : "B";
                 spectrumSVG.appendChild(label);
             });
@@ -318,16 +622,17 @@
             eqBands.forEach((band, i) => {
                 const x = freqToX(band.freq, width);
                 const y = gainToY(band.gain, height);
-                if (Math.hypot(x - pt.x, y - pt.y) < 12) {
+                if (Math.hypot(x - pt.x, y - pt.y) < 14) {
                     draggingIdx = i;
                     dragOffset = { dx: x - pt.x, dy: y - pt.y };
-                    selectedIdx = i;
+                    selectBand(i);
                     found = true;
                 }
             });
             if (!found) {
                 draggingIdx = null;
                 selectedIdx = null;
+                updateBandPanel();
             }
         };
         spectrumSVG.onmousemove = function(e) {
@@ -340,6 +645,7 @@
             y = Math.max(10, Math.min(height - 10, y));
             eqBands[draggingIdx].freq = Math.max(40, Math.min(20000, xToFreq(x, width)));
             eqBands[draggingIdx].gain = Math.max(-60, Math.min(12, yToGain(y, height)));
+            updateBandPanel();
             if (eqFilters[draggingIdx]) {
                 eqFilters[draggingIdx].frequency.value = eqBands[draggingIdx].freq;
                 eqFilters[draggingIdx].gain.value = eqBands[draggingIdx].gain;
@@ -403,6 +709,7 @@
             if ((e.key === "Delete" || e.key === "Backspace") && selectedIdx !== null && eqBands[selectedIdx]) {
                 eqBands.splice(selectedIdx, 1);
                 selectedIdx = null;
+                updateBandPanel();
                 setupAudioNodes();
             }
         });
