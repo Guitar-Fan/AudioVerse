@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chromebook DAW</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A Chromebook-friendly advanced DAW web app for audio editing and recording.">
+  <link rel="stylesheet" href="DAWstyling.css">
+</head>
+<body>
+  <header>
+    <h1>Chromebook DAW</h1>
+    <div id="toolbar">
+      <button id="recordBtn" title="Record (R)">🎙️</button>
+      <button id="stopBtn" title="Stop (S)" disabled>⏹️</button>
+      <button id="playBtn" title="Play (Space)">▶️</button>
+      <button id="pauseBtn" title="Pause" disabled>⏸️</button>
+      <label class="upload-btn" title="Upload audio">
+        ⬆️
+        <input type="file" id="fileInput" accept="audio/*" multiple>
+      </label>
+      <button id="addTrackBtn" title="Add a new track">➕</button>
+    </div>
+  </header>
+  <div class="settings-bar">
+    <label for="bpm">Tempo:</label>
+    <input type="number" id="bpm" min="20" max="300" value="120"> BPM
+    <label for="timeSigNum">Time Signature:</label>
+    <select id="timeSigNum">
+      <option value="4">4</option>
+      <option value="3">3</option>
+      <option value="6">6</option>
+      <option value="5">5</option>
+      <option value="7">7</option>
+    </select>
+    /
+    <select id="timeSigDen">
+      <option value="4">4</option>
+      <option value="8">8</option>
+      <option value="16">16</option>
+    </select>
+    <button class="metronome-btn" id="metronomeBtn">Metronome Off</button>
+    <span style="margin-left:2em;">
+      <button class="zoom-btn" id="zoomInBtn" title="Zoom in">＋</button>
+      <button class="zoom-btn" id="zoomOutBtn" title="Zoom out">－</button>
+    </span>
+  </div>
+  <div id="workspace">
+    <div id="timeline"></div>
+    <div id="tracks"></div>
+  </div>
+  <script src="DAW.js"></script>
+</body>
+</html>
