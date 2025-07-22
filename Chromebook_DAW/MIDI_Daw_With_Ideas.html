@@ -3,725 +3,556 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MIDI DAW (JavaScript)</title>
+    <title>Functional MIDI DAW</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@tonejs/midi"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tone@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tone@latest/build/Tone.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
             overscroll-behavior: none;
-            background: #18181b;
-            color: #e5e7eb;
+            background: #18181b; /* zinc-900 */
+            color: #e4e4e7; /* zinc-200 */
         }
         .piano-key {
-            stroke: #374151;
+            stroke: #3f3f46; /* zinc-700 */
             stroke-width: 1;
         }
-        .piano-key.white { fill: #27272a; }
-        .piano-key.black { fill: #18181b; }
+        .piano-key.white { fill: #f4f4f5; } /* zinc-100 */
+        .piano-key.black { fill: #27272a; } /* zinc-800 */
+        .piano-key:hover {
+            fill: #3b82f6; /* blue-500 */
+        }
         .note {
-            border-radius: 2px;
+            border-radius: 4px;
             border: 1px solid rgba(0,0,0,0.5);
             position: absolute;
+            box-sizing: border-box;
+            background-color: #3b82f6; /* blue-500 */
         }
         .piano-label {
             font-size: 10px;
-            fill: #a1a1aa;
+            fill: #a1a1aa; /* zinc-400 */
             text-anchor: end;
             alignment-baseline: middle;
             pointer-events: none;
         }
-        .timeline-bar {
-            height: 48px;
-            background: #23232a;
-            border-bottom: 1px solid #27272a;
+        .top-bar {
+            background: #27272a; /* zinc-800 */
+            border-bottom: 1px solid #3f3f46; /* zinc-700 */
+            position: relative;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            height: 50px;
+            flex-shrink: 0;
+        }
+        #timeline-header {
+            background: #27272a; /* zinc-800 */
+            border-bottom: 1px solid #3f3f46; /* zinc-700 */
             position: relative;
             z-index: 20;
+            height: 30px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        #measures-container {
+            display: flex;
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+        }
+        .measure-marker {
+            font-size: 12px;
+            color: #a1a1aa; /* zinc-400 */
+            border-left: 1px solid #52525b; /* zinc-600 */
+            box-sizing: border-box;
             display: flex;
             align-items: center;
-            overflow-x: auto;
-            padding: 0 16px;
+            padding-left: 4px;
+            flex-shrink: 0;
+            white-space: nowrap;
         }
-        .measure-label {
-            font-size: 13px;
-            color: #a1a1aa;
-            margin-right: 16px;
-            min-width: 60px;
-            text-align: center;
-        }
-        .tempo-control, .zoom-control, .signature-control {
-            margin-left: 16px;
+        .control-group {
             display: flex;
             align-items: center;
+            padding: 0 12px;
+            border-left: 1px solid #3f3f46; /* zinc-700 */
+            height: 100%;
         }
         .transport-btn {
-            background: #18181b;
+            background: transparent;
             border: none;
-            color: #e5e7eb;
+            color: #e4e4e7;
             border-radius: 6px;
-            padding: 12px 24px; /* Increased size */
-            margin-right: 12px;  /* More spacing */
+            padding: 8px;
+            margin: 0 4px;
             cursor: pointer;
-            transition: background 0.2s;
-            display: flex;
-            align-items: center;
-            font-size: 20px;     /* Larger icon/text */
+            transition: background 0.2s, color 0.2s;
         }
         .transport-btn:hover {
-            background: #2563eb;
+            background: #3b82f6;
+        }
+        .transport-btn.active {
+            color: #3b82f6;
         }
         .transport-btn svg {
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
         }
-        #console-panel {
-            background: #23232a;
-            color: #e5e7eb;
-            border-radius: 8px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+        select, input[type="number"], input[type="range"] {
+            background: #3f3f46 !important; /* zinc-700 */
+            color: #e4e4e7 !important; /* zinc-200 */
+            border-color: #52525b !important; /* zinc-600 */
+            border-radius: 4px;
         }
-        #console-toggle-btn {
-            background: #2563eb;
-            color: #fff;
+        input[type="number"] {
+            padding: 4px 8px;
         }
-        /* ...other dark theme tweaks... */
-        .bg-gray-100, .bg-gray-200, .bg-gray-50, .bg-white {
-            background: #18181b !important;
+        #grid-container {
+            overflow: auto;
         }
-        .text-gray-800, .text-gray-900, .text-gray-700, .text-gray-500 {
-            color: #e5e7eb !important;
-        }
-        .border-gray-300, .border-gray-700 {
-            border-color: #27272a !important;
-        }
-        .shadow-md, .shadow {
-            box-shadow: none !important;
-        }
-        select, input, button {
-            background: #23232a !important;
-            color: #e5e7eb !important;
-            border-color: #27272a !important;
+        #playback-cursor {
+            position:absolute;
+            top:0;
+            left:0;
+            width:2px;
+            height:100%;
+            background:#facc15; /* yellow-400 */
+            z-index:25;
+            display:none;
         }
     </style>
 </head>
-<body class="flex flex-col h-screen">
+<body class="flex flex-col h-screen overflow-hidden">
 
-    <!-- Timeline Bar (Top) -->
-    <div id="timeline-bar" class="timeline-bar">
-        <!-- Transport Controls -->
-        <div class="flex items-center">
-            <button id="rewind-btn" class="transport-btn" title="Rewind">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M11 7v10l-7-5 7-5zm2 0v10l7-5-7-5z" fill="currentColor"/></svg>
-            </button>
-            <button id="play-btn" class="transport-btn" title="Play">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
-            </button>
-            <button id="stop-btn" class="transport-btn" title="Stop">
-                <svg viewBox="0 0 24 24" fill="none"><rect x="6" y="6" width="12" height="12" fill="currentColor"/></svg>
-            </button>
-            <button id="ff-btn" class="transport-btn" title="Fast Forward">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M13 7v10l7-5-7-5zm-2 0v10l-7-5 7-5z" fill="currentColor"/></svg>
-            </button>
-        </div>
-        <!-- Measures -->
-        <div id="measures-container" class="flex ml-6"></div>
-        <!-- Time Signature -->
-        <div class="signature-control ml-6">
-            <label for="signature-select" class="mr-2">Signature:</label>
-            <select id="signature-select">
-                <option value="4/4">4/4</option>
-                <option value="3/4">3/4</option>
-                <option value="6/8">6/8</option>
-                <option value="5/4">5/4</option>
-            </select>
-        </div>
-        <!-- Tempo -->
-        <div class="tempo-control ml-6">
-            <label for="tempo-input" class="mr-2">Tempo:</label>
-            <input type="number" id="tempo-input" min="20" max="300" value="120" class="w-16 px-2 py-1 rounded border">
-        </div>
-        <!-- Zoom -->
-        <div class="zoom-control ml-6">
-            <label for="zoom-range" class="mr-2">Zoom:</label>
-            <input type="range" id="zoom-range" min="50" max="400" value="100" class="w-24">
-        </div>
-    </div>
-
-    <!-- Header Controls -->
-    <header class="p-3 flex items-center space-x-4 flex-shrink-0 border-b border-gray-700">
-        <h1 class="text-xl font-bold text-gray-900">JS MIDI DAW</h1>
-        <div class="flex items-center space-x-2">
-            <label for="upload" class="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow transition-colors">
+    <!-- Top Control Bar -->
+    <div class="top-bar">
+        <h1 class="text-xl font-bold text-white mr-4">JS MIDI DAW</h1>
+        
+        <div class="control-group">
+            <label for="upload" class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md shadow transition-colors text-sm">
                 Upload MIDI
             </label>
             <input type="file" id="upload" accept=".mid,.midi" class="hidden">
+            <button id="export" class="ml-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md shadow transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed text-sm" disabled>Export MIDI</button>
         </div>
-        <button id="export" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export MIDI</button>
-        
-        <div class="flex-grow"></div>
 
-        <div class="flex items-center space-x-2">
-            <label for="track-select" class="font-medium">Track:</label>
-            <select id="track-select" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2"></select>
+        <!-- Transport Controls -->
+        <div class="control-group">
+            <button id="rewind-btn" class="transport-btn" title="Rewind to Start">
+                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M8.445 14.832A1 1 0 0010 14.032V5.968a1 1 0 00-1.555-.832L4 9.168V6a1 1 0 00-2 0v8a1 1 0 102 0v-3.168l4.445 4zM15.555 14.832A1 1 0 0017 14.032V5.968a1 1 0 00-1.555-.832L11 9.168V6a1 1 0 10-2 0v8a1 1 0 102 0v-3.168l4.555 4z"/></svg>
+            </button>
+            <button id="play-btn" class="transport-btn" title="Play">
+                <svg id="play-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/></svg>
+                <svg id="pause-icon" class="hidden" viewBox="0 0 20 20" fill="currentColor"><path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z"/></svg>
+            </button>
+            <button id="stop-btn" class="transport-btn" title="Stop">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3.75A1.75 1.75 0 016.75 2h6.5A1.75 1.75 0 0115 3.75v12.5A1.75 1.75 0 0113.25 18h-6.5A1.75 1.75 0 015 16.25V3.75z"/></svg>
+            </button>
         </div>
-        <div class="flex items-center space-x-2">
-            <label for="view-select" class="font-medium">View:</label>
-            <select id="view-select" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2">
-                <option value="piano-roll">Piano Roll</option>
-                <option value="step-sequencer">Step Sequencer</option>
-                <option value="score">Score Notation</option>
-            </select>
+
+        <!-- Track & View Controls -->
+        <div class="control-group">
+            <label for="track-select" class="text-sm mr-2">Track:</label>
+            <select id="track-select" class="text-sm rounded-md p-1"></select>
         </div>
-        <!-- Move zoom and time signature controls here -->
-        <div class="flex items-center space-x-2 ml-6">
-            <label for="signature-select" class="font-medium">Signature:</label>
-            <select id="signature-select" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2">
+        
+        <!-- Signature & Tempo -->
+        <div class="control-group">
+            <label for="signature-select" class="text-sm mr-2">Signature:</label>
+            <select id="signature-select" class="text-sm rounded-md p-1">
                 <option value="4/4">4/4</option>
                 <option value="3/4">3/4</option>
                 <option value="6/8">6/8</option>
                 <option value="5/4">5/4</option>
             </select>
+            <label for="tempo-input" class="text-sm ml-4 mr-2">Tempo:</label>
+            <input type="number" id="tempo-input" min="20" max="300" value="120" class="w-16 text-sm">
         </div>
-        <div class="flex items-center space-x-2 ml-6">
-            <label for="zoom-range" class="font-medium">Zoom:</label>
-            <input type="range" id="zoom-range" min="50" max="400" value="100" class="w-24">
+
+        <!-- Zoom -->
+        <div class="control-group">
+            <label for="zoom-range" class="text-sm mr-2">Zoom:</label>
+            <input type="range" id="zoom-range" min="20" max="500" value="100" class="w-24">
         </div>
-    </header>
+    </div>
+
+    <!-- Timeline Header -->
+    <div id="timeline-header">
+        <div id="measures-container"></div>
+    </div>
 
     <!-- Main Content -->
     <main id="main-content" class="flex-grow flex overflow-hidden">
-        <!-- Piano Roll View -->
         <div id="piano-roll-view" class="flex w-full h-full">
-            <div id="piano-keys" class="bg-gray-200 h-full flex-shrink-0">
+            <div id="piano-keys" class="bg-zinc-800 h-full flex-shrink-0" style="width: 80px;">
                 <svg id="piano-keys-svg" width="80" class="h-full"></svg>
             </div>
-            <div id="grid-container" class="flex-grow h-full overflow-auto bg-gray-50 relative">
+            <div id="grid-container" class="flex-grow h-full overflow-auto bg-zinc-900 relative">
                 <div id="note-container" class="relative">
-                    <!-- Playback Cursor -->
-                    <div id="playback-cursor" style="position:absolute;top:0;left:0;width:2px;height:100%;background:#fbbf24;z-index:20;display:none;"></div>
+                    <div id="playback-cursor"></div>
                 </div>
             </div>
         </div>
-
-        <!-- Other Views (Initially Hidden) -->
-        <div id="step-sequencer-view" class="hidden w-full h-full justify-center items-center">
-            <p class="text-2xl text-gray-500">Step Sequencer View (Not Implemented)</p>
-        </div>
-        <div id="score-view" class="hidden w-full h-full justify-center items-center">
-            <p class="text-2xl text-gray-500">Score Notation View (Not Implemented - requires a library like VexFlow)</p>
-        </div>
     </main>
 
-    <!-- Console Toggle Button -->
-    <button id="console-toggle-btn">Show Console</button>
-    <!-- Console Panel -->
-    <div id="console-panel" class="hidden">
-        <div class="flex justify-between items-center px-4 py-2 border-b border-gray-700">
-            <span class="font-bold text-sm">Console Log</span>
-            <button id="console-hide-btn" class="bg-gray-700 text-gray-200 px-2 py-1 rounded text-xs">Hide</button>
-        </div>
-        <div id="console-log"></div>
-    </div>
     <script>
+        // --- Tone.js Start Context ---
+        document.documentElement.addEventListener('mousedown', async () => {
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+                console.log('Audio context started');
+            }
+        });
+
         // --- DOM Elements ---
         const uploadInput = document.getElementById('upload');
         const exportButton = document.getElementById('export');
-        const viewSelect = document.getElementById('view-select');
         const trackSelect = document.getElementById('track-select');
-        const mainContent = document.getElementById('main-content');
         
-        const pianoRollView = document.getElementById('piano-roll-view');
-        const stepSequencerView = document.getElementById('step-sequencer-view');
-        const scoreView = document.getElementById('score-view');
-
         const pianoKeysSVG = document.getElementById('piano-keys-svg');
         const gridContainer = document.getElementById('grid-container');
         const noteContainer = document.getElementById('note-container');
+        const playbackCursor = document.getElementById('playback-cursor');
 
-        const timelineBar = document.getElementById('timeline-bar');
+        const timelineHeader = document.getElementById('timeline-header');
         const measuresContainer = document.getElementById('measures-container');
         const tempoInput = document.getElementById('tempo-input');
-        const consolePanel = document.getElementById('console-panel');
-        const consoleLog = document.getElementById('console-log');
-        const consoleToggleBtn = document.getElementById('console-toggle-btn');
-        const consoleHideBtn = document.getElementById('console-hide-btn');
-
+        
         const playBtn = document.getElementById('play-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
         const stopBtn = document.getElementById('stop-btn');
         const rewindBtn = document.getElementById('rewind-btn');
-        const ffBtn = document.getElementById('ff-btn');
         const zoomRange = document.getElementById('zoom-range');
         const signatureSelect = document.getElementById('signature-select');
 
         // --- State ---
         let midiData = null;
-        let currentView = 'piano-roll';
         let selectedTrackIndex = 0;
-        let tempo = 120;
-        let timeSignature = '4/4';
-        let zoom = 100;
-        let isPlaying = false;
-        let playbackStartTime = 0;
-        let playbackTimeouts = [];
+        let zoom = 100; // Represents pixels per second
+        let currentPart = null;
+
+        // --- Instruments ---
+        let synth = new Tone.PolySynth(Tone.Synth).toDestination();
+        let sampler = new Tone.Sampler().toDestination();
+        let samplesLoaded = false;
 
         // --- Constants ---
-        const NOTE_HEIGHT = 12;
+        const NOTE_HEIGHT = 16;
         const MIDI_NOTE_RANGE = { min: 21, max: 108 };
 
         // --- Initialization ---
         window.onload = () => {
             setupPianoKeys();
             draw();
-            setupConsole();
+            Tone.Transport.bpm.value = parseInt(tempoInput.value, 10);
+            const sig = signatureSelect.value.split('/').map(n => parseInt(n));
+            Tone.Transport.timeSignature = sig;
         };
 
         // --- Event Listeners ---
         uploadInput.addEventListener('change', handleFileUpload);
         exportButton.addEventListener('click', handleExport);
-        viewSelect.addEventListener('change', handleViewChange);
-        trackSelect.addEventListener('change', handleTrackChange);
-        gridContainer.addEventListener('scroll', () => {
-            pianoKeysSVG.style.marginTop = `-${gridContainer.scrollTop}px`;
+        trackSelect.addEventListener('change', () => {
+            selectedTrackIndex = parseInt(trackSelect.value, 10);
+            draw();
         });
         tempoInput.addEventListener('change', (e) => {
-            tempo = parseInt(e.target.value, 10) || 120;
-            logToConsole(`Tempo set to ${tempo} BPM`);
-            drawTimeline();
+            const tempo = parseInt(e.target.value, 10) || 120;
+            Tone.Transport.bpm.value = tempo;
+            draw();
         });
         signatureSelect.addEventListener('change', (e) => {
-            timeSignature = e.target.value;
-            logToConsole(`Time signature set to ${timeSignature}`);
-            drawTimeline();
+            const sig = e.target.value.split('/').map(n => parseInt(n));
+            Tone.Transport.timeSignature = sig;
+            draw();
         });
         zoomRange.addEventListener('input', (e) => {
             zoom = parseInt(e.target.value, 10);
             draw();
         });
+        gridContainer.addEventListener('scroll', () => {
+            pianoKeysSVG.style.marginTop = `-${gridContainer.scrollTop}px`;
+            timelineHeader.scrollLeft = gridContainer.scrollLeft;
+        });
 
-        playBtn.addEventListener('click', handlePlay);
+        playBtn.addEventListener('click', handlePlayPause);
         stopBtn.addEventListener('click', handleStop);
         rewindBtn.addEventListener('click', handleRewind);
-        ffBtn.addEventListener('click', handleFastForward);
 
-        consoleToggleBtn.addEventListener('click', () => {
-            if (consolePanel.classList.contains('hidden')) {
-                consolePanel.classList.remove('hidden');
-                consolePanel.classList.add('visible');
-                consoleToggleBtn.textContent = 'Hide Console';
-            } else {
-                consolePanel.classList.add('hidden');
-                consolePanel.classList.remove('visible');
-                consoleToggleBtn.textContent = 'Show Console';
-            }
-        });
-        consoleHideBtn.addEventListener('click', () => {
-            consolePanel.classList.add('hidden');
-            consolePanel.classList.remove('visible');
-            consoleToggleBtn.textContent = 'Show Console';
-        });
-
-        // --- Console Log Functions ---
-        function setupConsole() {
-            logToConsole('Console initialized.');
-            // Hijack console.log/warn/error to also output to our panel
-            ['log', 'warn', 'error'].forEach(type => {
-                const orig = console[type];
-                console[type] = function(...args) {
-                    orig.apply(console, args);
-                    appendToConsolePanel(type, args);
-                };
-            });
-        }
-        function logToConsole(msg) {
-            appendToConsolePanel('log', [msg]);
-        }
-        function appendToConsolePanel(type, args) {
-            const time = new Date().toLocaleTimeString();
-            const entry = document.createElement('div');
-            entry.style.whiteSpace = 'pre-wrap';
-            entry.style.wordBreak = 'break-word';
-            entry.textContent = `[${time}] [${type}] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}`;
-            entry.style.color = type === 'error' ? '#f87171' : (type === 'warn' ? '#fbbf24' : '#f3f4f6');
-            consoleLog.appendChild(entry);
-            consoleLog.scrollTop = consoleLog.scrollHeight;
-        }
-
-        // --- Functions ---
-
-        /**
-         * Handles the MIDI file upload, parsing it into a structured object.
-         * Also sets tempo if available.
-         */
+        // --- File & MIDI Handling ---
         async function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             try {
                 const arrayBuffer = await file.arrayBuffer();
                 midiData = new Midi(arrayBuffer);
                 exportButton.disabled = false;
                 populateTrackSelector();
                 selectedTrackIndex = 0;
-                // Set tempo from MIDI if available
-                if (midiData.header.tempos && midiData.header.tempos.length > 0) {
-                    tempo = Math.round(midiData.header.tempos[0].bpm);
+                if (midiData.header.tempos.length > 0) {
+                    const tempo = Math.round(midiData.header.tempos[0].bpm);
                     tempoInput.value = tempo;
-                    logToConsole(`Loaded MIDI tempo: ${tempo} BPM`);
-                } else {
-                    logToConsole('No tempo found in MIDI, using default.');
+                    Tone.Transport.bpm.value = tempo;
+                }
+                if (midiData.header.timeSignatures.length > 0) {
+                    const sig = midiData.header.timeSignatures[0].timeSignature;
+                    const sigString = `${sig[0]}/${sig[1]}`;
+                    if ([...signatureSelect.options].some(o => o.value === sigString)) {
+                        signatureSelect.value = sigString;
+                        Tone.Transport.timeSignature = sig;
+                    }
                 }
                 draw();
             } catch (error) {
                 console.error("Error parsing MIDI file:", error);
-                logToConsole("Could not parse the MIDI file. It might be corrupted or in an unsupported format.");
-                alert("Could not parse the MIDI file. It might be corrupted or in an unsupported format.");
+                alert("Could not parse the MIDI file.");
             }
         }
 
-        /**
-         * Exports the currently loaded MIDI data as a .mid file.
-         */
         function handleExport() {
             if (!midiData) return;
+            // Note: This exports the original MIDI. To export edits, you'd need to update midiData object.
             try {
                 const midiArray = midiData.toArray();
                 const blob = new Blob([midiArray], { type: "audio/midi" });
-                const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
-                a.href = url;
+                a.href = URL.createObjectURL(blob);
                 a.download = `${midiData.name || 'exported_midi'}.mid`;
-                document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                URL.revokeObjectURL(a.href);
             } catch (error) {
                 console.error("Error exporting MIDI file:", error);
-                alert("An error occurred while exporting the MIDI file.");
             }
         }
 
-        /**
-         * Handles switching between different views (Piano Roll, Step Sequencer, etc.).
-         */
-        function handleViewChange(event) {
-            currentView = event.target.value;
-            draw();
-        }
-        
-        /**
-         * Handles changing the selected track to display.
-         */
-        function handleTrackChange(event) {
-            selectedTrackIndex = parseInt(event.target.value, 10);
-            draw();
-        }
-
-        /**
-         * Populates the track selector dropdown based on the loaded MIDI file.
-         */
         function populateTrackSelector() {
             trackSelect.innerHTML = '';
             if (!midiData) return;
             midiData.tracks.forEach((track, index) => {
                 const option = document.createElement('option');
                 option.value = index;
-                option.textContent = `Track ${index + 1}: ${track.name || 'Unnamed'}`;
+                option.textContent = `Track ${index + 1}: ${track.name || 'Unnamed'} (${track.notes.length} notes)`;
                 trackSelect.appendChild(option);
             });
         }
-        
-        /**
-         * Helper: Get note name from MIDI number.
-         */
-        function midiToNoteName(midi) {
-            const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-            const octave = Math.floor(midi / 12) - 1;
-            return notes[midi % 12] + octave;
+
+        // --- Drawing and UI ---
+        function draw() {
+            if (Tone.Transport.state === 'started') {
+                handleStop();
+            }
+            drawPianoRoll();
+            drawTimeline();
         }
 
-        /**
-         * Creates the visual piano keys on the left side of the piano roll.
-         * Now accounts for all 12 semitones.
-         */
         function setupPianoKeys() {
             const keys = [];
             for (let midi = MIDI_NOTE_RANGE.max; midi >= MIDI_NOTE_RANGE.min; midi--) {
                 const isBlack = [1, 3, 6, 8, 10].includes(midi % 12);
-                keys.push({ midi, black: isBlack, name: midiToNoteName(midi) });
+                keys.push({ midi, black: isBlack, name: Tone.Midi(midi).toNote() });
             }
 
             pianoKeysSVG.innerHTML = '';
             const svgNS = "http://www.w3.org/2000/svg";
             const keyWidth = 80;
-            const blackWidth = 50;
-            const keyHeight = NOTE_HEIGHT;
+            const blackKeyWidth = 50;
 
-            // Draw all keys (white and black) in correct vertical order
             keys.forEach((key, idx) => {
-                const y = idx * keyHeight;
+                const y = idx * NOTE_HEIGHT;
                 const rect = document.createElementNS(svgNS, 'rect');
                 rect.setAttribute('x', 0);
                 rect.setAttribute('y', y);
-                rect.setAttribute('width', key.black ? blackWidth : keyWidth);
-                rect.setAttribute('height', keyHeight);
+                rect.setAttribute('width', key.black ? blackKeyWidth : keyWidth);
+                rect.setAttribute('height', NOTE_HEIGHT);
                 rect.setAttribute('class', key.black ? 'piano-key black' : 'piano-key white');
+                rect.dataset.midi = key.midi;
                 pianoKeysSVG.appendChild(rect);
 
-                // Label all keys for clarity
                 if (!key.black) {
                     const text = document.createElementNS(svgNS, 'text');
-                    text.setAttribute('x', keyWidth - 6);
-                    text.setAttribute('y', y + keyHeight / 2 + 1);
+                    text.setAttribute('x', keyWidth - 5);
+                    text.setAttribute('y', y + NOTE_HEIGHT / 2);
                     text.setAttribute('class', 'piano-label');
                     text.textContent = key.name;
                     pianoKeysSVG.appendChild(text);
                 }
             });
 
-            const totalHeight = keys.length * keyHeight;
+            const totalHeight = keys.length * NOTE_HEIGHT;
             pianoKeysSVG.setAttribute('viewBox', `0 0 ${keyWidth} ${totalHeight}`);
             pianoKeysSVG.style.height = `${totalHeight}px`;
             noteContainer.style.height = `${totalHeight}px`;
         }
-
-        /**
-         * Draws the timeline bar at the top, organized in measures.
-         */
-        function drawTimeline() {
-            measuresContainer.innerHTML = '';
-            let totalDuration = midiData ? midiData.duration : 30; // fallback to 30s if no midi loaded
-            const beatsPerMeasure = parseInt(timeSignature.split('/')[0]);
-            const secondsPerBeat = 60 / tempo;
-            const measureCount = Math.ceil(totalDuration / (secondsPerBeat * beatsPerMeasure));
-            for (let i = 0; i < measureCount; i++) {
-                const label = document.createElement('div');
-                label.className = 'measure-label';
-                label.textContent = `M${i + 1}`;
-                measuresContainer.appendChild(label);
-            }
-        }
-
-        /**
-         * Main render function to update the display.
-         */
-        function draw() {
-            // Hide all views
-            pianoRollView.classList.add('hidden');
-            stepSequencerView.classList.add('hidden');
-            scoreView.classList.add('hidden');
-
-            // Show the current view
-            if (currentView === 'piano-roll') {
-                pianoRollView.classList.remove('hidden');
-                drawTimeline();
-                drawPianoRoll();
-            } else if (currentView === 'step-sequencer') {
-                stepSequencerView.classList.remove('hidden');
-            } else if (currentView === 'score') {
-                scoreView.classList.remove('hidden');
-            }
-
-            // Hide playback cursor on view change
-            hidePlaybackCursor();
-        }
-
-        /**
-         * Renders the notes of the selected track onto the piano roll grid.
-         * Now accounts for all 12 semitones.
-         */
+        
         function drawPianoRoll() {
-            noteContainer.innerHTML = ''; // Clear previous notes
-            if (!midiData || !midiData.tracks[selectedTrackIndex]) return;
+            noteContainer.innerHTML = '<div id="playback-cursor" style="position:absolute;top:0;left:0;width:2px;height:100%;background:#facc15;z-index:25;display:none;"></div>';
+            if (!midiData || !midiData.tracks[selectedTrackIndex]) {
+                 noteContainer.style.width = '100%';
+                 return;
+            }
 
             const track = midiData.tracks[selectedTrackIndex];
             const totalDuration = midiData.duration;
-            const PIXELS_PER_SECOND = zoom;
-            const containerWidth = totalDuration * PIXELS_PER_SECOND;
+            const containerWidth = totalDuration * zoom;
             noteContainer.style.width = `${containerWidth}px`;
 
-            // All MIDI notes in range, top to bottom
-            const midiKeys = [];
-            for (let midi = MIDI_NOTE_RANGE.max; midi >= MIDI_NOTE_RANGE.min; midi--) {
-                midiKeys.push(midi);
-            }
+            const midiKeys = Array.from({ length: MIDI_NOTE_RANGE.max - MIDI_NOTE_RANGE.min + 1 }, (_, i) => MIDI_NOTE_RANGE.max - i);
 
             track.notes.forEach(note => {
+                const keyIdx = midiKeys.indexOf(note.midi);
+                if (keyIdx === -1) return;
+
                 const noteDiv = document.createElement('div');
                 noteDiv.classList.add('note');
-
-                // Find key index for this note (all semitones)
-                const keyIdx = midiKeys.indexOf(note.midi);
-                if (keyIdx === -1) return; // Only show notes in range
-
                 const y = keyIdx * NOTE_HEIGHT;
-                const x = note.time * PIXELS_PER_SECOND;
-                const width = note.duration * PIXELS_PER_SECOND;
-
+                const x = note.time * zoom;
+                const width = note.duration * zoom;
+                
                 noteDiv.style.top = `${y}px`;
                 noteDiv.style.left = `${x}px`;
                 noteDiv.style.width = `${width}px`;
-                noteDiv.style.height = `${NOTE_HEIGHT}px`;
-
-                // Color based on velocity
-                noteDiv.style.backgroundColor = `rgba(59, 130, 246, ${note.velocity})`; // blue-500
-                noteDiv.title = `Note: ${note.name}, Time: ${note.time.toFixed(2)}s, Duration: ${note.duration.toFixed(2)}s`;
-
+                noteDiv.style.height = `${NOTE_HEIGHT - 2}px`;
+                noteDiv.style.opacity = note.velocity * 0.8 + 0.2;
+                noteDiv.title = `Note: ${note.name}, Time: ${note.time.toFixed(2)}s, Vel: ${Math.round(note.velocity * 100)}%`;
                 noteContainer.appendChild(noteDiv);
             });
-
-            logToConsole(`Rendered ${track.notes.length} notes for Track ${selectedTrackIndex + 1}`);
         }
 
-        // --- Sample Playback State ---
-        let sampleMappings = []; // [{ buffer, key, min, max, url }]
-        let sampler = null;
+        function drawTimeline() {
+            measuresContainer.innerHTML = '';
+            const totalDuration = midiData ? midiData.duration : 60; // Default to 60s
+            const beatsPerMeasure = Tone.Transport.timeSignature[0];
+            const secondsPerBeat = 60 / Tone.Transport.bpm.value;
+            const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+            const measureWidth = secondsPerMeasure * zoom;
+            const measureCount = Math.ceil(totalDuration / secondsPerMeasure);
 
-        // --- Piano Key Click for Sample Assignment ---
-        pianoKeysSVG.addEventListener('click', async (e) => {
-            // Find which key was clicked
-            const svgPoint = pianoKeysSVG.createSVGPoint();
-            svgPoint.x = e.clientX;
-            svgPoint.y = e.clientY;
-            const ctm = pianoKeysSVG.getScreenCTM();
-            if (!ctm) return;
-            const pt = svgPoint.matrixTransform(ctm.inverse());
-            const keyHeight = NOTE_HEIGHT;
-            const idx = Math.floor(pt.y / keyHeight);
-            const midi = MIDI_NOTE_RANGE.max - idx;
-            if (midi < MIDI_NOTE_RANGE.min || midi > MIDI_NOTE_RANGE.max) return;
-
-            // Check if sample is mapped
-            if (!getSampleForMidi(midi)) {
-                // Prompt for upload
-                const fileInput = document.createElement('input');
-                fileInput.type = 'file';
-                fileInput.accept = 'audio/*';
-                fileInput.style.display = 'none';
-                document.body.appendChild(fileInput);
-                fileInput.click();
-                fileInput.onchange = async (ev) => {
-                    const file = ev.target.files[0];
-                    if (!file) {
-                        document.body.removeChild(fileInput);
-                        return;
-                    }
-                    const url = URL.createObjectURL(file);
-                    const buffer = await Tone.ToneAudioBuffer.fromUrl(url);
-                    // Assign sample to clicked key, default range = key only
-                    sampleMappings.push({
-                        buffer,
-                        key: midi,
-                        min: midi,
-                        max: midi,
-                        url
-                    });
-                    logToConsole(`Sample assigned to ${midiToNoteName(midi)} (${midi})`);
-                    document.body.removeChild(fileInput);
-                };
-            } else {
-                logToConsole(`Sample already assigned to ${midiToNoteName(midi)} (${midi})`);
+            for (let i = 0; i < measureCount; i++) {
+                const marker = document.createElement('div');
+                marker.className = 'measure-marker';
+                marker.style.width = `${measureWidth}px`;
+                marker.textContent = `${i + 1}`;
+                measuresContainer.appendChild(marker);
             }
+        }
+
+        // --- Sampler Logic ---
+        pianoKeysSVG.addEventListener('click', async (e) => {
+            if (!e.target.dataset.midi) return;
+            const midi = parseInt(e.target.dataset.midi);
+            const noteName = Tone.Midi(midi).toNote();
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'audio/*';
+            fileInput.onchange = async (ev) => {
+                const file = ev.target.files[0];
+                if (!file) return;
+                const url = URL.createObjectURL(file);
+                sampler.add(noteName, url, () => {
+                    console.log(`Sample for ${noteName} loaded.`);
+                    samplesLoaded = true;
+                    alert(`Sample for ${noteName} loaded successfully!`);
+                });
+            };
+            fileInput.click();
         });
 
-        // --- Sample Playback Engine ---
-        function getSampleForMidi(midi) {
-            for (const mapping of sampleMappings) {
-                if (midi >= mapping.min && midi <= mapping.max) {
-                    return mapping;
-                }
+        // --- Playback Controls ---
+        function handlePlayPause() {
+            if (Tone.Transport.state === 'started') {
+                Tone.Transport.pause();
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+            } else {
+                if (!midiData) return;
+                preparePart();
+                Tone.Transport.start();
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+                showPlaybackCursor();
             }
-            return null;
         }
 
-        function playSampleMidi(midi, velocity = 1, duration = 0.5, time = undefined) {
-            const mapping = getSampleForMidi(midi);
-            if (!mapping) return;
-            const semitones = midi - mapping.key;
-            const player = new Tone.Player({
-                url: mapping.url,
-                autostart: false,
-                volume: Tone.gainToDb(velocity)
-            }).toDestination();
-            player.playbackRate = Math.pow(2, semitones / 12);
-            player.start(time);
-            setTimeout(() => player.dispose(), duration * 1000 + 500);
-        }
-
-        // --- Playback Functions (fixed) ---
-        function handlePlay() {
-            if (!midiData || !midiData.tracks[selectedTrackIndex]) return;
-            if (isPlaying) return;
-            isPlaying = true;
-            logToConsole('Playback started');
-            Tone.Transport.cancel();
-            Tone.Transport.bpm.value = tempo;
-            Tone.Transport.timeSignature = parseInt(timeSignature.split('/')[0]);
-            Tone.Transport.position = 0;
-            const track = midiData.tracks[selectedTrackIndex];
-            playbackTimeouts = [];
-            track.notes.forEach(note => {
-                const id = Tone.Transport.schedule((time) => {
-                    if (sampleMappings.length > 0 && getSampleForMidi(note.midi)) {
-                        playSampleMidi(note.midi, note.velocity, note.duration, time);
-                    } else {
-                        if (!sampler) sampler = new Tone.PolySynth(Tone.Synth).toDestination();
-                        sampler.triggerAttackRelease(note.name, note.duration, time, note.velocity);
-                    }
-                }, note.time);
-                playbackTimeouts.push(id);
-            });
-            showPlaybackCursor();
-            Tone.Transport.start();
-        }
         function handleStop() {
-            if (!isPlaying) return;
-            isPlaying = false;
-            logToConsole('Playback stopped');
             Tone.Transport.stop();
-            Tone.Transport.cancel();
-            playbackTimeouts = [];
+            Tone.Transport.position = 0;
+            if (currentPart) {
+                currentPart.stop(0);
+                currentPart.dispose();
+                currentPart = null;
+            }
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
             hidePlaybackCursor();
         }
+
         function handleRewind() {
-            logToConsole('Rewind');
             Tone.Transport.position = 0;
-            updatePlaybackCursor();
         }
-        function handleFastForward() {
-            logToConsole('Fast Forward');
-            Tone.Transport.position = midiData ? midiData.duration : 0;
+
+        function preparePart() {
+            if (currentPart) {
+                currentPart.dispose();
+            }
+            const track = midiData.tracks[selectedTrackIndex];
+            if (!track || track.notes.length === 0) return;
+
+            const instrument = samplesLoaded ? sampler : synth;
+            
+            currentPart = new Tone.Part((time, note) => {
+                instrument.triggerAttackRelease(note.name, note.duration, time, note.velocity);
+            }, track.notes).start(0);
+        }
+
+        // --- Playback Cursor ---
+        let cursorAnimationFrame = null;
+
+        function showPlaybackCursor() {
+            const cursor = document.getElementById('playback-cursor');
+            if (!cursor) return;
+            cursor.style.display = 'block';
             updatePlaybackCursor();
         }
 
-        // --- Playback Cursor Logic ---
-        let cursorAnimationFrame = null;
-        function showPlaybackCursor() {
-            playbackCursor.style.display = 'block';
-            updatePlaybackCursor();
-        }
         function hidePlaybackCursor() {
-            playbackCursor.style.display = 'none';
+            const cursor = document.getElementById('playback-cursor');
+            if (cursor) cursor.style.display = 'none';
             if (cursorAnimationFrame) {
                 cancelAnimationFrame(cursorAnimationFrame);
                 cursorAnimationFrame = null;
             }
         }
+
         function updatePlaybackCursor() {
-            if (!isPlaying || !midiData) return;
-            const PIXELS_PER_SECOND = zoom;
+            const cursor = document.getElementById('playback-cursor');
+            if (!cursor || Tone.Transport.state !== 'started') {
+                hidePlaybackCursor();
+                return;
+            }
             const currentTime = Tone.Transport.seconds;
-            const x = currentTime * PIXELS_PER_SECOND;
-            playbackCursor.style.left = `${x}px`;
+            const x = currentTime * zoom;
+            cursor.style.transform = `translateX(${x}px)`;
+
+            // Auto-scroll logic
+            const gridRect = gridContainer.getBoundingClientRect();
+            const cursorScreenX = gridContainer.getBoundingClientRect().left + x - gridContainer.scrollLeft;
+
+            if (cursorScreenX > gridRect.right - 50) { // If cursor is near the right edge
+                gridContainer.scrollLeft += 5;
+            } else if (cursorScreenX < gridRect.left + 50) { // If cursor is near the left edge
+                gridContainer.scrollLeft -= 5;
+            }
+            
             cursorAnimationFrame = requestAnimationFrame(updatePlaybackCursor);
-            // Removed auto-scroll grid to keep cursor in view
-            // (No scrolling visual feedback)
         }
-    </script>
-</body>
-</html>
-        }
+
     </script>
 </body>
 </html>
