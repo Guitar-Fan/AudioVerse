@@ -17,6 +17,7 @@ const TRACK_COLORS = [
 
 // --- State ---
 let tracks = [];
+let selectedTrackIndex = 0;
 let audioCtx = null;
 let isRecording = false;
 let mediaRecorder = null;
@@ -64,6 +65,10 @@ function createTrack(label, color) {
     clips: [],
     muted: false,
     solo: false,
+    armed: false,
+    volume: 0.8,
+    pan: 0,
+    selected: false,
     id: Math.random().toString(36).slice(2,9)
   };
 }
@@ -128,17 +133,108 @@ function renderTimeline() {
 function renderTracks() {
   tracksDiv.innerHTML = '';
   tracks.forEach((track, tIdx) => {
+    // Track Container
+    let trackContainer = document.createElement('div');
+    trackContainer.className = 'track-container';
+    
+    // Track Header
+    let trackHeader = document.createElement('div');
+    trackHeader.className = 'track-header' + (track.selected ? ' selected' : '');
+    trackHeader.dataset.track = tIdx;
+    trackHeader.onclick = () => selectTrack(tIdx);
+    
+    // Track number and name
+    let trackInfo = document.createElement('div');
+    trackInfo.className = 'track-info';
+    
+    let trackNumber = document.createElement('div');
+    trackNumber.className = 'track-number';
+    trackNumber.innerText = tIdx + 1;
+    
+    let trackName = document.createElement('div');
+    trackName.className = 'track-name';
+    trackName.innerText = track.label;
+    trackName.ondblclick = (e) => {
+      e.stopPropagation();
+      renameTrack(tIdx);
+    };
+    
+    trackInfo.appendChild(trackNumber);
+    trackInfo.appendChild(trackName);
+    
+    // Track Controls
+    let trackControls = document.createElement('div');
+    trackControls.className = 'track-controls-header';
+    
+    // Record Arm Button
+    let armBtn = document.createElement('button');
+    armBtn.className = 'track-btn arm-btn' + (track.armed ? ' active' : '');
+    armBtn.innerHTML = '●';
+    armBtn.title = 'Record Arm';
+    armBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleTrackArm(tIdx);
+    };
+    
+    // Mute Button
+    let muteBtn = document.createElement('button');
+    muteBtn.className = 'track-btn mute-btn' + (track.muted ? ' active' : '');
+    muteBtn.innerHTML = 'M';
+    muteBtn.title = 'Mute';
+    muteBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleTrackMute(tIdx);
+    };
+    
+    // Solo Button
+    let soloBtn = document.createElement('button');
+    soloBtn.className = 'track-btn solo-btn' + (track.solo ? ' active' : '');
+    soloBtn.innerHTML = 'S';
+    soloBtn.title = 'Solo';
+    soloBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleTrackSolo(tIdx);
+    };
+    
+    // Volume Slider
+    let volumeContainer = document.createElement('div');
+    volumeContainer.className = 'volume-container';
+    
+    let volumeSlider = document.createElement('input');
+    volumeSlider.type = 'range';
+    volumeSlider.className = 'volume-slider';
+    volumeSlider.min = '0';
+    volumeSlider.max = '1';
+    volumeSlider.step = '0.01';
+    volumeSlider.value = track.volume;
+    volumeSlider.title = 'Volume';
+    volumeSlider.oninput = (e) => {
+      e.stopPropagation();
+      setTrackVolume(tIdx, parseFloat(e.target.value));
+    };
+    
+    let volumeLabel = document.createElement('div');
+    volumeLabel.className = 'volume-label';
+    volumeLabel.innerText = Math.round(track.volume * 100);
+    
+    volumeContainer.appendChild(volumeSlider);
+    volumeContainer.appendChild(volumeLabel);
+    
+    trackControls.appendChild(armBtn);
+    trackControls.appendChild(muteBtn);
+    trackControls.appendChild(soloBtn);
+    trackControls.appendChild(volumeContainer);
+    
+    trackHeader.appendChild(trackInfo);
+    trackHeader.appendChild(trackControls);
+    
+    // Track Area (for clips)
     let trackDiv = document.createElement('div');
-    trackDiv.className = 'track' + (track.muted ? ' muted' : '');
+    trackDiv.className = 'track' + (track.muted ? ' muted' : '') + (track.selected ? ' selected' : '');
     trackDiv.style.height = "90px";
     trackDiv.style.position = 'relative';
     trackDiv.style.background = track.color;
     trackDiv.dataset.track = tIdx;
-
-    let label = document.createElement('span');
-    label.className = 'track-label';
-    label.innerText = track.label;
-    trackDiv.appendChild(label);
 
     // Render Clips
     track.clips.forEach((clip, cIdx) => {
@@ -193,8 +289,8 @@ function renderTracks() {
       trackDiv.appendChild(clipDiv);
     });
 
-    // Live recording preview
-    if (isRecording && tIdx === 0 && liveRecordingBuffer.length > 0) {
+    // Live recording preview - only on armed tracks
+    if (isRecording && track.armed && liveRecordingBuffer.length > 0) {
       const recLeft = liveRecordingStart * PIXELS_PER_SEC;
       const recDuration = liveRecordingBuffer.length / (audioCtx ? audioCtx.sampleRate : 44100);
       const recWidth = Math.max(recDuration * PIXELS_PER_SEC, MIN_CLIP_WIDTH);
@@ -226,58 +322,57 @@ function renderTracks() {
       e.preventDefault();
       showTrackContextMenu(e, tIdx, trackDiv);
     });
+    
+    // Add width to track area to match timeline
+    trackDiv.style.minWidth = getTimelineWidth() + 'px';
 
-    tracksDiv.appendChild(trackDiv);
+    trackContainer.appendChild(trackHeader);
+    trackContainer.appendChild(trackDiv);
+    tracksDiv.appendChild(trackContainer);
   });
 }
 
-// --- Waveform Drawing ---
-function drawWaveform(canvas, audioBufferOrBuffer, offset, duration, isRawBuffer) {
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.strokeStyle = isRawBuffer ? "rgba(255,60,60,1)" : 'rgba(50,50,70,0.99)';
-  ctx.lineWidth = 2.2;
-  ctx.beginPath();
-  let channel;
-  let sampleRate = 44100;
-  if (isRawBuffer && Array.isArray(audioBufferOrBuffer)) {
-    channel = audioBufferOrBuffer;
-    sampleRate = audioCtx ? audioCtx.sampleRate : 44100;
-  } else if (audioBufferOrBuffer && audioBufferOrBuffer.getChannelData) {
-    channel = audioBufferOrBuffer.getChannelData(0);
-    sampleRate = audioBufferOrBuffer.sampleRate;
-  } else {
-    return;
-  }
-  const start = Math.floor(offset * sampleRate);
-  const end = Math.min(channel.length, Math.floor((offset+duration) * sampleRate));
-  const samples = end - start;
-  const step = Math.max(1, Math.floor(samples / canvas.width));
-  for (let x = 0; x < canvas.width; x++) {
-    const idx = start + Math.floor(x * samples / canvas.width);
-    let min = 1.0, max = -1.0;
-    for (let j = 0; j < step && idx + j < end; j++) {
-      const val = channel[idx + j];
-      min = Math.min(min, val);
-      max = Math.max(max, val);
-    }
-    const y1 = (1 - (max+1)/2) * canvas.height;
-    const y2 = (1 - (min+1)/2) * canvas.height;
-    ctx.moveTo(x, y1);
-    ctx.lineTo(x, y2);
-  }
-  ctx.stroke();
+// --- Track Management Functions ---
+function selectTrack(trackIndex) {
+  tracks.forEach((track, idx) => {
+    track.selected = idx === trackIndex;
+  });
+  selectedTrackIndex = trackIndex;
+  render();
 }
 
-// --- Rendering ---
-function render() {
-  renderTimeline();
-  renderTracks();
+function toggleTrackArm(trackIndex) {
+  tracks[trackIndex].armed = !tracks[trackIndex].armed;
+  render();
+}
+
+function toggleTrackMute(trackIndex) {
+  tracks[trackIndex].muted = !tracks[trackIndex].muted;
+  render();
+}
+
+function toggleTrackSolo(trackIndex) {
+  tracks[trackIndex].solo = !tracks[trackIndex].solo;
+  render();
+}
+
+function setTrackVolume(trackIndex, volume) {
+  tracks[trackIndex].volume = volume;
+  render();
 }
 
 // --- Recording ---
 recordBtn.onclick = async () => {
   if (isRecording) return;
+  
+  // Find armed tracks or use selected track
+  let armedTracks = tracks.filter(t => t.armed);
+  if (armedTracks.length === 0) {
+    // Auto-arm selected track if no tracks are armed
+    tracks[selectedTrackIndex].armed = true;
+    render();
+  }
+  
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
@@ -308,7 +403,15 @@ recordBtn.onclick = async () => {
     const blob = new Blob(recordedChunks, { type: 'audio/webm' });
     const arrayBuffer = await blob.arrayBuffer();
     audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
-      addClipToFirstTrack(buffer, liveRecordingStart, buffer.duration);
+      // Add to armed tracks or selected track
+      let targetTracks = tracks.filter(t => t.armed);
+      if (targetTracks.length === 0) targetTracks = [tracks[selectedTrackIndex]];
+      
+      targetTracks.forEach(track => {
+        let trackIndex = tracks.indexOf(track);
+        addClipToTrack(trackIndex, buffer, liveRecordingStart, buffer.duration);
+      });
+      
       liveRecordingBuffer = [];
       render();
     });
@@ -324,92 +427,17 @@ recordBtn.onclick = async () => {
   if (metronomeEnabled) startMetronome();
 };
 
-stopBtn.onclick = () => {
-  if (isRecording) {
-    mediaRecorder.stop();
-    if (metronomeEnabled) stopMetronome();
-  }
-  stopAll();
-};
-
-// --- Playback: Stable, true-rate, accurate ---
-playBtn.onclick = () => { playAll(); };
-pauseBtn.onclick = () => { stopAll(); };
-
-function playAll() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  stopAll();
-  let playStartAudioCtx = audioCtx.currentTime;
-  let playStartTime = playheadTime;
-  playing = true;
-  function step() {
-    let elapsed = audioCtx.currentTime - playStartAudioCtx;
-    let t = playStartTime + elapsed;
-    updatePlayhead(t);
-    if (t > MAX_TIME) { stopAll(); return; }
-    if (playing) playRequestId = requestAnimationFrame(step);
-  }
-  // Start all clips on all tracks, honoring mute/solo
-  let soloTracks = tracks.filter(t=>t.solo);
-  let playTracks = soloTracks.length ? soloTracks : tracks.filter(t=>!t.muted);
-  playTracks.forEach(track => {
-    track.clips.forEach(clip => {
-      if (clip.startTime+clip.duration < playheadTime) return;
-      let source = audioCtx.createBufferSource();
-      source.buffer = clip.audioBuffer;
-      let offset = Math.max(0, playheadTime - clip.startTime) + clip.offset;
-      let duration = Math.min(clip.duration - (offset - clip.offset), clip.audioBuffer.duration - offset);
-      source.connect(audioCtx.destination);
-      if (clip.startTime >= playheadTime) {
-        source.start(audioCtx.currentTime + (clip.startTime - playheadTime), clip.offset, clip.duration);
-      } else if (clip.startTime + clip.duration > playheadTime) {
-        source.start(audioCtx.currentTime, offset, duration);
-      }
-      if (!window._playSources) window._playSources = [];
-      window._playSources.push(source);
-    });
-  });
-  // Animate playhead
-  pauseBtn.disabled = false;
-  playBtn.disabled = true;
-  playRequestId = requestAnimationFrame(step);
-  if (metronomeEnabled) startMetronome();
-  setTimeout(stopAll, (MAX_TIME-playheadTime)*1000);
-}
-
-function stopAll() {
-  if (window._playSources) {
-    window._playSources.forEach(src => { try { src.stop(); } catch{} });
-    window._playSources = [];
-  }
-  playing = false;
-  if (playRequestId) cancelAnimationFrame(playRequestId);
-  pauseBtn.disabled = true;
-  playBtn.disabled = false;
-  stopMetronome();
-}
-
-// --- File Upload ---
-fileInput.onchange = async (e) => {
-  const files = e.target.files;
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  for (let file of files) {
-    const arrayBuffer = await file.arrayBuffer();
-    await new Promise((resolve) => {
-      audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
-        addClipToFirstTrack(buffer, 0, buffer.duration, undefined, undefined, file.name.split(".")[0]);
-        resolve();
-      });
-    });
-  }
-  fileInput.value = '';
-};
-
-// --- Add Track ---
-addTrackBtn.onclick = () => {
-  tracks.push(createTrack());
+// --- Clip Management ---
+function addClipToTrack(trackIndex, buffer, startTime, duration, color, name) {
+  if (trackIndex >= tracks.length) return;
+  tracks[trackIndex].clips.push(createClip(buffer, startTime, duration, 0, color, name));
   render();
-};
+}
+
+function addClipToFirstTrack(buffer, startTime, duration, color, name) {
+  if (tracks.length === 0) tracks.push(createTrack());
+  addClipToTrack(selectedTrackIndex, buffer, startTime, duration, color, name);
+}
 
 // --- Timeline and Playhead ---
 timelineDiv.onclick = (e) => {
@@ -419,33 +447,6 @@ timelineDiv.onclick = (e) => {
 function updatePlayhead(t) {
   playheadTime = t;
   renderTimeline();
-}
-
-// --- Clip Management ---
-function addClipToFirstTrack(buffer, startTime, duration, color, name) {
-  if (tracks.length === 0) tracks.push(createTrack());
-  tracks[0].clips.push(createClip(buffer, startTime, duration, 0, color, name));
-  render();
-}
-function moveClip(fromTrackIdx, fromClipIdx, toTrackIdx, newStartTime) {
-  let clip = tracks[fromTrackIdx].clips[fromClipIdx];
-  tracks[fromTrackIdx].clips.splice(fromClipIdx, 1);
-  clip.startTime = Math.max(0, Math.round(newStartTime*100)/100);
-  tracks[toTrackIdx].clips.push(clip);
-  deselectAllClips();
-  clip.selected = true;
-  render();
-}
-function selectClip(trackIdx, clipIdx) {
-  deselectAllClips();
-  let clip = tracks[trackIdx].clips[clipIdx];
-  clip.selected = true;
-  selectedClip = {trackIdx, clipIdx};
-  render();
-}
-function deselectAllClips() {
-  tracks.forEach(track => track.clips.forEach(c => c.selected = false));
-  selectedClip = null;
 }
 
 // --- Context Menus ---
@@ -613,73 +614,128 @@ function addSilenceClip(tIdx) {
   render();
 }
 
-// --- Export Utility ---
-function audioBufferToWav(buffer, offset, duration) {
-  var numOfChan = buffer.numberOfChannels,
-    length = Math.floor(duration ? duration*buffer.sampleRate : buffer.length),
-    sampleRate = buffer.sampleRate,
-    outBuffer = new ArrayBuffer(44 + length * 2 * numOfChan),
-    view = new DataView(outBuffer),
-    channels = [],
-    i, sample, pos = 0;
-
-  // write WAVE header
-  setUint32(0x46464952); // "RIFF"
-  setUint32(outBuffer.byteLength - 8);
-  setUint32(0x45564157); // "WAVE"
-  setUint32(0x20746d66); // "fmt " chunk
-  setUint32(16);
-  setUint16(1);
-  setUint16(numOfChan);
-  setUint32(sampleRate);
-  setUint32(sampleRate * 2 * numOfChan);
-  setUint16(numOfChan * 2);
-  setUint16(16);
-  setUint32(0x61746164); // "data" - chunk
-  setUint32(length * 2 * numOfChan);
-
-  // write interleaved data
-  for(i=0; i<numOfChan; i++)
-    channels.push(buffer.getChannelData(i).subarray(
-      Math.floor(offset ? offset*sampleRate : 0),
-      Math.floor((offset ? offset*sampleRate : 0) + length)));
-  pos = 44;
-  for(i=0; i<length; i++)
-    for(var ch=0; ch<numOfChan; ch++) {
-      sample = Math.max(-1, Math.min(1, channels[ch][i]));
-      view.setInt16(pos, sample<0 ? sample*0x8000 : sample*0x7FFF, true);
-      pos += 2;
+// --- Waveform Drawing ---
+function drawWaveform(canvas, audioBufferOrBuffer, offset, duration, isRawBuffer) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle = isRawBuffer ? "rgba(255,60,60,1)" : 'rgba(50,50,70,0.99)';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  let channel;
+  let sampleRate = 44100;
+  if (isRawBuffer && Array.isArray(audioBufferOrBuffer)) {
+    channel = audioBufferOrBuffer;
+    sampleRate = audioCtx ? audioCtx.sampleRate : 44100;
+  } else if (audioBufferOrBuffer && audioBufferOrBuffer.getChannelData) {
+    channel = audioBufferOrBuffer.getChannelData(0);
+    sampleRate = audioBufferOrBuffer.sampleRate;
+  } else {
+    return;
+  }
+  const start = Math.floor(offset * sampleRate);
+  const end = Math.min(channel.length, Math.floor((offset+duration) * sampleRate));
+  const samples = end - start;
+  const step = Math.max(1, Math.floor(samples / canvas.width));
+  for (let x = 0; x < canvas.width; x++) {
+    const idx = start + Math.floor(x * samples / canvas.width);
+    let min = 1.0, max = -1.0;
+    for (let j = 0; j < step && idx + j < end; j++) {
+      const val = channel[idx + j];
+      min = Math.min(min, val);
+      max = Math.max(max, val);
     }
-
-  function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
-  function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
-  return outBuffer;
+    const y1 = (1 - (max+1)/2) * canvas.height;
+    const y2 = (1 - (min+1)/2) * canvas.height;
+    ctx.moveTo(x, y1);
+    ctx.lineTo(x, y2);
+  }
+  ctx.stroke();
 }
 
-// --- Keyboard Shortcuts ---
-document.addEventListener('keydown', (e) => {
-  if (document.activeElement && (
-    document.activeElement.tagName === "INPUT" ||
-    document.activeElement.tagName === "SELECT"
-  )) return;
-  if (e.key === 'r' || e.key === 'R') recordBtn.click();
-  if (e.key === 's' || e.key === 'S') stopBtn.click();
-  if (e.key === ' ' && !isRecording) { e.preventDefault(); playBtn.click(); }
-  if (e.key === '+' || e.key === '=') zoomInBtn.click();
-  if (e.key === '-' || e.key === '_') zoomOutBtn.click();
-  if (!selectedClip) return;
-  let {trackIdx, clipIdx} = selectedClip;
-  if (e.key === 'Delete' || e.key === 'Backspace') {
-    tracks[trackIdx].clips.splice(clipIdx, 1);
-    selectedClip = null;
-    render();
-  } else if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
-    copiedClip = JSON.parse(JSON.stringify(tracks[trackIdx].clips[clipIdx]));
-  } else if (e.key === 'v' && (e.ctrlKey || e.metaKey)) {
-    if (copiedClip) tracks[trackIdx].clips.push({...copiedClip, id: Math.random().toString(36).slice(2,9)});
-    render();
+// --- Rendering ---
+function render() {
+  renderTimeline();
+  renderTracks();
+}
+
+// --- Playback: Stable, true-rate, accurate ---
+playBtn.onclick = () => { playAll(); };
+pauseBtn.onclick = () => { stopAll(); };
+
+function playAll() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  stopAll();
+  let playStartAudioCtx = audioCtx.currentTime;
+  let playStartTime = playheadTime;
+  playing = true;
+  function step() {
+    let elapsed = audioCtx.currentTime - playStartAudioCtx;
+    let t = playStartTime + elapsed;
+    updatePlayhead(t);
+    if (t > MAX_TIME) { stopAll(); return; }
+    if (playing) playRequestId = requestAnimationFrame(step);
   }
-});
+  // Start all clips on all tracks, honoring mute/solo
+  let soloTracks = tracks.filter(t=>t.solo);
+  let playTracks = soloTracks.length ? soloTracks : tracks.filter(t=>!t.muted);
+  playTracks.forEach(track => {
+    track.clips.forEach(clip => {
+      if (clip.startTime+clip.duration < playheadTime) return;
+      let source = audioCtx.createBufferSource();
+      source.buffer = clip.audioBuffer;
+      let offset = Math.max(0, playheadTime - clip.startTime) + clip.offset;
+      let duration = Math.min(clip.duration - (offset - clip.offset), clip.audioBuffer.duration - offset);
+      source.connect(audioCtx.destination);
+      if (clip.startTime >= playheadTime) {
+        source.start(audioCtx.currentTime + (clip.startTime - playheadTime), clip.offset, clip.duration);
+      } else if (clip.startTime + clip.duration > playheadTime) {
+        source.start(audioCtx.currentTime, offset, duration);
+      }
+      if (!window._playSources) window._playSources = [];
+      window._playSources.push(source);
+    });
+  });
+  // Animate playhead
+  pauseBtn.disabled = false;
+  playBtn.disabled = true;
+  playRequestId = requestAnimationFrame(step);
+  if (metronomeEnabled) startMetronome();
+  setTimeout(stopAll, (MAX_TIME-playheadTime)*1000);
+}
+
+function stopAll() {
+  if (window._playSources) {
+    window._playSources.forEach(src => { try { src.stop(); } catch{} });
+    window._playSources = [];
+  }
+  playing = false;
+  if (playRequestId) cancelAnimationFrame(playRequestId);
+  pauseBtn.disabled = true;
+  playBtn.disabled = false;
+  stopMetronome();
+}
+
+// --- File Upload ---
+fileInput.onchange = async (e) => {
+  const files = e.target.files;
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  for (let file of files) {
+    const arrayBuffer = await file.arrayBuffer();
+    await new Promise((resolve) => {
+      audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
+        addClipToFirstTrack(buffer, 0, buffer.duration, undefined, undefined, file.name.split(".")[0]);
+        resolve();
+      });
+    });
+  }
+  fileInput.value = '';
+};
+
+// --- Add Track ---
+addTrackBtn.onclick = () => {
+  tracks.push(createTrack());
+  render();
+};
 
 // --- Metronome ---
 metronomeBtn.onclick = () => {
@@ -765,9 +821,11 @@ function init() {
   timeSigNum = DEFAULT_SIG_NUM;
   timeSigDen = DEFAULT_SIG_DEN;
   tracks = [];
+  selectedTrackIndex = 0;
   for (let i = 0; i < DEFAULT_TRACKS; i++) {
     tracks.push(createTrack());
   }
+  if (tracks.length > 0) tracks[0].selected = true;
   render();
 }
 window.onload = init;

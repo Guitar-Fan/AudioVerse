@@ -127,31 +127,188 @@ label.upload-btn input[type="file"] { display: none; }
   text-shadow: 0 2px 2px #000a;
 }
 
-.track {
-  background: var(--track-bg);
+.track-container {
+  display: flex;
   margin-bottom: 10px;
   border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.track-container:has(.track-header.selected) {
+  border-color: var(--accent);
+}
+
+.track-header {
+  width: 200px;
+  min-width: 200px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 8px;
+  border-right: 2px solid var(--timeline);
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.track-header.selected {
+  background: var(--accent);
+  color: #222;
+}
+
+.track-header.selected .track-name,
+.track-header.selected .track-number {
+  color: #222;
+}
+
+.track-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.track-number {
+  background: var(--timeline);
+  color: var(--accent);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+.track-header.selected .track-number {
+  background: #222;
+  color: var(--accent);
+}
+
+.track-name {
+  font-weight: bold;
+  font-size: 0.95em;
+  color: var(--text);
+  flex: 1;
+  cursor: text;
+}
+
+.track-controls-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.track-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--timeline);
+  background: var(--timeline);
+  color: var(--text2);
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.track-btn:hover {
+  background: var(--accent2);
+  color: #fff;
+}
+
+.track-btn.active {
+  border-color: var(--accent);
+}
+
+.arm-btn.active {
+  background: var(--accent2);
+  color: #fff;
+}
+
+.mute-btn.active {
+  background: #666;
+  color: #fff;
+}
+
+.solo-btn.active {
+  background: var(--accent);
+  color: #222;
+}
+
+.volume-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-left: 8px;
+}
+
+.volume-slider {
+  width: 60px;
+  height: 4px;
+  background: var(--timeline);
+  outline: none;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.volume-label {
+  font-size: 0.7em;
+  color: var(--text2);
+  min-width: 24px;
+  text-align: center;
+}
+
+.track {
+  flex: 1;
+  background: var(--track-bg);
   min-height: 90px;
   position: relative;
   overflow: visible;
   display: flex;
   align-items: flex-end;
-  min-width: 900px;
   border-bottom: 1px solid var(--timeline);
   transition: background 0.2s;
 }
 
-.track.muted { background: var(--muted); opacity: 0.65;}
+.track.selected {
+  background: color-mix(in srgb, var(--track-bg) 80%, var(--accent) 20%);
+}
+
+.track.muted { 
+  background: var(--muted); 
+  opacity: 0.65;
+}
 
 .track-label {
-  position: absolute;
-  left: -70px;
-  top: 36px;
-  width: 60px;
-  font-size: 1rem;
-  color: var(--text2);
-  text-align: right;
-  font-weight: bold;
+  display: none;
 }
 
 .clip {
