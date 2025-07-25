@@ -3,7 +3,7 @@ import random
 
 # --- Configuration ---
 TARGET_FILE = "lorem_output_random.txt" # The file to "type" into
-DURATION_SECONDS = 7200                  # 2 hours = 7200 seconds
+DURATION_SECONDS = 72000                  # 2 hours = 7200 seconds
 TOTAL_WORDS = 500000                       # Approximately how many words to "type" in total
 
 # Random delay range between "typing" chunks
