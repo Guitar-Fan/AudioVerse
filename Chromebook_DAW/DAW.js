@@ -39,6 +39,8 @@ let metronomeTimeout = null;
 let metronomeTickBuffer = null;
 let metronomeAccentBuffer = null;
 let contextMenuEl = null;
+let analyserNode = null;
+let spectrumAnimationId = null;
 
 // DOM Elements
 const recordBtn = document.getElementById('recordBtn');
@@ -100,9 +102,9 @@ function renderTimeline() {
   for (let bar = 0; bar <= getTotalBars(); bar++) {
     let left = bar * getSecPerBar() * PIXELS_PER_SEC;
     let marker = document.createElement('div');
-    marker.className = 'bar-marker';
+    marker.className = 'bar-marker grid-line';
     marker.style.left = left + 'px';
-    marker.style.height = '80%';
+    marker.style.height = '100%'; // full height for grid
     timelineDiv.appendChild(marker);
     let label = document.createElement('span');
     label.className = 'bar-label';
@@ -114,9 +116,9 @@ function renderTimeline() {
       for (let beat = 1; beat < timeSigNum; beat++) {
         let bleft = left + beat * getSecPerBeat() * PIXELS_PER_SEC;
         let bm = document.createElement('div');
-        bm.className = 'beat-marker';
+        bm.className = 'beat-marker grid-line';
         bm.style.left = bleft + 'px';
-        bm.style.height = '60%';
+        bm.style.height = '100%'; // full height for grid
         timelineDiv.appendChild(bm);
       }
     }
@@ -132,6 +134,44 @@ function renderTimeline() {
 // --- Tracks and Clips ---
 function renderTracks() {
   tracksDiv.innerHTML = '';
+  // Draw grid lines for bars/beats (under all tracks)
+  let gridOverlay = document.createElement('div');
+  gridOverlay.className = 'grid-overlay';
+  gridOverlay.style.position = 'absolute';
+  gridOverlay.style.top = '0';
+  gridOverlay.style.left = '200px'; // start after track header
+  gridOverlay.style.width = getTimelineWidth() + 'px';
+  gridOverlay.style.height = (tracks.length * 90) + 'px';
+  gridOverlay.style.pointerEvents = 'none';
+  gridOverlay.style.zIndex = '1';
+  // Add bar/beat lines
+  for (let bar = 0; bar <= getTotalBars(); bar++) {
+    let left = bar * getSecPerBar() * PIXELS_PER_SEC;
+    let marker = document.createElement('div');
+    marker.className = 'bar-marker grid-line';
+    marker.style.left = left + 'px';
+    marker.style.height = '100%';
+    marker.style.position = 'absolute';
+    marker.style.top = '0';
+    marker.style.width = '2px';
+    gridOverlay.appendChild(marker);
+    // Beats
+    if (bar < getTotalBars()) {
+      for (let beat = 1; beat < timeSigNum; beat++) {
+        let bleft = left + beat * getSecPerBeat() * PIXELS_PER_SEC;
+        let bm = document.createElement('div');
+        bm.className = 'beat-marker grid-line';
+        bm.style.left = bleft + 'px';
+        bm.style.height = '100%';
+        bm.style.position = 'absolute';
+        bm.style.top = '0';
+        bm.style.width = '1px';
+        gridOverlay.appendChild(bm);
+      }
+    }
+  }
+  tracksDiv.appendChild(gridOverlay);
+
   tracks.forEach((track, tIdx) => {
     // Track Container
     let trackContainer = document.createElement('div');
@@ -235,6 +275,8 @@ function renderTracks() {
     trackDiv.style.position = 'relative';
     trackDiv.style.background = track.color;
     trackDiv.dataset.track = tIdx;
+    trackDiv.style.minWidth = getTimelineWidth() + 'px';
+    trackDiv.style.marginLeft = '200px'; // align with timeline grid
 
     // Render Clips
     track.clips.forEach((clip, cIdx) => {
@@ -289,8 +331,8 @@ function renderTracks() {
       trackDiv.appendChild(clipDiv);
     });
 
-    // Live recording preview - only on armed tracks
-    if (isRecording && track.armed && liveRecordingBuffer.length > 0) {
+    // Live recording preview - only on selected track
+    if (isRecording && tIdx === selectedTrackIndex && liveRecordingBuffer.length > 0) {
       const recLeft = liveRecordingStart * PIXELS_PER_SEC;
       const recDuration = liveRecordingBuffer.length / (audioCtx ? audioCtx.sampleRate : 44100);
       const recWidth = Math.max(recDuration * PIXELS_PER_SEC, MIN_CLIP_WIDTH);
@@ -306,6 +348,8 @@ function renderTracks() {
       drawWaveform(recCanvas, liveRecordingBuffer, 0, recDuration, true);
       recDiv.appendChild(recCanvas);
       trackDiv.appendChild(recDiv);
+
+      // Spectrum canvas will be handled by drawSpectrum()
     }
 
     // Drag Over to Drop Clips
@@ -314,7 +358,11 @@ function renderTracks() {
       e.preventDefault();
       let data = JSON.parse(e.dataTransfer.getData('text/plain'));
       let relX = e.offsetX;
-      moveClip(data.tIdx, data.cIdx, tIdx, relX / PIXELS_PER_SEC);
+      // --- Snap to grid ---
+      let snapPx = PIXELS_PER_SEC * getSecPerBeat();
+      let snapped = Math.round(relX / snapPx) * snapPx;
+      let snappedTime = snapped / PIXELS_PER_SEC;
+      moveClip(data.tIdx, data.cIdx, tIdx, snappedTime);
     });
 
     // Track right-click context menu
@@ -364,15 +412,11 @@ function setTrackVolume(trackIndex, volume) {
 // --- Recording ---
 recordBtn.onclick = async () => {
   if (isRecording) return;
-  
-  // Find armed tracks or use selected track
-  let armedTracks = tracks.filter(t => t.armed);
-  if (armedTracks.length === 0) {
-    // Auto-arm selected track if no tracks are armed
-    tracks[selectedTrackIndex].armed = true;
-    render();
-  }
-  
+
+  // Only record on selected track
+  const trackIndex = selectedTrackIndex;
+  if (trackIndex < 0 || trackIndex >= tracks.length) return;
+
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
@@ -381,9 +425,14 @@ recordBtn.onclick = async () => {
   liveRecordingStart = playheadTime;
   let inputNode = audioCtx.createMediaStreamSource(stream);
 
+  // Setup analyser for spectrum
+  analyserNode = audioCtx.createAnalyser();
+  analyserNode.fftSize = 256;
+  inputNode.connect(analyserNode);
+
   // Live preview using ScriptProcessorNode for waveform
   let processor = audioCtx.createScriptProcessor(4096, 1, 1);
-  inputNode.connect(processor);
+  analyserNode.connect(processor);
   processor.connect(audioCtx.destination);
   processor.onaudioprocess = (e) => {
     let input = e.inputBuffer.getChannelData(0);
@@ -391,27 +440,25 @@ recordBtn.onclick = async () => {
     if (liveRecordingBuffer.length > audioCtx.sampleRate * 300) {
       processor.disconnect();
       inputNode.disconnect();
+      analyserNode.disconnect();
     }
     render();
   };
+
+  // Start spectrum animation
+  startSpectrumAnimation();
 
   mediaRecorder.ondataavailable = e => { recordedChunks.push(e.data); };
   mediaRecorder.onstop = async () => {
     processor.disconnect();
     inputNode.disconnect();
+    analyserNode.disconnect();
+    stopSpectrumAnimation();
     if (recordedChunks.length === 0) { isRecording = false; recordBtn.disabled = false; stopBtn.disabled = true; return; }
     const blob = new Blob(recordedChunks, { type: 'audio/webm' });
     const arrayBuffer = await blob.arrayBuffer();
     audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
-      // Add to armed tracks or selected track
-      let targetTracks = tracks.filter(t => t.armed);
-      if (targetTracks.length === 0) targetTracks = [tracks[selectedTrackIndex]];
-      
-      targetTracks.forEach(track => {
-        let trackIndex = tracks.indexOf(track);
-        addClipToTrack(trackIndex, buffer, liveRecordingStart, buffer.duration);
-      });
-      
+      addClipToTrack(trackIndex, buffer, liveRecordingStart, buffer.duration);
       liveRecordingBuffer = [];
       render();
     });
@@ -420,12 +467,91 @@ recordBtn.onclick = async () => {
     stopBtn.disabled = true;
   };
 
+  stopBtn.onclick = () => {
+    if (isRecording && mediaRecorder && mediaRecorder.state === "recording") {
+      mediaRecorder.stop();
+      isRecording = false;
+      recordBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+  };
+
   mediaRecorder.start();
   isRecording = true;
   recordBtn.disabled = true;
   stopBtn.disabled = false;
   if (metronomeEnabled) startMetronome();
 };
+
+// --- Spectrum Visualizer ---
+function startSpectrumAnimation() {
+  stopSpectrumAnimation();
+  spectrumAnimationId = requestAnimationFrame(drawSpectrum);
+}
+function stopSpectrumAnimation() {
+  if (spectrumAnimationId) cancelAnimationFrame(spectrumAnimationId);
+  spectrumAnimationId = null;
+}
+function drawSpectrum() {
+  if (!isRecording || !analyserNode) return;
+  const trackDivs = document.querySelectorAll('.track');
+  const trackDiv = trackDivs[selectedTrackIndex];
+  if (!trackDiv) return;
+  let spectrumCanvas = trackDiv.querySelector('.spectrum-canvas');
+  if (!spectrumCanvas) {
+    spectrumCanvas = document.createElement('canvas');
+    spectrumCanvas.className = 'spectrum-canvas';
+    spectrumCanvas.width = 180;
+    spectrumCanvas.height = 62;
+    spectrumCanvas.style.position = 'absolute';
+    spectrumCanvas.style.left = '8px';
+    spectrumCanvas.style.top = '15px';
+    spectrumCanvas.style.zIndex = 20;
+    spectrumCanvas.style.pointerEvents = 'none';
+    trackDiv.appendChild(spectrumCanvas);
+  }
+  const ctx = spectrumCanvas.getContext('2d');
+  ctx.clearRect(0,0,spectrumCanvas.width,spectrumCanvas.height);
+  let data = new Uint8Array(analyserNode.frequencyBinCount);
+  analyserNode.getByteFrequencyData(data);
+  ctx.fillStyle = 'rgba(0,180,255,0.7)';
+  for (let i = 0; i < data.length; i++) {
+    let val = data[i];
+    let x = i * spectrumCanvas.width / data.length;
+    let h = val * spectrumCanvas.height / 255;
+    ctx.fillRect(x, spectrumCanvas.height-h, spectrumCanvas.width/data.length-1, h);
+  }
+  spectrumAnimationId = requestAnimationFrame(drawSpectrum);
+}
+
+// --- Track Management Functions ---
+function selectTrack(trackIndex) {
+  tracks.forEach((track, idx) => {
+    track.selected = idx === trackIndex;
+  });
+  selectedTrackIndex = trackIndex;
+  render();
+}
+
+function toggleTrackArm(trackIndex) {
+  tracks[trackIndex].armed = !tracks[trackIndex].armed;
+  render();
+}
+
+function toggleTrackMute(trackIndex) {
+  tracks[trackIndex].muted = !tracks[trackIndex].muted;
+  render();
+}
+
+function toggleTrackSolo(trackIndex) {
+  tracks[trackIndex].solo = !tracks[trackIndex].solo;
+  render();
+}
+
+function setTrackVolume(trackIndex, volume) {
+  tracks[trackIndex].volume = volume;
+  render();
+}
 
 // --- Clip Management ---
 function addClipToTrack(trackIndex, buffer, startTime, duration, color, name) {
@@ -441,7 +567,11 @@ function addClipToFirstTrack(buffer, startTime, duration, color, name) {
 
 // --- Timeline and Playhead ---
 timelineDiv.onclick = (e) => {
-  playheadTime = e.offsetX / PIXELS_PER_SEC;
+  // --- Snap playhead to grid ---
+  let relX = e.offsetX;
+  let snapPx = PIXELS_PER_SEC * getSecPerBeat();
+  let snapped = Math.round(relX / snapPx) * snapPx;
+  playheadTime = snapped / PIXELS_PER_SEC;
   renderTimeline();
 };
 function updatePlayhead(t) {
@@ -837,3 +967,6 @@ document.body.addEventListener('mousedown', (e) => {
   if (contextMenuEl && !contextMenuEl.contains(e.target)) removeContextMenu();
   if (!e.target.className.includes('clip')) deselectAllClips(), render();
 });
+function deselectAllClips() {
+  tracks.forEach(track => track.clips.forEach(clip => clip.selected = false));
+}
