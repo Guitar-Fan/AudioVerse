@@ -1,0 +1,3 @@
+Emscripten command:
+source /usr/local/emsdk/emsdk_env.sh
+
