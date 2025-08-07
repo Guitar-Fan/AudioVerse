@@ -96,28 +96,70 @@ function getTimelineWidth() {
 function renderTimeline() {
   timelineDiv.innerHTML = '';
   timelineDiv.style.width = getTimelineWidth() + 'px';
-  // Draw bars and beats
-  for (let bar = 0; bar <= getTotalBars(); bar++) {
-    let left = bar * getSecPerBar() * PIXELS_PER_SEC;
+  const secPerBar = getSecPerBar();
+  const secPerBeat = getSecPerBeat();
+  const totalBars = getTotalBars();
+
+  // Determine subdivision based on zoom level
+  let subdivisions = 1;
+  if (zoomLevel > 1.5) subdivisions = 4; // 16th notes
+  else if (zoomLevel > 1.1) subdivisions = 2; // 8th notes
+
+  // Triplet grid always shown if zoomed in enough
+  const showTriplets = zoomLevel > 1.2;
+
+  for (let bar = 0; bar <= totalBars; bar++) {
+    let left = bar * secPerBar * PIXELS_PER_SEC;
+    // Bar marker
     let marker = document.createElement('div');
     marker.className = 'bar-marker';
     marker.style.left = left + 'px';
     marker.style.height = '80%';
     timelineDiv.appendChild(marker);
+
+    // Bar label
     let label = document.createElement('span');
     label.className = 'bar-label';
     label.innerText = `${bar+1}`;
     label.style.left = (left+2) + 'px';
     timelineDiv.appendChild(label);
-    // Beats for this bar
-    if (bar < getTotalBars()) {
+
+    // Beat markers
+    if (bar < totalBars) {
       for (let beat = 1; beat < timeSigNum; beat++) {
-        let bleft = left + beat * getSecPerBeat() * PIXELS_PER_SEC;
+        let bleft = left + beat * secPerBeat * PIXELS_PER_SEC;
         let bm = document.createElement('div');
         bm.className = 'beat-marker';
         bm.style.left = bleft + 'px';
         bm.style.height = '60%';
         timelineDiv.appendChild(bm);
+
+        // Subdivision markers (e.g., 8th/16th notes)
+        if (subdivisions > 1) {
+          for (let sub = 1; sub < subdivisions; sub++) {
+            let subLeft = bleft + (sub * secPerBeat * PIXELS_PER_SEC) / subdivisions;
+            let subDiv = document.createElement('div');
+            subDiv.className = 'beat-marker grid-line';
+            subDiv.style.left = subLeft + 'px';
+            subDiv.style.height = '40%';
+            subDiv.style.opacity = '0.35';
+            timelineDiv.appendChild(subDiv);
+          }
+        }
+
+        // Triplet grid markers
+        if (showTriplets) {
+          for (let trip = 1; trip < 3; trip++) {
+            let tripLeft = bleft + (trip * secPerBeat * PIXELS_PER_SEC) / 3;
+            let tripDiv = document.createElement('div');
+            tripDiv.className = 'beat-marker grid-line';
+            tripDiv.style.left = tripLeft + 'px';
+            tripDiv.style.height = '30%';
+            tripDiv.style.background = '#ff9500';
+            tripDiv.style.opacity = '0.25';
+            timelineDiv.appendChild(tripDiv);
+          }
+        }
       }
     }
   }
@@ -427,6 +469,14 @@ recordBtn.onclick = async () => {
   if (metronomeEnabled) startMetronome();
 };
 
+// Add this handler to allow stopping recording via stopBtn
+stopBtn.onclick = () => {
+  if (isRecording && mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+  }
+  stopAll();
+};
+
 // --- Clip Management ---
 function addClipToTrack(trackIndex, buffer, startTime, duration, color, name) {
   if (trackIndex >= tracks.length) return;
@@ -441,12 +491,70 @@ function addClipToFirstTrack(buffer, startTime, duration, color, name) {
 
 // --- Timeline and Playhead ---
 timelineDiv.onclick = (e) => {
-  playheadTime = e.offsetX / PIXELS_PER_SEC;
+  let rawTime = e.offsetX / PIXELS_PER_SEC;
+  let gridTimes = getGridTimes();
+
+  // Collect all clip edges
+  let clipEdges = [];
+  tracks.forEach(track => {
+    track.clips.forEach(clip => {
+      clipEdges.push(clip.startTime);
+      clipEdges.push(clip.startTime + clip.duration);
+    });
+  });
+
+  // Combine grid and clip edges
+  let snapPoints = gridTimes.concat(clipEdges);
+
+  // Find nearest snap point
+  let minDist = Infinity, snapTime = rawTime;
+  snapPoints.forEach(t => {
+    let dist = Math.abs(t - rawTime);
+    if (dist < minDist) {
+      minDist = dist;
+      snapTime = t;
+    }
+  });
+
+  playheadTime = snapTime;
   renderTimeline();
 };
-function updatePlayhead(t) {
-  playheadTime = t;
-  renderTimeline();
+
+// Helper: get all grid times (bars, beats, subdivisions, triplets)
+function getGridTimes() {
+  const gridTimes = [];
+  const secPerBar = getSecPerBar();
+  const secPerBeat = getSecPerBeat();
+  const totalBars = getTotalBars();
+  let subdivisions = 1;
+  if (zoomLevel > 1.5) subdivisions = 4;
+  else if (zoomLevel > 1.1) subdivisions = 2;
+  const showTriplets = zoomLevel > 1.2;
+
+  for (let bar = 0; bar <= totalBars; bar++) {
+    let barTime = bar * secPerBar;
+    gridTimes.push(barTime);
+    if (bar < totalBars) {
+      for (let beat = 1; beat < timeSigNum; beat++) {
+        let beatTime = barTime + beat * secPerBeat;
+        gridTimes.push(beatTime);
+
+        // Subdivisions
+        if (subdivisions > 1) {
+          for (let sub = 1; sub < subdivisions; sub++) {
+            gridTimes.push(beatTime + (sub * secPerBeat) / subdivisions);
+          }
+        }
+        // Triplets
+        if (showTriplets) {
+          for (let trip = 1; trip < 3; trip++) {
+            gridTimes.push(beatTime + (trip * secPerBeat) / 3);
+          }
+        }
+      }
+    }
+  }
+  return gridTimes;
 }
 
 // --- Context Menus ---

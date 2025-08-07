@@ -20,7 +20,6 @@ body {
   font-family: 'Segoe UI', Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
-  min-width: 900px;
   height: 100vh;
   overflow: hidden;
 }
@@ -81,10 +80,12 @@ label.upload-btn input[type="file"] { display: none; }
   box-shadow: 0 4px 24px #0003;
   padding: 0.7rem 1rem 1.5rem 1rem;
   min-height: 420px;
-  overflow: auto;
+  overflow-x: auto; /* Enable horizontal scroll */
+  overflow-y: auto;
   border: 2px solid var(--panel);
   position: relative;
   height: 80vh;
+  width: 100%;
 }
 
 #timeline {
@@ -93,9 +94,10 @@ label.upload-btn input[type="file"] { display: none; }
   border-bottom: 2px solid var(--timeline);
   background: var(--timeline);
   user-select: none;
-  min-width: 900px;
   z-index: 10;
   font-size: 1em;
+  width: 100%;
+  overflow-x: auto;
 }
 
 .bar-marker {
