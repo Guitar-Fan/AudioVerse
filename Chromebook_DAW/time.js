@@ -14,6 +14,7 @@ const CLIP_COLORS = [
 const TRACK_COLORS = [
   "#374151", "#232b36", "#2d3748", "#3b4252", "#223",
 ];
+const TRACK_HEADER_WIDTH = 200; // px, must match .track-header width in CSS
 
 // --- State ---
 let tracks = [];
@@ -98,12 +99,18 @@ function getSecPerBeat() { return 60 / bpm; }
 function getSecPerBar() { return getSecPerBeat() * timeSigNum; }
 function getTotalBars() { return Math.ceil(MAX_TIME / getSecPerBar()); }
 function getTimelineWidth() {
-  return Math.max(getTotalBars() * getSecPerBar() * PIXELS_PER_SEC, 900);
+  // Add TRACK_HEADER_WIDTH to timeline width so grid/playhead align with clips
+  return TRACK_HEADER_WIDTH + Math.max(getTotalBars() * getSecPerBar() * PIXELS_PER_SEC, 900);
 }
+
+let autoScrollEnabled = true; // default to enabled
 
 function renderTimeline() {
   timelineDiv.innerHTML = '';
   timelineDiv.style.width = getTimelineWidth() + 'px';
+  timelineDiv.style.position = 'relative';
+
+  const gridOffset = TRACK_HEADER_WIDTH;
   const secPerBar = getSecPerBar();
   const secPerBeat = getSecPerBeat();
   const totalBars = getTotalBars();
@@ -117,7 +124,7 @@ function renderTimeline() {
   const showTriplets = zoomLevel > 1.2;
 
   for (let bar = 0; bar <= totalBars; bar++) {
-    let left = bar * secPerBar * PIXELS_PER_SEC;
+    let left = gridOffset + bar * secPerBar * PIXELS_PER_SEC;
     // Bar marker
     let marker = document.createElement('div');
     marker.className = 'bar-marker';
@@ -135,7 +142,7 @@ function renderTimeline() {
     // Beat markers
     if (bar < totalBars) {
       for (let beat = 1; beat < timeSigNum; beat++) {
-        let bleft = left + beat * secPerBeat * PIXELS_PER_SEC;
+        let bleft = gridOffset + left - gridOffset + beat * secPerBeat * PIXELS_PER_SEC;
         let bm = document.createElement('div');
         bm.className = 'beat-marker';
         bm.style.left = bleft + 'px';
@@ -174,7 +181,7 @@ function renderTimeline() {
   // Playhead
   let playhead = document.createElement('div');
   playhead.className = 'playhead';
-  playhead.style.left = (playheadTime * PIXELS_PER_SEC) + 'px';
+  playhead.style.left = (gridOffset + playheadTime * PIXELS_PER_SEC) + 'px';
   playhead.style.height = '100%';
   timelineDiv.appendChild(playhead);
 }
@@ -285,6 +292,8 @@ function renderTracks() {
     trackDiv.style.position = 'relative';
     trackDiv.style.background = track.color;
     trackDiv.dataset.track = tIdx;
+    // Remove marginLeft so clips start at measure 1
+    // trackDiv.style.marginLeft = TRACK_HEADER_WIDTH + 'px'; // REMOVE THIS LINE
 
     // Render Clips with enhanced features
     track.clips.forEach((clip, cIdx) => {
@@ -383,8 +392,8 @@ function renderTracks() {
       showTrackContextMenu(e, tIdx, trackDiv);
     });
     
-    // Add width to track area to match timeline
-    trackDiv.style.minWidth = getTimelineWidth() + 'px';
+    // Add width to track area to match timeline minus header
+    trackDiv.style.minWidth = (getTimelineWidth() - TRACK_HEADER_WIDTH) + 'px';
 
     trackContainer.appendChild(trackHeader);
     trackContainer.appendChild(trackDiv);
@@ -1235,3 +1244,43 @@ function init() {
 
 // Ensure initialization after DOM is loaded
 window.onload = init;
+
+// Replace updatePlayhead to auto-scroll horizontally to keep playhead centered if enabled
+function updatePlayhead(t) {
+  playheadTime = t;
+  renderTimeline();
+
+  if (autoScrollEnabled) {
+    const workspaceEl = document.getElementById('workspace');
+    const gridOffset = TRACK_HEADER_WIDTH;
+    const playheadX = gridOffset + playheadTime * PIXELS_PER_SEC;
+    const workspaceWidth = workspaceEl.clientWidth;
+    // Scroll so playhead is centered, but not before start or after end
+    const scrollLeft = Math.max(0, playheadX - workspaceWidth / 2);
+    workspaceEl.scrollLeft = scrollLeft;
+  }
+}
+
+// --- Timeline Context Menu for Auto-scroll ---
+timelineDiv.addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+  removeContextMenu();
+  const menu = document.createElement('div');
+  menu.className = 'context-menu';
+  menu.style.left = e.clientX + 'px';
+  menu.style.top = e.clientY + 'px';
+
+  let autoScrollItem = document.createElement('div');
+  autoScrollItem.className = 'context-menu-item';
+  autoScrollItem.innerHTML = `<input type="checkbox" id="autoScrollChk" ${autoScrollEnabled ? 'checked' : ''} style="margin-right:8px;vertical-align:middle;">Auto-scroll during playback`;
+  autoScrollItem.onclick = (ev) => {
+    ev.stopPropagation();
+    autoScrollEnabled = !autoScrollEnabled;
+    removeContextMenu();
+  };
+  menu.appendChild(autoScrollItem);
+
+  document.body.appendChild(menu);
+  contextMenuEl = menu;
+  document.addEventListener('mousedown', removeContextMenu, {once: true});
+});
