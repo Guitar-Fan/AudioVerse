@@ -101,84 +101,6 @@ function getTimelineWidth() {
   return Math.max(getTotalBars() * getSecPerBar() * PIXELS_PER_SEC, 900);
 }
 
-function renderTimeline() {
-  timelineDiv.innerHTML = '';
-  timelineDiv.style.width = getTimelineWidth() + 'px';
-  const secPerBar = getSecPerBar();
-  const secPerBeat = getSecPerBeat();
-  const totalBars = getTotalBars();
-
-  // Determine subdivision based on zoom level
-  let subdivisions = 1;
-  if (zoomLevel > 1.5) subdivisions = 4; // 16th notes
-  else if (zoomLevel > 1.1) subdivisions = 2; // 8th notes
-
-  // Triplet grid always shown if zoomed in enough
-  const showTriplets = zoomLevel > 1.2;
-
-  for (let bar = 0; bar <= totalBars; bar++) {
-    let left = bar * secPerBar * PIXELS_PER_SEC;
-    // Bar marker
-    let marker = document.createElement('div');
-    marker.className = 'bar-marker';
-    marker.style.left = left + 'px';
-    marker.style.height = '80%';
-    timelineDiv.appendChild(marker);
-
-    // Bar label
-    let label = document.createElement('span');
-    label.className = 'bar-label';
-    label.innerText = `${bar+1}`;
-    label.style.left = (left+2) + 'px';
-    timelineDiv.appendChild(label);
-
-    // Beat markers
-    if (bar < totalBars) {
-      for (let beat = 1; beat < timeSigNum; beat++) {
-        let bleft = left + beat * secPerBeat * PIXELS_PER_SEC;
-        let bm = document.createElement('div');
-        bm.className = 'beat-marker';
-        bm.style.left = bleft + 'px';
-        bm.style.height = '60%';
-        timelineDiv.appendChild(bm);
-
-        // Subdivision markers (e.g., 8th/16th notes)
-        if (subdivisions > 1) {
-          for (let sub = 1; sub < subdivisions; sub++) {
-            let subLeft = bleft + (sub * secPerBeat * PIXELS_PER_SEC) / subdivisions;
-            let subDiv = document.createElement('div');
-            subDiv.className = 'beat-marker grid-line';
-            subDiv.style.left = subLeft + 'px';
-            subDiv.style.height = '40%';
-            subDiv.style.opacity = '0.35';
-            timelineDiv.appendChild(subDiv);
-          }
-        }
-
-        // Triplet grid markers
-        if (showTriplets) {
-          for (let trip = 1; trip < 3; trip++) {
-            let tripLeft = bleft + (trip * secPerBeat * PIXELS_PER_SEC) / 3;
-            let tripDiv = document.createElement('div');
-            tripDiv.className = 'beat-marker grid-line';
-            tripDiv.style.left = tripLeft + 'px';
-            tripDiv.style.height = '30%';
-            tripDiv.style.background = '#ff9500';
-            tripDiv.style.opacity = '0.25';
-            timelineDiv.appendChild(tripDiv);
-          }
-        }
-      }
-    }
-  }
-  // Playhead
-  let playhead = document.createElement('div');
-  playhead.className = 'playhead';
-  playhead.style.left = (playheadTime * PIXELS_PER_SEC) + 'px';
-  playhead.style.height = '100%';
-  timelineDiv.appendChild(playhead);
-}
-
 // --- Tracks and Clips ---
 function renderTracks() {
   tracksDiv.innerHTML = '';
@@ -522,108 +444,67 @@ function addClipToFirstTrack(buffer, startTime, duration, color, name) {
   addClipToTrack(selectedTrackIndex, buffer, startTime, duration, color, name);
 }
 
-// --- Timeline and Playhead ---
-timelineDiv.onclick = (e) => {
-  let rawTime = e.offsetX / PIXELS_PER_SEC;
-  let gridTimes = getGridTimes();
-
-  // Collect all clip edges
-  let clipEdges = [];
-  tracks.forEach(track => {
-    track.clips.forEach(clip => {
-      clipEdges.push(clip.startTime);
-      clipEdges.push(clip.startTime + clip.duration);
-    });
-  });
-
-  // Combine grid and clip edges
-  let snapPoints = gridTimes.concat(clipEdges);
-
-  // Find nearest snap point
-  let minDist = Infinity, snapTime = rawTime;
-  snapPoints.forEach(t => {
-    let dist = Math.abs(t - rawTime);
-    if (dist < minDist) {
-      minDist = dist;
-      snapTime = t;
-    }
-  });
-
-  playheadTime = snapTime;
-  renderTimeline();
-};
-
-// Helper: get all grid times (bars, beats, subdivisions, triplets)
-function getGridTimes() {
-  const gridTimes = [];
-  const secPerBar = getSecPerBar();
-  const secPerBeat = getSecPerBeat();
-  const totalBars = getTotalBars();
-  let subdivisions = 1;
-  if (zoomLevel > 1.5) subdivisions = 4;
-  else if (zoomLevel > 1.1) subdivisions = 2;
-  const showTriplets = zoomLevel > 1.2;
-
-  for (let bar = 0; bar <= totalBars; bar++) {
-    let barTime = bar * secPerBar;
-    gridTimes.push(barTime);
-    if (bar < totalBars) {
-      for (let beat = 1; beat < timeSigNum; beat++) {
-        let beatTime = barTime + beat * secPerBeat;
-        gridTimes.push(beatTime);
-
-        // Subdivisions
-        if (subdivisions > 1) {
-          for (let sub = 1; sub < subdivisions; sub++) {
-            gridTimes.push(beatTime + (sub * secPerBeat) / subdivisions);
-          }
-        }
-        // Triplets
-        if (showTriplets) {
-          for (let trip = 1; trip < 3; trip++) {
-            gridTimes.push(beatTime + (trip * secPerBeat) / 3);
-          }
-        }
-      }
-    }
-  }
-  return gridTimes;
-}
-
-// --- Audio Processing Setup ---
-function initAudioContext() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    // Master gain node
-    masterGainNode = audioCtx.createGain();
-    masterGainNode.connect(audioCtx.destination);
-    
-    // Analyser for visualization
-    analyserNode = audioCtx.createAnalyser();
-    analyserNode.fftSize = 2048;
-    analyserNode.connect(masterGainNode);
-  }
-  return audioCtx;
-}
-
-function getTrackGainNode(trackIndex) {
-  if (!trackGainNodes.has(trackIndex)) {
-    const gainNode = audioCtx.createGain();
-    gainNode.connect(analyserNode);
-    trackGainNodes.set(trackIndex, gainNode);
-  }
-  return trackGainNodes.get(trackIndex);
-}
-
-function createTrackFilter(trackIndex, type = 'lowpass', frequency = 1000, Q = 1) {
+// --- Track Playback ---
+function playTrack(trackIdx) {
   if (!audioCtx) initAudioContext();
-  const filter = audioCtx.createBiquadFilter();
-  filter.type = type;
-  filter.frequency.value = frequency;
-  filter.Q.value = Q;
-  filterNodes.set(trackIndex, filter);
-  return filter;
+  stopAll();
+  playing = true;
+
+  const track = tracks[trackIdx];
+  const trackGain = getTrackGainNode(trackIdx);
+  trackGain.gain.value = track.volume;
+
+  // Ensure gain node is connected to analyser/master
+  if (!trackGain._connected) {
+    trackGain.disconnect();
+    trackGain.connect(analyserNode);
+    trackGain._connected = true;
+  }
+
+  track.clips.forEach(clip => {
+    if (!clip.audioBuffer) return;
+
+    let source = audioCtx.createBufferSource();
+    source.buffer = clip.audioBuffer;
+
+    // Routing: source -> (optional filter) -> trackGain
+    let lastNode = source;
+    if (filterNodes.has(trackIdx)) {
+      lastNode.connect(filterNodes.get(trackIdx));
+      lastNode = filterNodes.get(trackIdx);
+    }
+    lastNode.connect(trackGain);
+
+    // Calculate when to start and what offset/duration to play
+    let startAt = Math.max(clip.startTime, playheadTime);
+    let offset = clip.offset + Math.max(0, playheadTime - clip.startTime);
+    let duration = Math.min(clip.duration - (offset - clip.offset), clip.audioBuffer.duration - offset);
+
+    // Schedule playback
+    if (clip.startTime >= playheadTime) {
+      // Starts in the future
+      source.start(audioCtx.currentTime + (clip.startTime - playheadTime), clip.offset, clip.duration);
+    } else if (clip.startTime + clip.duration > playheadTime) {
+      // Already started, play from offset
+      source.start(audioCtx.currentTime, offset, duration);
+    }
+  });
+
+  function step() {
+    if (!playing) return;
+    playRequestId = requestAnimationFrame(step);
+  }
+  playRequestId = requestAnimationFrame(step);
+}
+
+function stopAll() {
+  if (window._playSources) {
+    window._playSources.forEach(src => { try { src.stop(); } catch{} });
+    window._playSources = [];
+  }
+  playing = false;
+  if (playRequestId) cancelAnimationFrame(playRequestId);
+  stopMetronome();
 }
 
 // --- Copy/Paste Functionality ---
@@ -1102,7 +983,6 @@ function drawWaveform(canvas, audioBufferOrBuffer, offset, duration, isRawBuffer
 
 // --- Rendering ---
 function render() {
-  renderTimeline();
   renderTracks();
 }
 
@@ -1193,8 +1073,6 @@ function stopAll() {
   }
   playing = false;
   if (playRequestId) cancelAnimationFrame(playRequestId);
-  pauseBtn.disabled = true;
-  playBtn.disabled = false;
   stopMetronome();
 }
 
