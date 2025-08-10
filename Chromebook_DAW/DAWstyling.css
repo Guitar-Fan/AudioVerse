@@ -461,58 +461,64 @@ label.upload-btn input[type="file"] { display: none; }
   position: fixed !important;
   background: #232b36;
   color: #eee;
-  border: 1.5px solid #232b36;
-  border-radius: 7px;
+  border: 1.5px solid #374151;
+  border-radius: 6px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.8);
   z-index: 10000 !important;
-  min-width: 180px;
-  padding: 0.2em 0;
-  font-size: 1em;
+  min-width: 160px;
+  max-width: 250px;
+  padding: 0.15em 0;
+  font-size: 0.85em;
   display: block !important;
   pointer-events: auto;
+  max-height: 80vh;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .context-menu .context-menu-item {
-  padding: 0.6em 1.2em;
+  padding: 0.4em 0.8em;
   cursor: pointer;
   user-select: none;
   transition: background 0.13s;
-  border-bottom: 1px solid #374151;
+  border-bottom: 1px solid #2d3748;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .context-menu .context-menu-item:last-child {
   border-bottom: none;
 }
 
-.context-menu .context-menu-item:hover {
+.context-menu .context-menu-item:hover:not(.disabled) {
   background: #374151;
 }
 
-.context-menu .context-menu-item[disabled] {
+.context-menu .context-menu-item.disabled {
   opacity: 0.5;
   cursor: not-allowed;
   color: #888;
 }
 
-.context-menu .context-menu-item[disabled]:hover {
+.context-menu .context-menu-item.disabled:hover {
   background: transparent;
 }
 
 .context-menu .context-menu-sep {
   border-top: 1px solid #546;
-  margin: 2px 0;
+  margin: 0.1em 0;
   height: 1px;
 }
 
 /* Color Picker */
 .color-picker {
-  margin-left: 0.6em;
+  margin-left: 0.4em;
   vertical-align: middle;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border: none;
   border-radius: 50%;
   cursor: pointer;
