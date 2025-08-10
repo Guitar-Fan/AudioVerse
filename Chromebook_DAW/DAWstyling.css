@@ -491,6 +491,16 @@ label.upload-btn input[type="file"] { display: none; }
   background: #374151;
 }
 
+.context-menu .context-menu-item[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #888;
+}
+
+.context-menu .context-menu-item[disabled]:hover {
+  background: transparent;
+}
+
 .context-menu .context-menu-sep {
   border-top: 1px solid #546;
   margin: 2px 0;

@@ -1160,65 +1160,48 @@ function removeContextMenu() {
   contextMenuEl = null;
 }
 // --- Clip DAW Actions ---
-function splitClip(tIdx, cIdx, relPos) {
+function splitClip(tIdx, cIdx, splitTime) {
   let clip = tracks[tIdx].clips[cIdx];
-  const splitSec = clip.duration * relPos;
-  if (splitSec < 0.01 || splitSec > clip.duration - 0.01) return;
-  let first = createClip(clip.audioBuffer, clip.startTime, splitSec, clip.offset, clip.color, clip.name);
-  let second = createClip(clip.audioBuffer, clip.startTime + splitSec, clip.duration - splitSec, clip.offset + splitSec, clip.color, clip.name);
-  tracks[tIdx].clips.splice(cIdx, 1, first, second);
+  
+  // Validate that split time is within the clip bounds
+  if (splitTime <= clip.startTime || splitTime >= clip.startTime + clip.duration) {
+    console.log('Split time is outside clip bounds');
+    return;
+  }
+  
+  // Calculate the split position relative to clip start
+  const splitOffset = splitTime - clip.startTime;
+  
+  // Create first clip (from start to split point)
+  let firstClip = createClip(
+    clip.audioBuffer, 
+    clip.startTime, 
+    splitOffset, 
+    clip.offset, 
+    clip.color, 
+    clip.name + " (1)"
+  );
+  
+  // Create second clip (from split point to end)
+  let secondClip = createClip(
+    clip.audioBuffer, 
+    splitTime, 
+    clip.duration - splitOffset, 
+    clip.offset + splitOffset, 
+    clip.color, 
+    clip.name + " (2)"
+  );
+  
+  // Replace original clip with the two new clips
+  tracks[tIdx].clips.splice(cIdx, 1, firstClip, secondClip);
+  
+  // Sort clips by start time to maintain order
+  tracks[tIdx].clips.sort((a, b) => a.startTime - b.startTime);
+  
+  saveState();
   render();
 }
-function duplicateClip(tIdx, cIdx) {
-  let orig = tracks[tIdx].clips[cIdx];
-  let dup = createClip(orig.audioBuffer, orig.startTime + orig.duration + 0.15, orig.duration, orig.offset, orig.color, orig.name + " Copy");
-  tracks[tIdx].clips.push(dup);
-  render();
-}
-function renameClip(tIdx, cIdx) {
-  let newName = prompt("Enter new name for clip:", tracks[tIdx].clips[cIdx].name);
-  if (newName) { tracks[tIdx].clips[cIdx].name = newName; render(); }
-}
-function reverseClip(tIdx, cIdx) {
-  let clip = tracks[tIdx].clips[cIdx];
-  let ch = clip.audioBuffer.getChannelData(0);
-  let reversed = new Float32Array(ch.length);
-  for(let i=0; i<ch.length; i++) reversed[i] = ch[ch.length-1-i];
-  let buffer = audioCtx.createBuffer(1, ch.length, clip.audioBuffer.sampleRate);
-  buffer.copyToChannel(reversed, 0);
-  clip.audioBuffer = buffer;
-  render();
-}
-function normalizeClip(tIdx, cIdx) {
-  let clip = tracks[tIdx].clips[cIdx];
-  let ch = clip.audioBuffer.getChannelData(0);
-  let peak = Math.max(...ch.map(Math.abs));
-  if (peak < 0.01) return;
-  for(let i=0; i<ch.length; i++) ch[i] /= peak;
-  render();
-}
-function changeClipColor(tIdx, cIdx, color) {
-  tracks[tIdx].clips[cIdx].color = color;
-  render();
-}
-function exportClip(tIdx, cIdx) {
-  let clip = tracks[tIdx].clips[cIdx];
-  let wav = audioBufferToWav(clip.audioBuffer, clip.offset, clip.duration);
-  let blob = new Blob([wav], {type: 'audio/wav'});
-  let url = URL.createObjectURL(blob);
-  let a = document.createElement('a');
-  a.href = url;
-  a.download = (clip.name||"Clip") + ".wav";
-  a.click();
-  setTimeout(()=>URL.revokeObjectURL(url), 1000);
-}
-function moveClipToNewTrack(tIdx, cIdx) {
-  let clip = tracks[tIdx].clips.splice(cIdx, 1)[0];
-  let tr = createTrack();
-  tr.clips.push(clip);
-  tracks.push(tr);
-  render();
-}
+
 // --- Track DAW Actions ---
 function renameTrack(tIdx) {
   let newName = prompt("Enter new track name:", tracks[tIdx].label);
@@ -1585,15 +1568,20 @@ timelineDiv.addEventListener('contextmenu', function(e) {
 
       safeCall(selectClip, tIdx, cIdx);
 
-      const rect = clipEl.getBoundingClientRect();
-      const rel = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
       const clip = tracks[tIdx].clips[cIdx];
+      
+      // Check if playhead is within this clip for split option
+      const canSplit = playheadTime > clip.startTime && playheadTime < clip.startTime + clip.duration;
 
       makeMenu([
         { label: 'Copy', onClick: () => safeCall(copySelectedClip) },
         { label: 'Paste', onClick: () => safeCall(pasteClip) },
         { sep: true },
-        { label: 'Split at cursor', onClick: () => safeCall(splitClip, tIdx, cIdx, rel) },
+        { 
+          label: canSplit ? 'Split at Playhead' : 'Split at Playhead (not in range)', 
+          onClick: canSplit ? () => safeCall(splitClip, tIdx, cIdx, playheadTime) : null,
+          disabled: !canSplit
+        },
         { label: 'Delete', onClick: () => { tracks[tIdx].clips.splice(cIdx, 1); safeCall(saveState); safeCall(render); } },
         { label: 'Duplicate', onClick: () => safeCall(duplicateClip, tIdx, cIdx) },
         { label: 'Quantize', onClick: () => { safeCall(selectClip, tIdx, cIdx); safeCall(quantizeSelectedClip); } },
