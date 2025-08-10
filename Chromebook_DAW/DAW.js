@@ -47,6 +47,7 @@ let trackGainNodes = new Map(); // Per-track gain nodes
 let clipboard = null; // For copy/paste operations
 let undoStack = [];
 let redoStack = [];
+let activeAudioSources = []; // Track active audio sources for proper stopping
 
 // DOM Elements
 const recordBtn = document.getElementById('recordBtn');
@@ -444,16 +445,25 @@ recordBtn.onclick = async () => {
   analyserNode.connect(recordGain);
   recordGain.connect(audioCtx.destination);
 
-  // Live preview processing
+  // Live preview processing - FIX THIS PART
   let processor = audioCtx.createScriptProcessor(4096, 1, 1);
   inputNode.connect(processor);
+  processor.connect(audioCtx.destination); // Connect to hear the input
+  
   processor.onaudioprocess = (e) => {
+    if (!isRecording) return;
+    
     let input = e.inputBuffer.getChannelData(0);
-    liveRecordingBuffer.push(...input);
+    // Convert Float32Array to regular array and add to buffer
+    liveRecordingBuffer = liveRecordingBuffer.concat(Array.from(input));
+    
+    // Limit buffer size to prevent memory issues
     if (liveRecordingBuffer.length > audioCtx.sampleRate * 300) {
       processor.disconnect();
       inputNode.disconnect();
     }
+    
+    // Trigger re-render to show recording preview
     render();
   };
 
@@ -505,6 +515,160 @@ stopBtn.onclick = () => {
   stopAll();
 };
 
+// --- Audio Playback Functions (MODIFY EXISTING) ---
+function playAll() {
+  if (playing) return;
+  
+  initAudioContext();
+  
+  // Ensure audio context is running
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().then(() => {
+      startPlayback();
+    });
+  } else {
+    startPlayback();
+  }
+}
+
+function startPlayback() {
+  playing = true;
+  playBtn.disabled = true;
+  pauseBtn.disabled = false;
+  
+  const startTime = audioCtx.currentTime;
+  const startOffset = playheadTime;
+  
+  console.log('Starting playback at', startOffset, 'seconds'); // Debug log
+  
+  // Clear any existing sources
+  stopAllAudioSources();
+  
+  // Start metronome if enabled
+  if (metronomeEnabled) startMetronome();
+  
+  // Schedule all clips for playback
+  let activeSourcesCount = 0;
+  tracks.forEach((track, trackIndex) => {
+    if (track.muted) return;
+    
+    // Check if any track is soloed
+    const hasSoloTracks = tracks.some(t => t.solo);
+    if (hasSoloTracks && !track.solo) return;
+    
+    const trackGain = getTrackGainNode(trackIndex);
+    trackGain.gain.value = track.volume;
+    
+    track.clips.forEach(clip => {
+      if (!clip.audioBuffer) return;
+      
+      const clipStartTime = clip.startTime;
+      const clipEndTime = clipStartTime + clip.duration;
+      
+      // Only play clips that intersect with current playhead position
+      if (clipEndTime > startOffset) {
+        const source = audioCtx.createBufferSource();
+        source.buffer = clip.audioBuffer;
+        source.connect(trackGain);
+        
+        // Calculate when to start playing this clip
+        const playDelay = Math.max(0, clipStartTime - startOffset);
+        const sourceOffset = Math.max(0, startOffset - clipStartTime) + clip.offset;
+        const sourceDuration = Math.min(clip.duration, clipEndTime - Math.max(startOffset, clipStartTime));
+        
+        if (sourceDuration > 0) {
+          console.log('Playing clip:', clip.name, 'delay:', playDelay, 'offset:', sourceOffset, 'duration:', sourceDuration); // Debug log
+          
+          // Track this source so we can stop it later
+          activeAudioSources.push(source);
+          
+          // Set up automatic cleanup when source ends
+          source.onended = () => {
+            const index = activeAudioSources.indexOf(source);
+            if (index > -1) {
+              activeAudioSources.splice(index, 1);
+            }
+          };
+          
+          source.start(startTime + playDelay, sourceOffset, sourceDuration);
+          activeSourcesCount++;
+        }
+      }
+    });
+  });
+  
+  console.log('Active audio sources:', activeSourcesCount); // Debug log
+  
+  // Update playhead during playback
+  const updatePlayheadLoop = () => {
+    if (!playing) return;
+    
+    playheadTime = startOffset + (audioCtx.currentTime - startTime);
+    
+    // Auto-scroll if enabled
+    if (autoScrollEnabled) {
+      const workspaceEl = document.getElementById('workspace');
+      const gridOffset = TRACK_HEADER_WIDTH;
+      const playheadX = gridOffset + playheadTime * PIXELS_PER_SEC;
+      const workspaceWidth = workspaceEl.clientWidth;
+      const scrollLeft = Math.max(0, playheadX - workspaceWidth / 2);
+      workspaceEl.scrollLeft = scrollLeft;
+    }
+    
+    renderTimeline();
+    
+    // Stop at max time
+    if (playheadTime >= MAX_TIME) {
+      stopAll();
+      return;
+    }
+    
+    playRequestId = requestAnimationFrame(updatePlayheadLoop);
+  };
+  
+  updatePlayheadLoop();
+}
+
+function stopAllAudioSources() {
+  // Stop all currently playing audio sources
+  activeAudioSources.forEach(source => {
+    try {
+      source.stop();
+      source.disconnect();
+    } catch (e) {
+      // Source might already be stopped, ignore error
+    }
+  });
+  activeAudioSources = [];
+  console.log('Stopped all audio sources'); // Debug log
+}
+
+function pauseAll() {
+  if (!playing) return;
+  
+  console.log('Pausing playback'); // Debug log
+  
+  playing = false;
+  playBtn.disabled = false;
+  pauseBtn.disabled = true;
+  
+  if (playRequestId) {
+    cancelAnimationFrame(playRequestId);
+    playRequestId = null;
+  }
+  
+  stopMetronome();
+  
+  // Stop all active audio sources
+  stopAllAudioSources();
+}
+
+function stopAll() {
+  pauseAll();
+  playheadTime = 0;
+  renderTimeline();
+}
+
 // --- Clip Management ---
 function addClipToTrack(trackIndex, buffer, startTime, duration, color, name) {
   if (trackIndex >= tracks.length) return;
@@ -517,9 +681,14 @@ function addClipToFirstTrack(buffer, startTime, duration, color, name) {
   addClipToTrack(selectedTrackIndex, buffer, startTime, duration, color, name);
 }
 
-// --- Timeline and Playhead ---
+// --- Timeline and Playhead (MODIFY EXISTING) ---
 timelineDiv.onclick = (e) => {
-  let rawTime = e.offsetX / PIXELS_PER_SEC;
+  // Fix offset calculation to account for header width
+  const rect = timelineDiv.getBoundingClientRect();
+  const clickX = e.clientX - rect.left;
+  const adjustedX = clickX - TRACK_HEADER_WIDTH; // Account for header offset
+  let rawTime = Math.max(0, adjustedX / PIXELS_PER_SEC);
+  
   let gridTimes = getGridTimes();
 
   // Collect all clip edges
@@ -544,7 +713,7 @@ timelineDiv.onclick = (e) => {
     }
   });
 
-  playheadTime = snapTime;
+  playheadTime = Math.max(0, snapTime);
   renderTimeline();
 };
 
@@ -585,7 +754,7 @@ function getGridTimes() {
   return gridTimes;
 }
 
-// --- Audio Processing Setup ---
+// --- Audio Processing Setup (MODIFY EXISTING) ---
 function initAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -599,6 +768,12 @@ function initAudioContext() {
     analyserNode.fftSize = 2048;
     analyserNode.connect(masterGainNode);
   }
+  
+  // Resume audio context if suspended (required for user interaction)
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  
   return audioCtx;
 }
 
@@ -1186,6 +1361,16 @@ function init() {
   }
   if (tracks.length > 0) tracks[0].selected = true;
   initAudioContext();
+  
+  // Set up button handlers here to ensure DOM elements exist
+  playBtn.onclick = () => {
+    playAll();
+  };
+
+  pauseBtn.onclick = () => {
+    pauseAll();
+  };
+  
   saveState();
   render();
 }
@@ -1251,14 +1436,15 @@ metronomeBtn.onclick = () => {
   metronomeBtn.className = metronomeEnabled ? 'metronome-btn metronome-on' : 'metronome-btn';
 };
 
-// --- Keyboard Shortcuts ---
+// --- Keyboard Shortcuts (MODIFY EXISTING) ---
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return; // Don't trigger when typing in inputs
   
   switch (e.key) {
     case ' ':
       e.preventDefault();
-      if (playing) stopAll();
+      console.log('Spacebar pressed, playing:', playing); // Debug log
+      if (playing) pauseAll();
       else playAll();
       break;
     case 'r':
