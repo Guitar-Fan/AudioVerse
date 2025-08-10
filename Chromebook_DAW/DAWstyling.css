@@ -458,16 +458,18 @@ label.upload-btn input[type="file"] { display: none; }
 
 /* Context Menu */
 .context-menu {
-  position: fixed;
+  position: fixed !important;
   background: #232b36;
   color: #eee;
   border: 1.5px solid #232b36;
   border-radius: 7px;
-  box-shadow: 0 2px 16px #000b;
-  z-index: 9999;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+  z-index: 10000 !important;
   min-width: 180px;
   padding: 0.2em 0;
   font-size: 1em;
+  display: block !important;
+  pointer-events: auto;
 }
 
 .context-menu .context-menu-item {
@@ -475,7 +477,10 @@ label.upload-btn input[type="file"] { display: none; }
   cursor: pointer;
   user-select: none;
   transition: background 0.13s;
-  border-bottom: 1px solid #232b36;
+  border-bottom: 1px solid #374151;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .context-menu .context-menu-item:last-child {
@@ -489,6 +494,7 @@ label.upload-btn input[type="file"] { display: none; }
 .context-menu .context-menu-sep {
   border-top: 1px solid #546;
   margin: 2px 0;
+  height: 1px;
 }
 
 /* Color Picker */
@@ -500,7 +506,7 @@ label.upload-btn input[type="file"] { display: none; }
   border: none;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 1px 4px #0008;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
 
 .spectrum-canvas {
