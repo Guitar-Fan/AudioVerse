@@ -11,39 +11,87 @@
   <header>
     <h1>Web Browser DAW</h1>
     <div id="toolbar">
-      <button id="recordBtn" title="Record (R)">🎙️</button>
-      <button id="stopBtn" title="Stop (S)" disabled>⏹️</button>
-      <button id="playBtn" title="Play (Space)">▶️</button>
-      <button id="pauseBtn" title="Pause" disabled>⏸️</button>
-      <label class="upload-btn" title="Upload audio">
-        ⬆️
-        <input type="file" id="fileInput" accept="audio/*" multiple>
-      </label>
-      <button id="addTrackBtn" title="Add a new track">➕</button>
+      <div class="transport-controls">
+        <button id="recordBtn" title="Record (R)">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="stopBtn" title="Stop (S)" disabled>
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <rect x="3" y="3" width="10" height="10" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="playBtn" title="Play (Space)">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <polygon points="4,2 4,14 13,8" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="pauseBtn" title="Pause" disabled>
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <rect x="4" y="2" width="3" height="12" fill="currentColor"/>
+            <rect x="9" y="2" width="3" height="12" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+      <div class="file-controls">
+        <label class="upload-btn" title="Upload audio">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <path d="M8 2L5 5h2v6h2V5h2L8 2z" fill="currentColor"/>
+            <path d="M2 12h12v2H2z" fill="currentColor"/>
+          </svg>
+          <input type="file" id="fileInput" accept="audio/*" multiple>
+        </label>
+        <button id="addTrackBtn" title="Add a new track">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </header>
   <div class="settings-bar">
-    <label for="bpm">Tempo:</label>
-    <input type="number" id="bpm" min="20" max="300" value="120"> BPM
-    <label for="timeSigNum">Time Signature:</label>
-    <select id="timeSigNum">
-      <option value="4">4</option>
-      <option value="3">3</option>
-      <option value="6">6</option>
-      <option value="5">5</option>
-      <option value="7">7</option>
-    </select>
-    /
-    <select id="timeSigDen">
-      <option value="4">4</option>
-      <option value="8">8</option>
-      <option value="16">16</option>
-    </select>
-    <button class="metronome-btn" id="metronomeBtn">Metronome Off</button>
-    <span style="margin-left:2em;">
-      <button class="zoom-btn" id="zoomInBtn" title="Zoom in">＋</button>
-      <button class="zoom-btn" id="zoomOutBtn" title="Zoom out">－</button>
-    </span>
+    <div class="tempo-section">
+      <label for="bpm">BPM:</label>
+      <input type="number" id="bpm" min="20" max="300" value="120">
+    </div>
+    <div class="time-sig-section">
+      <label for="timeSigNum">Time Sig:</label>
+      <select id="timeSigNum">
+        <option value="4">4</option>
+        <option value="3">3</option>
+        <option value="6">6</option>
+        <option value="5">5</option>
+        <option value="7">7</option>
+      </select>
+      <span>/</span>
+      <select id="timeSigDen">
+        <option value="4">4</option>
+        <option value="8">8</option>
+        <option value="16">16</option>
+      </select>
+    </div>
+    <button class="metronome-btn" id="metronomeBtn">
+      <svg width="14" height="14" viewBox="0 0 16 16">
+        <path d="M8 1L6 4h4L8 1zM7 5v8l-2 2h6l-2-2V5H7z" fill="currentColor"/>
+        <circle cx="8" cy="9" r="1" fill="currentColor"/>
+      </svg>
+      <span>METRO</span>
+    </button>
+    <div class="zoom-section">
+      <button class="zoom-btn" id="zoomInBtn" title="Zoom in">
+        <svg width="12" height="12" viewBox="0 0 16 16">
+          <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="zoom-btn" id="zoomOutBtn" title="Zoom out">
+        <svg width="12" height="12" viewBox="0 0 16 16">
+          <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <path d="M5 8h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
   </div>
   <div id="workspace" style="min-width:0;">
     <div id="timeline"></div>
