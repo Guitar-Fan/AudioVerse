@@ -4,8 +4,8 @@ const DEFAULT_TRACKS = 2;
 const DEFAULT_BPM = 120;
 const DEFAULT_SIG_NUM = 4;
 const DEFAULT_SIG_DEN = 4;
-const MAX_TIME = 3600; // seconds (1 hour instead of 180 seconds)
-const MAX_BARS = 999; // Essentially unlimited
+const MAX_TIME = 180; // seconds
+const MAX_BARS = 128;
 const CLIP_COLORS = [
   "#1de9b6", "#42a5f5", "#ffb300", "#ec407a", "#ffd600", "#8bc34a",
   "#00bcd4", "#ba68c8", "#ff7043", "#90caf9", "#cddc39"
@@ -97,22 +97,10 @@ function createClip(audioBuffer, startTime, duration, offset=0, color, name) {
 // --- Timeline ---
 function getSecPerBeat() { return 60 / bpm; }
 function getSecPerBar() { return getSecPerBeat() * timeSigNum; }
-function getTotalBars() { 
-  // Calculate based on actual content or minimum display
-  let maxTime = MAX_TIME;
-  
-  // Find the furthest clip end time
-  tracks.forEach(track => {
-    track.clips.forEach(clip => {
-      maxTime = Math.max(maxTime, clip.startTime + clip.duration + 60); // Add 60s buffer
-    });
-  });
-  
-  return Math.min(Math.ceil(maxTime / getSecPerBar()), MAX_BARS);
-}
+function getTotalBars() { return Math.ceil(MAX_TIME / getSecPerBar()); }
 function getTimelineWidth() {
   // Add TRACK_HEADER_WIDTH to timeline width so grid/playhead align with clips
-  return TRACK_HEADER_WIDTH + Math.max(getTotalBars() * getSecPerBar() * PIXELS_PER_SEC, 1200);
+  return TRACK_HEADER_WIDTH + Math.max(getTotalBars() * getSecPerBar() * PIXELS_PER_SEC, 900);
 }
 
 let autoScrollEnabled = true; // default to enabled
@@ -441,162 +429,257 @@ recordBtn.onclick = async () => {
     render();
   }
   
-  try {
-    initAudioContext();
-    let stream = await navigator.mediaDevices.getUserMedia({ 
-      audio: {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false,
-        sampleRate: 44100
-      } 
-    });
+  initAudioContext();
+  let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+  recordedChunks = [];
+  liveRecordingBuffer = [];
+  liveRecordingStart = playheadTime;
+  let inputNode = audioCtx.createMediaStreamSource(stream);
+
+  // Create processing chain: input -> analyser -> gain -> destination
+  let recordGain = audioCtx.createGain();
+  recordGain.gain.value = 0.8;
+  
+  inputNode.connect(analyserNode);
+  analyserNode.connect(recordGain);
+  recordGain.connect(audioCtx.destination);
+
+  // Live preview processing - FIX THIS PART
+  let processor = audioCtx.createScriptProcessor(4096, 1, 1);
+  inputNode.connect(processor);
+  processor.connect(audioCtx.destination); // Connect to hear the input
+  
+  processor.onaudioprocess = (e) => {
+    if (!isRecording) return;
     
-    mediaRecorder = new MediaRecorder(stream, { 
-      mimeType: 'audio/webm;codecs=opus',
-      audioBitsPerSecond: 128000
-    });
+    let input = e.inputBuffer.getChannelData(0);
+    // Convert Float32Array to regular array and add to buffer
+    liveRecordingBuffer = liveRecordingBuffer.concat(Array.from(input));
     
-    recordedChunks = [];
-    liveRecordingBuffer = [];
-    liveRecordingStart = playheadTime;
+    // Limit buffer size to prevent memory issues
+    if (liveRecordingBuffer.length > audioCtx.sampleRate * 300) {
+      processor.disconnect();
+      inputNode.disconnect();
+    }
     
-    // Create input node for live preview only (no feedback)
-    let inputNode = audioCtx.createMediaStreamSource(stream);
+    // Trigger re-render to show recording preview
+    render();
+  };
+
+  mediaRecorder.ondataavailable = e => { recordedChunks.push(e.data); };
+  mediaRecorder.onstop = async () => {
+    processor.disconnect();
+    inputNode.disconnect();
+    recordGain.disconnect();
     
-    // Live preview processing WITHOUT connecting to destination (no feedback)
-    let processor = audioCtx.createScriptProcessor(4096, 1, 1);
-    inputNode.connect(processor);
-    // DON'T connect processor to destination to avoid feedback
-    processor.connect(audioCtx.createGain()); // Connect to a dummy gain node
+    if (recordedChunks.length === 0) { 
+      isRecording = false; 
+      recordBtn.disabled = false; 
+      stopBtn.disabled = true; 
+      return; 
+    }
     
-    processor.onaudioprocess = (e) => {
-      if (!isRecording) return;
+    const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+    const arrayBuffer = await blob.arrayBuffer();
+    audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
+      let targetTracks = tracks.filter(t => t.armed);
+      if (targetTracks.length === 0) targetTracks = [tracks[selectedTrackIndex]];
       
-      let input = e.inputBuffer.getChannelData(0);
-      // Convert Float32Array to regular array and add to buffer
-      liveRecordingBuffer = liveRecordingBuffer.concat(Array.from(input));
+      targetTracks.forEach(track => {
+        let trackIndex = tracks.indexOf(track);
+        addClipToTrack(trackIndex, buffer, liveRecordingStart, buffer.duration);
+      });
       
-      // Limit buffer size to prevent memory issues
-      if (liveRecordingBuffer.length > audioCtx.sampleRate * 300) {
-        processor.disconnect();
-        inputNode.disconnect();
-      }
-      
-      // Trigger re-render to show recording preview
+      liveRecordingBuffer = [];
+      saveState();
       render();
-    };
-
-    mediaRecorder.ondataavailable = e => { 
-      if (e.data.size > 0) {
-        recordedChunks.push(e.data); 
-      }
-    };
-    
-    mediaRecorder.onstop = async () => {
-      console.log('MediaRecorder stopped, processing audio...');
-      
-      // Clean up audio nodes
-      try {
-        processor.disconnect();
-        inputNode.disconnect();
-        stream.getTracks().forEach(track => track.stop());
-      } catch (e) {
-        console.log('Error cleaning up audio nodes:', e);
-      }
-      
-      if (recordedChunks.length === 0) { 
-        console.log('No audio data recorded');
-        isRecording = false; 
-        recordBtn.disabled = false; 
-        stopBtn.disabled = true; 
-        return; 
-      }
-      
-      try {
-        const blob = new Blob(recordedChunks, { type: 'audio/webm' });
-        const arrayBuffer = await blob.arrayBuffer();
-        
-        audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
-          let targetTracks = tracks.filter(t => t.armed);
-          if (targetTracks.length === 0) targetTracks = [tracks[selectedTrackIndex]];
-          
-          targetTracks.forEach(track => {
-            let trackIndex = tracks.indexOf(track);
-            const clipName = `Recording ${new Date().toLocaleTimeString()}`;
-            addClipToTrack(trackIndex, buffer, liveRecordingStart, buffer.duration, undefined, clipName);
-          });
-          
-          liveRecordingBuffer = [];
-          saveState();
-          render();
-          console.log('Recording processed and added to track');
-        }, (error) => {
-          console.error('Error decoding audio data:', error);
-          alert('Error processing recorded audio. Try again.');
-        });
-      } catch (error) {
-        console.error('Error processing recording:', error);
-        alert('Error processing recorded audio. Try again.');
-      }
-      
-      isRecording = false;
-      recordBtn.disabled = false;
-      stopBtn.disabled = true;
-    };
-
-    mediaRecorder.onerror = (event) => {
-      console.error('MediaRecorder error:', event.error);
-      isRecording = false;
-      recordBtn.disabled = false;
-      stopBtn.disabled = true;
-    };
-
-    mediaRecorder.start(100); // Record in 100ms chunks for better quality
-    isRecording = true;
-    recordBtn.disabled = true;
-    stopBtn.disabled = false;
-    
-    console.log('Recording started');
-    
-    if (metronomeEnabled) startMetronome();
-    
-  } catch (error) {
-    console.error('Error starting recording:', error);
-    alert('Error accessing microphone. Please check permissions.');
+    });
     isRecording = false;
     recordBtn.disabled = false;
     stopBtn.disabled = true;
-  }
+  };
+
+  mediaRecorder.start();
+  isRecording = true;
+  recordBtn.disabled = true;
+  stopBtn.disabled = false;
+  if (metronomeEnabled) startMetronome();
 };
 
-// Improved stop button handler
+// Add this handler to allow stopping recording via stopBtn
 stopBtn.onclick = () => {
-  console.log('Stop button clicked, isRecording:', isRecording);
+  if (isRecording && mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+  }
+  stopAll();
+};
+
+// --- Audio Playback Functions (MODIFY EXISTING) ---
+function playAll() {
+  if (playing) return;
   
-  if (isRecording) {
-    console.log('Stopping recording...');
-    if (mediaRecorder && mediaRecorder.state === "recording") {
-      mediaRecorder.stop();
-    } else {
-      // Force stop if mediaRecorder is in weird state
-      isRecording = false;
-      recordBtn.disabled = false;
-      stopBtn.disabled = true;
-      liveRecordingBuffer = [];
-      render();
+  initAudioContext();
+  
+  // Ensure audio context is running
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().then(() => {
+      startPlayback();
+    });
+  } else {
+    startPlayback();
+  }
+}
+
+function startPlayback() {
+  playing = true;
+  playBtn.disabled = true;
+  pauseBtn.disabled = false;
+  
+  const startTime = audioCtx.currentTime;
+  const startOffset = playheadTime;
+  
+  console.log('Starting playback at', startOffset, 'seconds'); // Debug log
+  
+  // Clear any existing sources
+  stopAllAudioSources();
+  
+  // Start metronome if enabled
+  if (metronomeEnabled) startMetronome();
+  
+  // Schedule all clips for playback
+  let activeSourcesCount = 0;
+  tracks.forEach((track, trackIndex) => {
+    if (track.muted) return;
+    
+    // Check if any track is soloed
+    const hasSoloTracks = tracks.some(t => t.solo);
+    if (hasSoloTracks && !track.solo) return;
+    
+    const trackGain = getTrackGainNode(trackIndex);
+    trackGain.gain.value = track.volume;
+    
+    track.clips.forEach(clip => {
+      if (!clip.audioBuffer) return;
+      
+      const clipStartTime = clip.startTime;
+      const clipEndTime = clipStartTime + clip.duration;
+      
+      // Only play clips that intersect with current playhead position
+      if (clipEndTime > startOffset) {
+        const source = audioCtx.createBufferSource();
+        source.buffer = clip.audioBuffer;
+        source.connect(trackGain);
+        
+        // Calculate when to start playing this clip
+        const playDelay = Math.max(0, clipStartTime - startOffset);
+        const sourceOffset = Math.max(0, startOffset - clipStartTime) + clip.offset;
+        const sourceDuration = Math.min(clip.duration, clipEndTime - Math.max(startOffset, clipStartTime));
+        
+        if (sourceDuration > 0) {
+          console.log('Playing clip:', clip.name, 'delay:', playDelay, 'offset:', sourceOffset, 'duration:', sourceDuration); // Debug log
+          
+          // Track this source so we can stop it later
+          activeAudioSources.push(source);
+          
+          // Set up automatic cleanup when source ends
+          source.onended = () => {
+            const index = activeAudioSources.indexOf(source);
+            if (index > -1) {
+              activeAudioSources.splice(index, 1);
+            }
+          };
+          
+          source.start(startTime + playDelay, sourceOffset, sourceDuration);
+          activeSourcesCount++;
+        }
+      }
+    });
+  });
+  
+  console.log('Active audio sources:', activeSourcesCount); // Debug log
+  
+  // Update playhead during playback
+  const updatePlayheadLoop = () => {
+    if (!playing) return;
+    
+    playheadTime = startOffset + (audioCtx.currentTime - startTime);
+    
+    // Auto-scroll if enabled
+    if (autoScrollEnabled) {
+      const workspaceEl = document.getElementById('workspace');
+      const gridOffset = TRACK_HEADER_WIDTH;
+      const playheadX = gridOffset + playheadTime * PIXELS_PER_SEC;
+      const workspaceWidth = workspaceEl.clientWidth;
+      const scrollLeft = Math.max(0, playheadX - workspaceWidth / 2);
+      workspaceEl.scrollLeft = scrollLeft;
     }
+    
+    renderTimeline();
+    
+    // Stop at max time
+    if (playheadTime >= MAX_TIME) {
+      stopAll();
+      return;
+    }
+    
+    playRequestId = requestAnimationFrame(updatePlayheadLoop);
+  };
+  
+  updatePlayheadLoop();
+}
+
+function stopAllAudioSources() {
+  // Stop all currently playing audio sources
+  activeAudioSources.forEach(source => {
+    try {
+      source.stop();
+      source.disconnect();
+    } catch (e) {
+      // Source might already be stopped, ignore error
+    }
+  });
+  activeAudioSources = [];
+  console.log('Stopped all audio sources'); // Debug log
+}
+
+function pauseAll() {
+  if (!playing) return;
+  
+  console.log('Pausing playback'); // Debug log
+  
+  playing = false;
+  playBtn.disabled = false;
+  pauseBtn.disabled = true;
+  
+  if (playRequestId) {
+    cancelAnimationFrame(playRequestId);
+    playRequestId = null;
   }
   
-  // Always stop playback
-  if (playing) {
-    pauseAll();
-  }
+  stopMetronome();
   
-  // Reset playhead to beginning
+  // Stop all active audio sources
+  stopAllAudioSources();
+}
+
+function stopAll() {
+  pauseAll();
   playheadTime = 0;
   renderTimeline();
-};
+}
+
+// --- Clip Management ---
+function addClipToTrack(trackIndex, buffer, startTime, duration, color, name) {
+  if (trackIndex >= tracks.length) return;
+  tracks[trackIndex].clips.push(createClip(buffer, startTime, duration, 0, color, name));
+  render();
+}
+
+function addClipToFirstTrack(buffer, startTime, duration, color, name) {
+  if (tracks.length === 0) tracks.push(createTrack());
+  addClipToTrack(selectedTrackIndex, buffer, startTime, duration, color, name);
+}
 
 // --- Timeline and Playhead (MODIFY EXISTING) ---
 timelineDiv.onclick = (e) => {
@@ -1119,217 +1202,109 @@ function splitClip(tIdx, cIdx, splitTime) {
   render();
 }
 
-function duplicateClip(tIdx, cIdx) {
-  let orig = tracks[tIdx].clips[cIdx];
-  // Place duplicate immediately after the original clip
-  let dup = createClip(
-    orig.audioBuffer, 
-    orig.startTime + orig.duration, 
-    orig.duration, 
-    orig.offset, 
-    orig.color, 
-    orig.name + " Copy"
-  );
-  tracks[tIdx].clips.push(dup);
-  
-  // Sort clips by start time
-  tracks[tIdx].clips.sort((a, b) => a.startTime - b.startTime);
-  
-  saveState();
+// --- Track DAW Actions ---
+function renameTrack(tIdx) {
+  let newName = prompt("Enter new track name:", tracks[tIdx].label);
+  if (newName) { tracks[tIdx].label = newName; render(); }
+}
+function addSilenceClip(tIdx) {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  let dur = 2;
+  let buffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate*dur), audioCtx.sampleRate);
+  tracks[tIdx].clips.push(createClip(buffer, 0, dur, 0, undefined, "Silence"));
   render();
 }
 
-function reverseClip(tIdx, cIdx) {
-  let clip = tracks[tIdx].clips[cIdx];
-  if (!clip.audioBuffer) return;
+// --- Simple WAV Export Function ---
+function audioBufferToWav(buffer, offset = 0, duration = null) {
+  const length = duration ? Math.min(duration * buffer.sampleRate, buffer.length) : buffer.length;
+  const startSample = Math.floor(offset * buffer.sampleRate);
+  const endSample = Math.min(startSample + length, buffer.length);
+  const actualLength = endSample - startSample;
   
-  // Create a new buffer with the same properties
-  const originalBuffer = clip.audioBuffer;
-  const newBuffer = audioCtx.createBuffer(
-    originalBuffer.numberOfChannels,
-    originalBuffer.length,
-    originalBuffer.sampleRate
-  );
+  const arrayBuffer = new ArrayBuffer(44 + actualLength * 2);
+  const view = new DataView(arrayBuffer);
   
-  // Reverse each channel
-  for (let channel = 0; channel < originalBuffer.numberOfChannels; channel++) {
-    const originalData = originalBuffer.getChannelData(channel);
-    const newData = newBuffer.getChannelData(channel);
-    
-    for (let i = 0; i < originalData.length; i++) {
-      newData[i] = originalData[originalData.length - 1 - i];
+  // WAV header
+  const writeString = (offset, string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
     }
-  }
-  
-  clip.audioBuffer = newBuffer;
-  saveState();
-  render();
-}
-
-// --- Audio Playback Functions (MODIFY EXISTING) ---
-function playAll() {
-  if (playing) return;
-  
-  initAudioContext();
-  
-  // Ensure audio context is running
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume().then(() => {
-      startPlayback();
-    });
-  } else {
-    startPlayback();
-  }
-}
-
-function startPlayback() {
-  playing = true;
-  playBtn.disabled = true;
-  pauseBtn.disabled = false;
-  
-  const startTime = audioCtx.currentTime;
-  const startOffset = playheadTime;
-  
-  console.log('Starting playback at', startOffset, 'seconds'); // Debug log
-  
-  // Clear any existing sources
-  stopAllAudioSources();
-  
-  // Start metronome if enabled
-  if (metronomeEnabled) startMetronome();
-  
-  // Schedule all clips for playback
-  let activeSourcesCount = 0;
-  tracks.forEach((track, trackIndex) => {
-    if (track.muted) return;
-    
-    // Check if any track is soloed
-    const hasSoloTracks = tracks.some(t => t.solo);
-    if (hasSoloTracks && !track.solo) return;
-    
-    const trackGain = getTrackGainNode(trackIndex);
-    trackGain.gain.value = track.volume;
-    
-    track.clips.forEach(clip => {
-      if (!clip.audioBuffer) return;
-      
-      const clipStartTime = clip.startTime;
-      const clipEndTime = clipStartTime + clip.duration;
-      
-      // Only play clips that intersect with current playhead position
-      if (clipEndTime > startOffset) {
-        const source = audioCtx.createBufferSource();
-        source.buffer = clip.audioBuffer;
-        source.connect(trackGain);
-        
-        // Calculate when to start playing this clip
-        const playDelay = Math.max(0, clipStartTime - startOffset);
-        const sourceOffset = Math.max(0, startOffset - clipStartTime) + clip.offset;
-        const sourceDuration = Math.min(clip.duration, clipEndTime - Math.max(startOffset, clipStartTime));
-        
-        if (sourceDuration > 0) {
-          console.log('Playing clip:', clip.name, 'delay:', playDelay, 'offset:', sourceOffset, 'duration:', sourceDuration); // Debug log
-          
-          // Track this source so we can stop it later
-          activeAudioSources.push(source);
-          
-          // Set up automatic cleanup when source ends
-          source.onended = () => {
-            const index = activeAudioSources.indexOf(source);
-            if (index > -1) {
-              activeAudioSources.splice(index, 1);
-            }
-          };
-          
-          source.start(startTime + playDelay, sourceOffset, sourceDuration);
-          activeSourcesCount++;
-        }
-      }
-    });
-  });
-  
-  console.log('Active audio sources:', activeSourcesCount); // Debug log
-  
-  // Update playhead during playback
-  const updatePlayheadLoop = () => {
-    if (!playing) return;
-    
-    playheadTime = startOffset + (audioCtx.currentTime - startTime);
-    
-    // Auto-scroll if enabled
-    if (autoScrollEnabled) {
-      const workspaceEl = document.getElementById('workspace');
-      const gridOffset = TRACK_HEADER_WIDTH;
-      const playheadX = gridOffset + playheadTime * PIXELS_PER_SEC;
-      const workspaceWidth = workspaceEl.clientWidth;
-      const scrollLeft = Math.max(0, playheadX - workspaceWidth / 2);
-      workspaceEl.scrollLeft = scrollLeft;
-    }
-    
-    renderTimeline();
-    
-    // Stop at max time
-    if (playheadTime >= MAX_TIME) {
-      stopAll();
-      return;
-    }
-    
-    playRequestId = requestAnimationFrame(updatePlayheadLoop);
   };
   
-  updatePlayheadLoop();
-}
-
-function stopAllAudioSources() {
-  // Stop all currently playing audio sources
-  activeAudioSources.forEach(source => {
-    try {
-      source.stop();
-      source.disconnect();
-    } catch (e) {
-      // Source might already be stopped, ignore error
-    }
-  });
-  activeAudioSources = [];
-  console.log('Stopped all audio sources'); // Debug log
-}
-
-function pauseAll() {
-  if (!playing) return;
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + actualLength * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, buffer.sampleRate, true);
+  view.setUint32(28, buffer.sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, actualLength * 2, true);
   
-  console.log('Pausing playback'); // Debug log
-  
-  playing = false;
-  playBtn.disabled = false;
-  pauseBtn.disabled = true;
-  
-  if (playRequestId) {
-    cancelAnimationFrame(playRequestId);
-    playRequestId = null;
+  // Audio data
+  const channelData = buffer.getChannelData(0);
+  let offset_wav = 44;
+  for (let i = startSample; i < endSample; i++) {
+    const sample = Math.max(-1, Math.min(1, channelData[i]));
+    view.setInt16(offset_wav, sample * 0x7FFF, true);
+    offset_wav += 2;
   }
   
-  stopMetronome();
+  return arrayBuffer;
+}
+
+// --- Metronome Functions ---
+function startMetronome() {
+  if (!audioCtx) return;
   
-  // Stop all active audio sources
-  stopAllAudioSources();
+  // Create simple metronome sounds if not already created
+  if (!metronomeTickBuffer) {
+    metronomeTickBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
+    metronomeAccentBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
+    
+    const tickData = metronomeTickBuffer.getChannelData(0);
+    const accentData = metronomeAccentBuffer.getChannelData(0);
+    
+    for (let i = 0; i < tickData.length; i++) {
+      const t = i / audioCtx.sampleRate;
+      tickData[i] = Math.sin(2 * Math.PI * 800 * t) * Math.exp(-t * 30) * 0.3;
+      accentData[i] = Math.sin(2 * Math.PI * 1000 * t) * Math.exp(-t * 20) * 0.5;
+    }
+  }
+  
+  const scheduleNextTick = () => {
+    if (!metronomeEnabled || !playing) return;
+    
+    const secPerBeat = getSecPerBeat();
+    const nextBeat = Math.ceil(playheadTime / secPerBeat) * secPerBeat;
+    const timeToNext = nextBeat - playheadTime;
+    
+    if (timeToNext > 0 && timeToNext < secPerBeat) {
+      const source = audioCtx.createBufferSource();
+      const beatNumber = Math.floor(nextBeat / secPerBeat) % timeSigNum;
+      source.buffer = beatNumber === 0 ? metronomeAccentBuffer : metronomeTickBuffer;
+      source.connect(audioCtx.destination);
+      source.start(audioCtx.currentTime + timeToNext);
+      
+      metronomeTimeout = setTimeout(scheduleNextTick, timeToNext * 1000 + 50);
+    } else {
+      metronomeTimeout = setTimeout(scheduleNextTick, 50);
+    }
+  };
+  
+  scheduleNextTick();
 }
 
-function stopAll() {
-  pauseAll();
-  playheadTime = 0;
-  renderTimeline();
-}
-
-// --- Clip Management ---
-function addClipToTrack(trackIndex, buffer, startTime, duration, color, name) {
-  if (trackIndex >= tracks.length) return;
-  tracks[trackIndex].clips.push(createClip(buffer, startTime, duration, 0, color, name));
-  render();
-}
-
-function addClipToFirstTrack(buffer, startTime, duration, color, name) {
-  if (tracks.length === 0) tracks.push(createTrack());
-  addClipToTrack(selectedTrackIndex, buffer, startTime, duration, color, name);
+function stopMetronome() {
+  if (metronomeTimeout) {
+    clearTimeout(metronomeTimeout);
+    metronomeTimeout = null;
+  }
 }
 
 // --- Rendering ---
@@ -1521,44 +1496,12 @@ timelineDiv.addEventListener('contextmenu', function(e) {
     catch (err) { console.error(err); }
   }
 
-  function positionMenu(menu, x, y) {
-    // Get viewport dimensions
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const menuRect = menu.getBoundingClientRect();
-    
-    // Adjust position to keep menu within viewport
-    let adjustedX = x;
-    let adjustedY = y;
-    
-    if (x + menuRect.width > viewportWidth) {
-      adjustedX = Math.max(0, viewportWidth - menuRect.width - 10);
-    }
-    
-    if (y + menuRect.height > viewportHeight) {
-      adjustedY = Math.max(0, viewportHeight - menuRect.height - 10);
-    }
-    
-    menu.style.left = adjustedX + 'px';
-    menu.style.top = adjustedY + 'px';
-    
-    // Add scrolling if menu is still too tall
-    const maxHeight = viewportHeight - adjustedY - 20;
-    if (menuRect.height > maxHeight) {
-      menu.style.maxHeight = maxHeight + 'px';
-      menu.style.overflowY = 'auto';
-    }
-  }
-
   function makeMenu(items, x, y) {
     removeContextMenu();
     const menu = document.createElement('div');
     menu.className = 'context-menu';
-    
-    // Temporarily position off-screen to measure
-    menu.style.left = '-9999px';
-    menu.style.top = '-9999px';
-    menu.style.visibility = 'hidden';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
 
     items.forEach(item => {
       if (item.sep) {
@@ -1569,9 +1512,6 @@ timelineDiv.addEventListener('contextmenu', function(e) {
       }
       const el = document.createElement('div');
       el.className = 'context-menu-item';
-      if (item.disabled) {
-        el.classList.add('disabled');
-      }
       el.innerText = item.label || '';
       if (item.color) {
         const colorInput = document.createElement('input');
@@ -1581,7 +1521,7 @@ timelineDiv.addEventListener('contextmenu', function(e) {
         colorInput.onclick = ev => ev.stopPropagation();
         colorInput.oninput = ev => { item.onColor && item.onColor(ev.target.value); removeContextMenu(); };
         el.appendChild(colorInput);
-      } else if (!item.disabled) {
+      } else {
         el.onclick = ev => {
           ev.preventDefault();
           ev.stopPropagation();
@@ -1594,10 +1534,6 @@ timelineDiv.addEventListener('contextmenu', function(e) {
 
     document.body.appendChild(menu);
     contextMenuEl = menu;
-    
-    // Show and position correctly
-    menu.style.visibility = 'visible';
-    positionMenu(menu, x, y);
 
     // Delay attaching to avoid immediate close on the same gesture (touch/long-press)
     setTimeout(() => {
@@ -1642,7 +1578,7 @@ timelineDiv.addEventListener('contextmenu', function(e) {
         { label: 'Paste', onClick: () => safeCall(pasteClip) },
         { sep: true },
         { 
-          label: canSplit ? 'Split at Playhead' : 'Split (playhead not in range)', 
+          label: canSplit ? 'Split at Playhead' : 'Split at Playhead (not in range)', 
           onClick: canSplit ? () => safeCall(splitClip, tIdx, cIdx, playheadTime) : null,
           disabled: !canSplit
         },
@@ -1656,7 +1592,7 @@ timelineDiv.addEventListener('contextmenu', function(e) {
         { label: 'Reverse', onClick: () => safeCall(reverseClip, tIdx, cIdx) },
         { sep: true },
         { label: 'Rename', onClick: () => safeCall(renameClip, tIdx, cIdx) },
-        { label: 'Export', onClick: () => safeCall(exportClip, tIdx, cIdx) },
+        { label: 'Export Clip', onClick: () => safeCall(exportClip, tIdx, cIdx) },
         { label: 'Move to New Track', onClick: () => safeCall(moveClipToNewTrack, tIdx, cIdx) },
         { sep: true },
         { label: 'Change Color', color: true, colorValue: clip.color, onColor: (color) => { safeCall(changeClipColor, tIdx, cIdx, color); } },
@@ -1667,7 +1603,7 @@ timelineDiv.addEventListener('contextmenu', function(e) {
       makeMenu([
         { label: track.muted ? 'Unmute' : 'Mute', onClick: () => { track.muted = !track.muted; safeCall(render); } },
         { label: track.solo ? 'Unsolo' : 'Solo', onClick: () => { track.solo = !track.solo; safeCall(render); } },
-        { label: 'Rename', onClick: () => safeCall(renameTrack, tIdx) },
+        { label: 'Rename Track', onClick: () => safeCall(renameTrack, tIdx) },
         { label: 'Delete Track', onClick: () => {
             if (tracks.length <= 1) { alert('Cannot delete the last track'); return; }
             if (confirm(`Delete track "${track.label}"?`)) {
@@ -1678,10 +1614,10 @@ timelineDiv.addEventListener('contextmenu', function(e) {
             }
           }
         },
-        { label: 'Add Silence Clip', onClick: () => safeCall(addSilenceClip, tIdx) },
+        { label: 'Add New Clip (Silence)', onClick: () => safeCall(addSilenceClip, tIdx) },
         { sep: true },
         { label: 'Paste', onClick: () => safeCall(pasteClip) },
-        { label: 'Change Color', color: true, colorValue: track.color, onColor: (color) => { track.color = color; safeCall(saveState); safeCall(render); } },
+        { label: 'Change Track Color', color: true, colorValue: track.color, onColor: (color) => { track.color = color; safeCall(saveState); safeCall(render); } },
       ], e.clientX, e.clientY);
     }
   });
