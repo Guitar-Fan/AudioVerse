@@ -5,98 +5,130 @@
   <title>Web Browser DAW</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="A Chromebook-friendly advanced DAW web app for audio editing and recording.">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="DAWstyling.css">
 </head>
-<body style="min-width:0;">
-  <header>
-    <h1>Web Browser DAW</h1>
-    <div id="toolbar">
-      <div class="transport-controls">
-        <button id="recordBtn" title="Record (R)">
-          <svg width="16" height="16" viewBox="0 0 16 16">
-            <circle cx="8" cy="8" r="6" fill="currentColor"/>
-          </svg>
+<body class="min-w-0 bg-gray-900 text-white overflow-hidden">
+  <!-- Window Management Header -->
+  <header class="bg-gray-800 border-b-2 border-orange-500 p-4 shadow-lg">
+    <div class="flex justify-between items-center">
+      <div class="flex gap-2">
+        <button id="arrangeViewBtn" class="px-4 py-2 bg-orange-500 text-black rounded font-semibold active">
+          Arrangement
         </button>
-        <button id="stopBtn" title="Stop (S)" disabled>
-          <svg width="16" height="16" viewBox="0 0 16 16">
-            <rect x="3" y="3" width="10" height="10" fill="currentColor"/>
-          </svg>
-        </button>
-        <button id="playBtn" title="Play (Space)">
-          <svg width="16" height="16" viewBox="0 0 16 16">
-            <polygon points="4,2 4,14 13,8" fill="currentColor"/>
-          </svg>
-        </button>
-        <button id="pauseBtn" title="Pause" disabled>
-          <svg width="16" height="16" viewBox="0 0 16 16">
-            <rect x="4" y="2" width="3" height="12" fill="currentColor"/>
-            <rect x="9" y="2" width="3" height="12" fill="currentColor"/>
-          </svg>
-        </button>
-      </div>
-      <div class="file-controls">
-        <label class="upload-btn" title="Upload audio">
-          <svg width="16" height="16" viewBox="0 0 16 16">
-            <path d="M8 2L5 5h2v6h2V5h2L8 2z" fill="currentColor"/>
-            <path d="M2 12h12v2H2z" fill="currentColor"/>
-          </svg>
-          <input type="file" id="fileInput" accept="audio/*" multiple>
-        </label>
-        <button id="addTrackBtn" title="Add a new track">
-          <svg width="16" height="16" viewBox="0 0 16 16">
-            <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
+        <button id="mixerViewBtn" class="px-4 py-2 bg-gray-600 text-white rounded font-semibold">
+          Mixer
         </button>
       </div>
     </div>
   </header>
-  <div class="settings-bar">
-    <div class="tempo-section">
-      <label for="bpm">BPM:</label>
-      <input type="number" id="bpm" min="20" max="300" value="120">
+
+  <!-- Arrangement View Window -->
+  <div id="arrangementWindow" class="window active">
+    <div id="toolbar" class="bg-gray-800 p-4 border-b border-gray-700">
+      <div class="flex gap-4 items-center justify-between">
+        <div class="transport-controls flex gap-2">
+          <button id="recordBtn" title="Record (R)" class="p-2 bg-gray-700 rounded hover:bg-red-600 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <circle cx="8" cy="8" r="6" fill="currentColor"/>
+            </svg>
+          </button>
+          <button id="stopBtn" title="Stop (S)" disabled class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-50">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <rect x="3" y="3" width="10" height="10" fill="currentColor"/>
+            </svg>
+          </button>
+          <button id="playBtn" title="Play (Space)" class="p-2 bg-green-700 rounded hover:bg-green-600 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <polygon points="4,2 4,14 13,8" fill="currentColor"/>
+            </svg>
+          </button>
+          <button id="pauseBtn" title="Pause" disabled class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-50">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <rect x="4" y="2" width="3" height="12" fill="currentColor"/>
+              <rect x="9" y="2" width="3" height="12" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        <div class="file-controls flex gap-2">
+          <label class="upload-btn p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors cursor-pointer" title="Upload audio">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <path d="M8 2L5 5h2v6h2V5h2L8 2z" fill="currentColor"/>
+              <path d="M2 12h12v2H2z" fill="currentColor"/>
+            </svg>
+            <input type="file" id="fileInput" accept="audio/*" multiple class="hidden">
+          </label>
+          <button id="addTrackBtn" title="Add a new track" class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
-    <div class="time-sig-section">
-      <label for="timeSigNum">Time Sig:</label>
-      <select id="timeSigNum">
-        <option value="4">4</option>
-        <option value="3">3</option>
-        <option value="6">6</option>
-        <option value="5">5</option>
-        <option value="7">7</option>
-      </select>
-      <span>/</span>
-      <select id="timeSigDen">
-        <option value="4">4</option>
-        <option value="8">8</option>
-        <option value="16">16</option>
-      </select>
+
+    <div class="settings-bar bg-gray-800 p-3 border-b border-gray-700 flex items-center gap-6 text-sm">
+      <div class="tempo-section flex items-center gap-2">
+        <label for="bpm" class="text-orange-400 font-semibold">BPM:</label>
+        <input type="number" id="bpm" min="20" max="300" value="120" class="w-16 px-2 py-1 bg-gray-700 border border-orange-400 rounded">
+      </div>
+      <div class="time-sig-section flex items-center gap-2">
+        <label for="timeSigNum" class="text-orange-400 font-semibold">Time Sig:</label>
+        <select id="timeSigNum" class="px-2 py-1 bg-gray-700 border border-red-400 rounded">
+          <option value="4">4</option>
+          <option value="3">3</option>
+          <option value="6">6</option>
+          <option value="5">5</option>
+          <option value="7">7</option>
+        </select>
+        <span>/</span>
+        <select id="timeSigDen" class="px-2 py-1 bg-gray-700 border border-red-400 rounded">
+          <option value="4">4</option>
+          <option value="8">8</option>
+          <option value="16">16</option>
+        </select>
+      </div>
+      <button class="metronome-btn bg-red-500 text-white px-4 py-1 rounded font-semibold hover:bg-orange-500 transition-colors" id="metronomeBtn">
+        <svg width="14" height="14" viewBox="0 0 16 16" class="inline mr-1">
+          <path d="M8 1L6 4h4L8 1zM7 5v8l-2 2h6l-2-2V5H7z" fill="currentColor"/>
+          <circle cx="8" cy="9" r="1" fill="currentColor"/>
+        </svg>
+        <span>METRO</span>
+      </button>
+      <div class="zoom-section flex gap-1">
+        <button class="zoom-btn px-3 py-1 bg-gray-700 border border-red-400 text-red-400 rounded hover:bg-red-600 hover:text-white transition-colors" id="zoomInBtn" title="Zoom in">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="zoom-btn px-3 py-1 bg-gray-700 border border-red-400 text-red-400 rounded hover:bg-red-600 hover:text-white transition-colors" id="zoomOutBtn" title="Zoom out">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M5 8h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
     </div>
-    <button class="metronome-btn" id="metronomeBtn">
-      <svg width="14" height="14" viewBox="0 0 16 16">
-        <path d="M8 1L6 4h4L8 1zM7 5v8l-2 2h6l-2-2V5H7z" fill="currentColor"/>
-        <circle cx="8" cy="9" r="1" fill="currentColor"/>
-      </svg>
-      <span>METRO</span>
-    </button>
-    <div class="zoom-section">
-      <button class="zoom-btn" id="zoomInBtn" title="Zoom in">
-        <svg width="12" height="12" viewBox="0 0 16 16">
-          <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
-          <path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </button>
-      <button class="zoom-btn" id="zoomOutBtn" title="Zoom out">
-        <svg width="12" height="12" viewBox="0 0 16 16">
-          <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
-          <path d="M5 8h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </button>
+
+    <div id="workspace" class="flex-1 overflow-auto bg-gray-900">
+      <div id="timeline" class="sticky top-0 z-10"></div>
+      <div id="tracks"></div>
     </div>
   </div>
-  <div id="workspace" style="min-width:0;">
-    <div id="timeline"></div>
-    <div id="tracks"></div>
+
+  <!-- Mixer View Window -->
+  <div id="mixerWindow" class="window hidden">
+    <div class="bg-gray-800 p-4 border-b border-gray-700">
+      <h2 class="text-xl font-semibold text-orange-400">Mixer</h2>
+    </div>
+    <div id="mixerContainer" class="flex-1 overflow-auto bg-gradient-to-b from-gray-900 to-gray-800 p-4">
+      <div id="mixerChannels" class="flex gap-4 min-h-full">
+        <!-- Mixer channels will be dynamically generated -->
+      </div>
+    </div>
   </div>
+
   <script src="DAW.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>

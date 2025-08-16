@@ -65,7 +65,14 @@ button.active, .metronome-on {
   color: #222;
   border-color: var(--accent2);
 }
-
+#playBtn {
+  background: rgb(69, 115, 69);
+  color: #222;
+  border-color: var(--clip);
+}
+#playBtn:hover, #playBtn:active {
+  color: #fff;
+}
 label.upload-btn {
   display: inline-block;
   position: relative;
@@ -457,6 +464,7 @@ label.upload-btn input[type="file"] { display: none; }
 }
 
 /* Context Menu */
+/* ...existing code... */
 .context-menu {
   position: fixed !important;
   background: #232b36;
@@ -465,15 +473,18 @@ label.upload-btn input[type="file"] { display: none; }
   border-radius: 7px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.8);
   z-index: 10000 !important;
-  min-width: 180px;
-  padding: 0.2em 0;
-  font-size: 1em;
+  min-width: 140px;         /* Smaller width */
+  max-width: 220px;         /* Prevent too wide */
+  font-size: 0.92em;        /* Slightly smaller font */
+  padding: 0.1em 0;         /* Less vertical padding */
+  max-height: 260px;        /* Limit height */
+  overflow-y: auto;         /* Enable vertical scroll */
   display: block !important;
   pointer-events: auto;
 }
-
+/* ...existing code... */
 .context-menu .context-menu-item {
-  padding: 0.6em 1.2em;
+  padding: 0.45em 0.8em;    /* Smaller padding */
   cursor: pointer;
   user-select: none;
   transition: background 0.13s;
@@ -481,7 +492,9 @@ label.upload-btn input[type="file"] { display: none; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 16px;         /* Consistent height for scroll */
 }
+/* ...existing code... */
 
 .context-menu .context-menu-item:last-child {
   border-bottom: none;
@@ -565,4 +578,133 @@ label.upload-btn input[type="file"] { display: none; }
   header { flex-direction: column; gap: 0.5em;}
   .track-label { left: -60px; width: 50px;}
   .settings-bar { flex-direction: column; gap:0.5em;}
+}
+
+/* Window Management Styles */
+.window {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 80px); /* Account for header */
+  width: 100%;
+  position: absolute;
+  top: 80px;
+  left: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.window.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.window.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Mixer Specific Styles */
+.mixer-channel {
+  transition: all 0.2s ease;
+}
+
+.mixer-channel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Knob Styles */
+.knob-wrapper {
+  position: relative;
+  user-select: none;
+}
+
+.knob-wrapper:hover .knob-svg circle {
+  filter: brightness(1.1);
+}
+
+.knob-input:hover + .knob-svg .knob-indicator {
+  stroke-width: 3;
+}
+
+/* Volume Fader Styles */
+.fader-track {
+  position: relative;
+  background: linear-gradient(to top, #1f2937 0%, #374151 50%, #4b5563 100%);
+  border: 1px solid #6b7280;
+}
+
+.fader-handle {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  border: 1px solid #f97316;
+}
+
+.volume-fader:hover + .fader-handle {
+  background: #fb923c;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+}
+
+/* Level Meter Styles */
+.input-meter, .output-meter {
+  background: linear-gradient(to top, #1f2937 0%, #111827 100%);
+  border: 1px solid #374151;
+}
+
+.meter-fill {
+  background: linear-gradient(to top, 
+    #10b981 0%, 
+    #10b981 60%, 
+    #f59e0b 75%, 
+    #f59e0b 90%, 
+    #ef4444 100%
+  );
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+/* Button Styles for Mixer */
+.button-group button {
+  transition: all 0.15s ease;
+}
+
+.button-group button:active {
+  transform: scale(0.95);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .mixer-channel {
+    width: 20px;
+    padding: 12px;
+  }
+  
+  .knob-wrapper {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .fader-container {
+    height: 120px;
+  }
+}
+
+@media (max-width: 768px) {
+  .window {
+    height: calc(100vh - 120px);
+    top: 120px;
+  }
+  
+  header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  #mixerChannels {
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+  }
+  
+  .mixer-channel {
+    min-width: 80px;
+    flex-shrink: 0;
+  }
 }

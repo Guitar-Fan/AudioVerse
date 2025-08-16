@@ -65,6 +65,11 @@ const metronomeBtn = document.getElementById('metronomeBtn');
 const zoomInBtn = document.getElementById('zoomInBtn');
 const zoomOutBtn = document.getElementById('zoomOutBtn');
 const workspace = document.getElementById('workspace');
+const arrangeViewBtn = document.getElementById('arrangeViewBtn');
+const mixerViewBtn = document.getElementById('mixerViewBtn');
+const arrangementWindow = document.getElementById('arrangementWindow');
+const mixerWindow = document.getElementById('mixerWindow');
+const mixerChannels = document.getElementById('mixerChannels');
 
 // --- Data Model ---
 function createTrack(label, color) {
@@ -97,10 +102,23 @@ function createClip(audioBuffer, startTime, duration, offset=0, color, name) {
 // --- Timeline ---
 function getSecPerBeat() { return 60 / bpm; }
 function getSecPerBar() { return getSecPerBeat() * timeSigNum; }
-function getTotalBars() { return Math.ceil(MAX_TIME / getSecPerBar()); }
+function getFurthestClipEnd() {
+  let maxEnd = 0;
+  tracks.forEach(track => {
+    track.clips.forEach(clip => {
+      maxEnd = Math.max(maxEnd, clip.startTime + clip.duration);
+    });
+  });
+  return maxEnd;
+}
+function getTotalBars() {
+  // Calculate based on furthest clip or a large default (e.g., 1000 bars)
+  const furthestEnd = getFurthestClipEnd();
+  const barsByClips = Math.ceil(furthestEnd / getSecPerBar());
+  return Math.max(barsByClips, 1000); // 1000 bars as a practical "unlimited"
+}
 function getTimelineWidth() {
-  // Add TRACK_HEADER_WIDTH to timeline width so grid/playhead align with clips
-  return TRACK_HEADER_WIDTH + Math.max(getTotalBars() * getSecPerBar() * PIXELS_PER_SEC, 900);
+  return TRACK_HEADER_WIDTH + getTotalBars() * getSecPerBar() * PIXELS_PER_SEC;
 }
 
 let autoScrollEnabled = true; // default to enabled
@@ -1201,7 +1219,27 @@ function splitClip(tIdx, cIdx, splitTime) {
   saveState();
   render();
 }
-
+function reverseClip(tIdx, cIdx) {
+  const clip = tracks[tIdx].clips[cIdx];
+  if (!clip.audioBuffer) return;
+  for (let ch = 0; ch < clip.audioBuffer.numberOfChannels; ch++) {
+    const data = clip.audioBuffer.getChannelData(ch);
+    Array.prototype.reverse.call(data);
+  }
+  saveState();
+  render();
+}
+// ...existing code...
+function renameClip(tIdx, cIdx) {
+  const clip = tracks[tIdx].clips[cIdx];
+  const newName = prompt("Enter new clip name:", clip.name);
+  if (newName) {
+    clip.name = newName;
+    saveState();
+    render();
+  }
+}
+// ...existing code...
 // --- Track DAW Actions ---
 function renameTrack(tIdx) {
   let newName = prompt("Enter new track name:", tracks[tIdx].label);
@@ -1419,206 +1457,270 @@ metronomeBtn.onclick = () => {
   metronomeBtn.className = metronomeEnabled ? 'metronome-btn metronome-on' : 'metronome-btn';
 };
 
-// --- Keyboard Shortcuts (MODIFY EXISTING) ---
-document.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return; // Don't trigger when typing in inputs
+// --- Window Management System
+let currentView = 'arrangement';
+
+// Window switching functions
+function showArrangementView() {
+  currentView = 'arrangement';
+  arrangementWindow.classList.remove('hidden');
+  arrangementWindow.classList.add('active');
+  mixerWindow.classList.add('hidden');
+  mixerWindow.classList.remove('active');
   
-  switch (e.key) {
-    case ' ':
-      e.preventDefault();
-      console.log('Spacebar pressed, playing:', playing); // Debug log
-      if (playing) pauseAll();
-      else playAll();
-      break;
-    case 'r':
-    case 'R':
-      if (!isRecording) recordBtn.click();
-      break;
-    case 's':
-    case 'S':
-      stopBtn.click();
-      break;
-    case 'z':
-    case 'Z':
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        if (e.shiftKey) redo();
-        else undo();
-      }
-      break;
-    case 'c':
-    case 'C':
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        copySelectedClip();
-      }
-      break;
-    case 'v':
-    case 'V':
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        pasteClip();
-      }
-      break;
-  }
-});
+  arrangeViewBtn.classList.add('bg-orange-500', 'text-black');
+  arrangeViewBtn.classList.remove('bg-gray-600', 'text-white');
+  mixerViewBtn.classList.add('bg-gray-600', 'text-white');
+  mixerViewBtn.classList.remove('bg-orange-500', 'text-black');
+}
 
-// --- Timeline Context Menu for Auto-scroll ---
-timelineDiv.addEventListener('contextmenu', function(e) {
-  e.preventDefault();
-  removeContextMenu();
-  const menu = document.createElement('div');
-  menu.className = 'context-menu';
-  menu.style.left = e.clientX + 'px';
-  menu.style.top = e.clientY + 'px';
+function showMixerView() {
+  currentView = 'mixer';
+  mixerWindow.classList.remove('hidden');
+  mixerWindow.classList.add('active');
+  arrangementWindow.classList.add('hidden');
+  arrangementWindow.classList.remove('active');
+  
+  mixerViewBtn.classList.add('bg-orange-500', 'text-black');
+  mixerViewBtn.classList.remove('bg-gray-600', 'text-white');
+  arrangeViewBtn.classList.add('bg-gray-600', 'text-white');
+  arrangeViewBtn.classList.remove('bg-orange-500', 'text-black');
+  
+  renderMixer();
+}
 
-  let autoScrollItem = document.createElement('div');
-  autoScrollItem.className = 'context-menu-item';
-  autoScrollItem.innerHTML = `<input type="checkbox" id="autoScrollChk" ${autoScrollEnabled ? 'checked' : ''} style="margin-right:8px;vertical-align:middle;">Auto-scroll during playback`;
-  autoScrollItem.onclick = (ev) => {
-    ev.stopPropagation();
-    autoScrollEnabled = !autoScrollEnabled;
-    removeContextMenu();
-  };
-  menu.appendChild(autoScrollItem);
+// Event listeners for window switching
+arrangeViewBtn.onclick = showArrangementView;
+mixerViewBtn.onclick = showMixerView;
 
-  document.body.appendChild(menu);
-  contextMenuEl = menu;
-  document.addEventListener('mousedown', removeContextMenu, {once: true});
-});
-
-// Add a single delegated context menu for the tracks area
-(function setupDelegatedContextMenu() {
-  if (!tracksDiv) return;
-
-  function safeCall(fn, ...args) {
-    try { if (typeof fn === 'function') return fn(...args); }
-    catch (err) { console.error(err); }
-  }
-
-  function makeMenu(items, x, y) {
-    removeContextMenu();
-    const menu = document.createElement('div');
-    menu.className = 'context-menu';
-    menu.style.left = x + 'px';
-    menu.style.top = y + 'px';
-
-    items.forEach(item => {
-      if (item.sep) {
-        const sep = document.createElement('div');
-        sep.className = 'context-menu-sep';
-        menu.appendChild(sep);
-        return;
-      }
-      const el = document.createElement('div');
-      el.className = 'context-menu-item';
-      el.innerText = item.label || '';
-      if (item.color) {
-        const colorInput = document.createElement('input');
-        colorInput.type = 'color';
-        colorInput.value = item.colorValue || '#ffffff';
-        colorInput.className = 'color-picker';
-        colorInput.onclick = ev => ev.stopPropagation();
-        colorInput.oninput = ev => { item.onColor && item.onColor(ev.target.value); removeContextMenu(); };
-        el.appendChild(colorInput);
-      } else {
-        el.onclick = ev => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          item.onClick && item.onClick();
-          removeContextMenu();
-        };
-      }
-      menu.appendChild(el);
-    });
-
-    document.body.appendChild(menu);
-    contextMenuEl = menu;
-
-    // Delay attaching to avoid immediate close on the same gesture (touch/long-press)
-    setTimeout(() => {
-      const outsideClose = (ev) => {
-        if (contextMenuEl && !contextMenuEl.contains(ev.target)) removeContextMenu();
-      };
-      const escClose = (ev) => {
-        if (ev.key === 'Escape') removeContextMenu();
-      };
-      document.addEventListener('mousedown', outsideClose, { once: true });
-      document.addEventListener('keydown', escClose, { once: true });
-    }, 10);
-  }
-
-  // Global delegation: only handle right-clicks inside #tracks
-  document.addEventListener('contextmenu', (e) => {
-    const inTracks = e.target.closest('#tracks');
-    if (!inTracks) return; // let browser show its own menu elsewhere
-    e.preventDefault();
-    e.stopPropagation();
-
-    const clipEl = e.target.closest('.clip');
-    const trackEl = e.target.closest('.track');
-    if (!trackEl) return;
-
-    const tIdx = parseInt(trackEl.dataset.track, 10);
-    if (Number.isNaN(tIdx) || tIdx < 0 || tIdx >= tracks.length) return;
-
-    if (clipEl) {
-      const cIdx = parseInt(clipEl.dataset.clip, 10);
-      if (Number.isNaN(cIdx) || cIdx < 0 || cIdx >= tracks[tIdx].clips.length) return;
-
-      safeCall(selectClip, tIdx, cIdx);
-
-      const clip = tracks[tIdx].clips[cIdx];
+// Mixer Channel Creation and Management
+function createMixerChannel(trackIndex, track) {
+  const channelId = `mixer-channel-${trackIndex}`;
+  
+  return `
+    <div id="${channelId}" class="mixer-channel bg-gray-800 rounded-lg p-4 w-24 min-h-full border border-gray-700 shadow-lg">
+      <!-- Channel Header -->
+      <div class="text-center mb-4">
+        <div class="text-xs text-gray-400 mb-1">CH ${trackIndex + 1}</div>
+        <div class="text-sm font-semibold text-white truncate" title="${track.label}">${track.label}</div>
+      </div>
       
-      // Check if playhead is within this clip for split option
-      const canSplit = playheadTime > clip.startTime && playheadTime < clip.startTime + clip.duration;
+      <!-- Input Level Meter -->
+      <div class="mb-4">
+        <div class="text-xs text-gray-400 mb-1 text-center">IN</div>
+        <div class="input-meter bg-gray-900 rounded h-16 w-4 mx-auto relative overflow-hidden">
+          <div class="meter-fill bg-gradient-to-t from-green-500 via-yellow-500 to-red-500 w-full absolute bottom-0 transition-all duration-75" style="height: 0%"></div>
+        </div>
+      </div>
+      
+      <!-- High EQ Knob -->
+      <div class="knob-container mb-3">
+        <div class="text-xs text-gray-400 text-center mb-1">HIGH</div>
+        <div class="knob-wrapper mx-auto w-12 h-12 relative">
+          <svg class="knob-svg w-full h-full" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="20" fill="#374151" stroke="#4B5563" stroke-width="2"/>
+            <circle cx="24" cy="24" r="16" fill="#1F2937" stroke="#6B7280" stroke-width="1"/>
+            <path class="knob-indicator" d="M24 8 L24 16" stroke="#F97316" stroke-width="2" stroke-linecap="round" transform="rotate(0 24 24)"/>
+            <circle cx="24" cy="24" r="2" fill="#F97316"/>
+          </svg>
+          <input type="range" class="knob-input opacity-0 absolute inset-0 w-full h-full cursor-pointer" min="-12" max="12" value="0" step="0.5" data-track="${trackIndex}" data-param="high">
+        </div>
+      </div>
+      
+      <!-- Mid EQ Knob -->
+      <div class="knob-container mb-3">
+        <div class="text-xs text-gray-400 text-center mb-1">MID</div>
+        <div class="knob-wrapper mx-auto w-12 h-12 relative">
+          <svg class="knob-svg w-full h-full" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="20" fill="#374151" stroke="#4B5563" stroke-width="2"/>
+            <circle cx="24" cy="24" r="16" fill="#1F2937" stroke="#6B7280" stroke-width="1"/>
+            <path class="knob-indicator" d="M24 8 L24 16" stroke="#F97316" stroke-width="2" stroke-linecap="round" transform="rotate(0 24 24)"/>
+            <circle cx="24" cy="24" r="2" fill="#F97316"/>
+          </svg>
+          <input type="range" class="knob-input opacity-0 absolute inset-0 w-full h-full cursor-pointer" min="-12" max="12" value="0" step="0.5" data-track="${trackIndex}" data-param="mid">
+        </div>
+      </div>
+      
+      <!-- Low EQ Knob -->
+      <div class="knob-container mb-4">
+        <div class="text-xs text-gray-400 text-center mb-1">LOW</div>
+        <div class="knob-wrapper mx-auto w-12 h-12 relative">
+          <svg class="knob-svg w-full h-full" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="20" fill="#374151" stroke="#4B5563" stroke-width="2"/>
+            <circle cx="24" cy="24" r="16" fill="#1F2937" stroke="#6B7280" stroke-width="1"/>
+            <path class="knob-indicator" d="M24 8 L24 16" stroke="#F97316" stroke-width="2" stroke-linecap="round" transform="rotate(0 24 24)"/>
+            <circle cx="24" cy="24" r="2" fill="#F97316"/>
+          </svg>
+          <input type="range" class="knob-input opacity-0 absolute inset-0 w-full h-full cursor-pointer" min="-12" max="12" value="0" step="0.5" data-track="${trackIndex}" data-param="low">
+        </div>
+      </div>
+      
+      <!-- Pan Knob -->
+      <div class="knob-container mb-4">
+        <div class="text-xs text-gray-400 text-center mb-1">PAN</div>
+        <div class="knob-wrapper mx-auto w-12 h-12 relative">
+          <svg class="knob-svg w-full h-full" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="20" fill="#374151" stroke="#4B5563" stroke-width="2"/>
+            <circle cx="24" cy="24" r="16" fill="#1F2937" stroke="#6B7280" stroke-width="1"/>
+            <path class="knob-indicator" d="M24 8 L24 16" stroke="#10B981" stroke-width="2" stroke-linecap="round" transform="rotate(0 24 24)"/>
+            <circle cx="24" cy="24" r="2" fill="#10B981"/>
+          </svg>
+          <input type="range" class="knob-input opacity-0 absolute inset-0 w-full h-full cursor-pointer" min="-100" max="100" value="${track.pan * 100}" step="1" data-track="${trackIndex}" data-param="pan">
+        </div>
+      </div>
+      
+      <!-- Volume Fader -->
+      <div class="fader-container mb-4 h-32">
+        <div class="text-xs text-gray-400 text-center mb-2">VOLUME</div>
+        <div class="fader-track bg-gray-900 w-6 h-24 mx-auto relative rounded">
+          <input type="range" class="volume-fader absolute inset-0 w-full h-full opacity-0 cursor-pointer" min="0" max="1" value="${track.volume}" step="0.01" data-track="${trackIndex}" data-param="volume" orient="vertical">
+          <div class="fader-handle absolute w-6 h-3 bg-orange-500 rounded shadow-lg transition-all duration-75" style="bottom: ${track.volume * 100}%; transform: translateY(50%);"></div>
+        </div>
+        <div class="text-xs text-center mt-1 text-gray-300 volume-display">${Math.round(track.volume * 100)}</div>
+      </div>
+      
+      <!-- Solo/Mute Buttons -->
+      <div class="button-group flex gap-1 mb-4">
+        <button class="solo-btn flex-1 px-2 py-1 text-xs rounded font-semibold transition-colors ${track.solo ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-gray-300 hover:bg-yellow-600'}" data-track="${trackIndex}">S</button>
+        <button class="mute-btn flex-1 px-2 py-1 text-xs rounded font-semibold transition-colors ${track.muted ? 'bg-red-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-red-600'}" data-track="${trackIndex}">M</button>
+      </div>
+      
+      <!-- Output Level Meter -->
+      <div class="mb-2">
+        <div class="text-xs text-gray-400 mb-1 text-center">OUT</div>
+        <div class="output-meter bg-gray-900 rounded h-16 w-4 mx-auto relative overflow-hidden">
+          <div class="meter-fill bg-gradient-to-t from-green-500 via-yellow-500 to-red-500 w-full absolute bottom-0 transition-all duration-75" style="height: 0%"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
-      makeMenu([
-        { label: 'Copy', onClick: () => safeCall(copySelectedClip) },
-        { label: 'Paste', onClick: () => safeCall(pasteClip) },
-        { sep: true },
-        { 
-          label: canSplit ? 'Split at Playhead' : 'Split at Playhead (not in range)', 
-          onClick: canSplit ? () => safeCall(splitClip, tIdx, cIdx, playheadTime) : null,
-          disabled: !canSplit
-        },
-        { label: 'Delete', onClick: () => { tracks[tIdx].clips.splice(cIdx, 1); safeCall(saveState); safeCall(render); } },
-        { label: 'Duplicate', onClick: () => safeCall(duplicateClip, tIdx, cIdx) },
-        { label: 'Quantize', onClick: () => { safeCall(selectClip, tIdx, cIdx); safeCall(quantizeSelectedClip); } },
-        { sep: true },
-        { label: 'Fade In', onClick: () => { safeCall(fadeInClip, tIdx, cIdx); safeCall(saveState); } },
-        { label: 'Fade Out', onClick: () => { safeCall(fadeOutClip, tIdx, cIdx); safeCall(saveState); } },
-        { label: 'Normalize', onClick: () => safeCall(normalizeClip, tIdx, cIdx) },
-        { label: 'Reverse', onClick: () => safeCall(reverseClip, tIdx, cIdx) },
-        { sep: true },
-        { label: 'Rename', onClick: () => safeCall(renameClip, tIdx, cIdx) },
-        { label: 'Export Clip', onClick: () => safeCall(exportClip, tIdx, cIdx) },
-        { label: 'Move to New Track', onClick: () => safeCall(moveClipToNewTrack, tIdx, cIdx) },
-        { sep: true },
-        { label: 'Change Color', color: true, colorValue: clip.color, onColor: (color) => { safeCall(changeClipColor, tIdx, cIdx, color); } },
-      ], e.clientX, e.clientY);
-
-    } else {
-      const track = tracks[tIdx];
-      makeMenu([
-        { label: track.muted ? 'Unmute' : 'Mute', onClick: () => { track.muted = !track.muted; safeCall(render); } },
-        { label: track.solo ? 'Unsolo' : 'Solo', onClick: () => { track.solo = !track.solo; safeCall(render); } },
-        { label: 'Rename Track', onClick: () => safeCall(renameTrack, tIdx) },
-        { label: 'Delete Track', onClick: () => {
-            if (tracks.length <= 1) { alert('Cannot delete the last track'); return; }
-            if (confirm(`Delete track "${track.label}"?`)) {
-              tracks.splice(tIdx, 1);
-              if (selectedTrackIndex >= tracks.length) selectedTrackIndex = tracks.length - 1;
-              safeCall(saveState);
-              safeCall(render);
-            }
-          }
-        },
-        { label: 'Add New Clip (Silence)', onClick: () => safeCall(addSilenceClip, tIdx) },
-        { sep: true },
-        { label: 'Paste', onClick: () => safeCall(pasteClip) },
-        { label: 'Change Track Color', color: true, colorValue: track.color, onColor: (color) => { track.color = color; safeCall(saveState); safeCall(render); } },
-      ], e.clientX, e.clientY);
-    }
+function renderMixer() {
+  if (!mixerChannels) return;
+  
+  let mixerHTML = '';
+  tracks.forEach((track, index) => {
+    mixerHTML += createMixerChannel(index, track);
   });
-})();
+  
+  mixerChannels.innerHTML = mixerHTML;
+  
+  // Add event listeners for mixer controls
+  setupMixerEventListeners();
+}
+
+function setupMixerEventListeners() {
+  // Knob controls
+  document.querySelectorAll('.knob-input').forEach(knob => {
+    knob.addEventListener('input', (e) => {
+      const trackIndex = parseInt(e.target.dataset.track);
+      const param = e.target.dataset.param;
+      const value = parseFloat(e.target.value);
+      
+      updateKnobVisualization(e.target, value);
+      updateTrackParameter(trackIndex, param, value);
+    });
+  });
+  
+  // Volume faders
+  document.querySelectorAll('.volume-fader').forEach(fader => {
+    fader.addEventListener('input', (e) => {
+      const trackIndex = parseInt(e.target.dataset.track);
+      const value = parseFloat(e.target.value);
+      
+      updateFaderVisualization(e.target, value);
+      setTrackVolume(trackIndex, value);
+    });
+  });
+  
+  // Solo buttons
+  document.querySelectorAll('.solo-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const trackIndex = parseInt(e.target.dataset.track);
+      toggleTrackSolo(trackIndex);
+      renderMixer(); // Re-render to update button states
+    });
+  });
+  
+  // Mute buttons
+  document.querySelectorAll('.mute-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const trackIndex = parseInt(e.target.dataset.track);
+      toggleTrackMute(trackIndex);
+      renderMixer(); // Re-render to update button states
+    });
+  });
+}
+
+function updateKnobVisualization(knobInput, value) {
+  const knobSvg = knobInput.parentElement.querySelector('.knob-indicator');
+  const min = parseFloat(knobInput.min);
+  const max = parseFloat(knobInput.max);
+  const normalizedValue = (value - min) / (max - min);
+  const rotation = (normalizedValue * 270) - 135; // -135° to +135° range
+  
+  if (knobSvg) {
+    knobSvg.setAttribute('transform', `rotate(${rotation} 24 24)`);
+  }
+}
+
+function updateFaderVisualization(faderInput, value) {
+  const faderHandle = faderInput.parentElement.querySelector('.fader-handle');
+  const volumeDisplay = faderInput.parentElement.parentElement.querySelector('.volume-display');
+  
+  if (faderHandle) {
+    faderHandle.style.bottom = `${value * 100}%`;
+  }
+  
+  if (volumeDisplay) {
+    volumeDisplay.textContent = Math.round(value * 100);
+  }
+}
+
+function updateTrackParameter(trackIndex, param, value) {
+  if (trackIndex >= tracks.length) return;
+  
+  const track = tracks[trackIndex];
+  
+  switch (param) {
+    case 'pan':
+      track.pan = value / 100; // Convert back to -1 to 1 range
+      break;
+    case 'high':
+    case 'mid':
+    case 'low':
+      // Store EQ values (would be used with actual audio processing)
+      if (!track.eq) track.eq = {};
+      track.eq[param] = value;
+      break;
+  }
+  
+  // Update arrangement view if needed
+  if (currentView === 'arrangement') {
+    render();
+  }
+}
+
+// Level meter simulation (would be connected to real audio analysis)
+function updateLevelMeters() {
+  if (currentView !== 'mixer') return;
+  
+  document.querySelectorAll('.meter-fill').forEach((meter, index) => {
+    // Simulate random levels for demo
+    const level = Math.random() * (playing ? 80 : 10);
+    meter.style.height = `${level}%`;
+  });
+}
+
+// Update level meters during playback
+setInterval(updateLevelMeters, 100);
+
+// Modify the existing render function to also update mixer when tracks change
+const originalRender = render;
+render = function() {
+  originalRender();
+  if (currentView === 'mixer') {
+    renderMixer();
+  }
+};
