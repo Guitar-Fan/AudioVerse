@@ -56,7 +56,7 @@
             background: #27272a; /* zinc-800 */
             border-bottom: 1px solid #3f3f46; /* zinc-700 */
             position: relative;
-            z-index: 20;
+            z-index: 30; /* Increased from 20 */
             height: 30px;
             overflow: hidden;
             flex-shrink: 0;
@@ -134,6 +134,122 @@
             pointer-events: none;
             display:none;
         }
+        .snap-indicator {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background: #f59e0b; /* amber-500 */
+            opacity: 0.7;
+            pointer-events: none;
+            z-index:15;
+            display: none;
+        }
+        .time-subdivisions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .subdivision-btn {
+            background: #3f3f46;
+            color: #e4e4e7;
+            border: 1px solid #52525b;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .subdivision-btn.active {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+        .subdivision-btn:hover {
+            background: #52525b;
+        }
+        .subdivision-btn.active:hover {
+            background: #2563eb;
+        }
+        .grid-line-major { background: #52525b !important; } /* zinc-600 */
+        .grid-line-beat { background: #3f3f46 !important; } /* zinc-700 */
+        .grid-line-subdivision { background: #27272a !important; } /* zinc-800 */
+        .note.preview {
+            opacity: 0.5;
+            border: 2px dashed #60a5fa;
+            background: transparent !important;
+        }
+        .timeline-tick {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            border-left: 1px solid;
+            display: flex;
+            align-items: center;
+            font-size: 10px;
+            color: #a1a1aa;
+            padding-left: 2px;
+            box-sizing: border-box;
+            white-space: nowrap;
+            z-index: 35; /* Added z-index */
+        }
+        .timeline-tick.measure {
+            border-color: #52525b; /* zinc-600 */
+            font-weight: 600;
+            font-size: 12px;
+            z-index: 40; /* Higher z-index for measures */
+        }
+        .timeline-tick.beat {
+            border-color: #3f3f46; /* zinc-700 */
+            z-index: 37; /* Medium z-index for beats */
+        }
+        .timeline-tick.subdivision {
+            border-color: #27272a; /* zinc-800 */
+            font-size: 9px;
+            opacity: 0.7;
+            z-index: 35; /* Base z-index for subdivisions */
+        }
+        .playback-position {
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            min-width: 80px;
+            text-align: center;
+        }
+        .loop-region {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            background: rgba(34, 197, 94, 0.2); /* green-500 with opacity */
+            border: 1px solid #22c55e;
+            border-radius: 2px;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .loop-marker {
+            position: absolute;
+            top: 0;
+            width: 8px;
+            height: 100%;
+            background: #22c55e;
+            cursor: col-resize;
+            z-index: 6;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .loop-marker.start {
+            border-radius: 2px 0 0 2px;
+        }
+        .loop-marker.end {
+            border-radius: 0 2px 2px 0;
+            margin-left: -8px;
+        }
+        .loop-region:hover .loop-marker {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="flex flex-col h-screen overflow-hidden">
@@ -160,6 +276,10 @@
             <button id="stop-btn" class="transport-btn" title="Stop">
                 <svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3.75A1.75 1.75 0 016.75 2h6.5A1.75 1.75 0 0115 3.75v12.5A1.75 1.75 0 0113.25 18h-6.5A1.75 1.75 0 015 16.25V3.75z"/></svg>
             </button>
+            <button id="loop-btn" class="transport-btn" title="Toggle Loop">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm-11.90-5.126a.75.75 0 00.42.404 7 7 0 0011.712-3.138.75.75 0 00-1.449-.39 5.5 5.5 0 01-9.201 2.466l-.312-.311v-2.43a.75.75 0 00-1.5 0v4.242c0 .414.336.75.75.75h4.243a.75.75 0 000-1.5H6.1l.31-.31z"/></svg>
+            </button>
+            <div class="playback-position" id="playback-position">0:00:000</div>
         </div>
         
         <div class="control-group">
@@ -175,6 +295,22 @@
         </div>
 
         <div class="control-group">
+            <label class="text-sm mr-2">Snap:</label>
+            <div class="time-subdivisions">
+                <button class="subdivision-btn" data-subdivision="1">1/1</button>
+                <button class="subdivision-btn" data-subdivision="2">1/2</button>
+                <button class="subdivision-btn active" data-subdivision="4">1/4</button>
+                <button class="subdivision-btn" data-subdivision="8">1/8</button>
+                <button class="subdivision-btn" data-subdivision="16">1/16</button>
+                <button class="subdivision-btn" data-subdivision="32">1/32</button>
+            </div>
+            <label class="text-sm ml-4 mr-2">
+                <input type="checkbox" id="snap-enabled" checked class="mr-1">
+                Snap to Grid
+            </label>
+        </div>
+
+        <div class="control-group">
             <label for="zoom-range" class="text-sm mr-2">Zoom:</label>
             <input type="range" id="zoom-range" min="20" max="500" value="100" class="w-24">
         </div>
@@ -182,18 +318,23 @@
     
     <div id="toolbar" class="flex items-center h-10 bg-zinc-800/80 backdrop-blur-sm border-b border-zinc-700 px-2 space-x-1 shrink-0">
         <button id="tool-select" title="Select Tool (V)">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M14.615 1.585a.75.75 0 0 1 .292.858l-1.076 4.246a.75.75 0 0 1-1.424-.36l1.076-4.246a.75.75 0 0 1 1.132-.5zM16.5 7.5a.75.75 0 0 0-.75-.75h-1.5a.75.75 0 0 0 0 1.5h1.5a.75.75 0 0 0 .75-.75Zm-6.425 1.5a.75.75 0 0 1 .858-.292l4.246 1.076a.75.75 0 0 1 .36 1.424l-4.246-1.076a.75.75 0 0 1-.292-.858Z M10.5 13.5a.75.75 0 0 0-.75.75v1.5a.75.75 0 0 0 1.5 0v-1.5a.75.75 0 0 0-.75-.75ZM9.385 14.615a.75.75 0 0 0-.858.292l-1.076 4.246a.75.75 0 0 0 1.424.36l1.076-4.246a.75.75 0 0 0-.292-.858Z M7.5 16.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1 0-1.5h1.5a.75.75 0 0 1 .75.75Zm-1.425-6.425a.75.75 0 0 0-.292-.858L1.53 8.14a.75.75 0 0 0-.36 1.424l4.246 1.076a.75.75 0 0 0 .858-.292L6.075 10.075Zm-.292-5.115a.75.75 0 0 1 .858.292l1.076 4.246a.75.75 0 0 1-1.424.36L5.209 5.62a.75.75 0 0 1 .292-.858ZM9.75 4.5a.75.75 0 0 0 .75-.75V2.25a.75.75 0 0 0-1.5 0V3.75a.75.75 0 0 0 .75.75ZM2.25 9.75a.75.75 0 0 1-.75-.75V7.5a.75.75 0 0 1 1.5 0v1.5a.75.75 0 0 1-.75.75Zm12-6.425a.75.75 0 0 0-.292-.858L9.708 1.39a.75.75 0 0 0-.36 1.424l4.246 1.076a.75.75 0 0 0 .858-.292l.000-.001ZM15.75 14.25a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75Zm4.243 2.133a.75.75 0 0 0 .36-1.424l-4.246-1.076a.75.75 0 0 0-.858.292l-1.076 4.246a.75.75 0 0 0 1.424.36l4.246-1.076a.75.75 0 0 0 .292-.858Z" clip-rule="evenodd" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2 3L8 21L11 14L18 11L2 3Z"/>
+            </svg>
         </button>
         <button id="tool-pencil" title="Pencil Tool (B)">
              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" /> <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" /></svg>
         </button>
         <button id="tool-cutter" title="Cutter Tool (C)">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M3 10.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5ZM5.25 15a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0Zm8.65-6.69.884-3.536a.75.75 0 0 0-1.42-.354l-.884 3.536a.75.75 0 1 0 1.42.354ZM12 12.75a.75.75 0 0 0-.75-.75h-1.5a.75.75 0 0 0 0 1.5h1.5a.75.75 0 0 0 .75-.75Zm3.31 2.373.53-2.651a.75.75 0 1 0-1.474-.294l-.53 2.651a.75.75 0 1 0 1.474.294ZM19.5 15a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0Zm-2.25-4.5a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm-4.28 1.151a.75.75 0 0 0-1.06 0l-6 6a.75.75 0 0 0 1.06 1.06l6-6a.75.75 0 0 0 0-1.06Z" clip-rule="evenodd" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9.64 7.64L11 9L13 7L22 16V22H16L7 13L9.64 7.64Z"/>
+                <path d="M7 2L2 7L7 12L12 7L7 2ZM7 7.5C6.72 7.5 6.5 7.28 6.5 7S6.72 6.5 7 6.5 7.5 6.72 7.5 7 7.28 7.5 7 7.5Z"/>
+            </svg>
         </button>
     </div>
 
     <div id="timeline-header">
-        <div id="measures-container"></div>
+        <div id="timeline-container" class="relative w-full h-full" style="z-index: 35;"></div>
     </div>
 
     <main id="main-content" class="flex-grow flex overflow-hidden">
@@ -205,6 +346,11 @@
                 <div id="grid-lines-container" class="absolute top-0 left-0 w-full h-full pointer-events-none z-0"></div>
                 <div id="note-container" class="relative z-10 h-full"></div>
                 <div id="playback-cursor"></div>
+                <div id="snap-indicator" class="snap-indicator"></div>
+                <div id="loop-region" class="loop-region" style="display: none;">
+                    <div class="loop-marker start" id="loop-start-marker"></div>
+                    <div class="loop-marker end" id="loop-end-marker"></div>
+                </div>
             </div>
         </div>
     </main>
@@ -240,6 +386,14 @@
         const zoomRange = document.getElementById('zoom-range');
         const signatureSelect = document.getElementById('signature-select');
         const toolbar = document.getElementById('toolbar');
+        const snapEnabledCheckbox = document.getElementById('snap-enabled');
+        const snapIndicator = document.getElementById('snap-indicator');
+        const timelineContainer = document.getElementById('timeline-container');
+        const playbackPosition = document.getElementById('playback-position');
+        const loopBtn = document.getElementById('loop-btn');
+        const loopRegion = document.getElementById('loop-region');
+        const loopStartMarker = document.getElementById('loop-start-marker');
+        const loopEndMarker = document.getElementById('loop-end-marker');
 
         // --- State ---
         let midiData = null;
@@ -247,6 +401,15 @@
         let parts = [];
         let synths = [];
         let activeTool = 'select';
+        let currentSubdivision = 4; // 1/4 notes by default
+        let snapToGrid = true;
+        let isDrawing = false;
+        let previewNote = null;
+        let isLooping = false;
+        let loopStart = 0;
+        let loopEnd = 8; // Default 2 measures in 4/4
+        let maxMeasures = 1000; // Practically unlimited
+        let playbackUpdateInterval = null;
 
         // --- Instruments ---
         let sampler = new Tone.Sampler().toDestination();
@@ -261,6 +424,8 @@
         window.onload = () => {
             setupPianoKeys();
             setupToolbar();
+            setupSubdivisionControls();
+            setupGridInteraction();
             draw();
             Tone.Transport.bpm.value = parseInt(tempoInput.value, 10);
             const sig = signatureSelect.value.split('/').map(n => parseInt(n));
@@ -292,6 +457,62 @@
         playBtn.addEventListener('click', handlePlayPause);
         stopBtn.addEventListener('click', handleStop);
         rewindBtn.addEventListener('click', handleRewind);
+        snapEnabledCheckbox.addEventListener('change', (e) => {
+            snapToGrid = e.target.checked;
+        });
+        loopBtn.addEventListener('click', toggleLoop);
+        
+        // Timeline click to set playback position
+        timelineContainer.addEventListener('click', (e) => {
+            const rect = timelineContainer.getBoundingClientRect();
+            const x = e.clientX - rect.left + timelineHeader.scrollLeft;
+            const time = x / zoom;
+            setPlaybackPosition(time);
+        });
+
+        // --- Playback Position Management ---
+        function setPlaybackPosition(time) {
+            Tone.Transport.seconds = Math.max(0, time);
+            updatePlaybackDisplay();
+        }
+
+        function updatePlaybackDisplay() {
+            const currentTime = Tone.Transport.seconds;
+            const beatsPerMeasure = Tone.Transport.timeSignature[0];
+            const secondsPerBeat = 60 / Tone.Transport.bpm.value;
+            
+            const totalBeats = currentTime / secondsPerBeat;
+            const measure = Math.floor(totalBeats / beatsPerMeasure) + 1;
+            const beat = Math.floor(totalBeats % beatsPerMeasure) + 1;
+            const subdivision = Math.floor((totalBeats % 1) * (currentSubdivision / 4));
+            const tick = Math.floor(((totalBeats % 1) * (currentSubdivision / 4) % 1) * 1000);
+            
+            playbackPosition.textContent = `${measure}:${beat}:${subdivision.toString().padStart(2, '0')}:${tick.toString().padStart(3, '0')}`;
+        }
+
+        function toggleLoop() {
+            isLooping = !isLooping;
+            loopBtn.classList.toggle('active', isLooping);
+            loopRegion.style.display = isLooping ? 'block' : 'none';
+            
+            if (isLooping) {
+                Tone.Transport.loop = true;
+                Tone.Transport.loopStart = loopStart;
+                Tone.Transport.loopEnd = loopEnd;
+                updateLoopRegionDisplay();
+            } else {
+                Tone.Transport.loop = false;
+            }
+        }
+
+        function updateLoopRegionDisplay() {
+            const startX = loopStart * zoom;
+            const endX = loopEnd * zoom;
+            const width = endX - startX;
+            
+            loopRegion.style.left = `${startX}px`;
+            loopRegion.style.width = `${width}px`;
+        }
 
         // --- File & MIDI Handling ---
         async function handleFileUpload(event) {
@@ -337,6 +558,202 @@
             }
         }
         
+        // --- Time Management Functions ---
+        function setupSubdivisionControls() {
+            const subdivisionBtns = document.querySelectorAll('.subdivision-btn');
+            subdivisionBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    subdivisionBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentSubdivision = parseInt(btn.dataset.subdivision);
+                    draw();
+                });
+            });
+        }
+
+        function getTimeForPosition(x) {
+            const rawTime = x / zoom;
+            if (!snapToGrid) return rawTime;
+            
+            const secondsPerBeat = 60 / Tone.Transport.bpm.value;
+            const secondsPerSubdivision = secondsPerBeat / (currentSubdivision / 4);
+            return Math.round(rawTime / secondsPerSubdivision) * secondsPerSubdivision;
+        }
+
+        function getPositionForTime(time) {
+            return time * zoom;
+        }
+
+        function getQuantizedDuration(duration) {
+            if (!snapToGrid) return Math.max(duration, 0.1);
+            
+            const secondsPerBeat = 60 / Tone.Transport.bpm.value;
+            const minDuration = secondsPerBeat / (currentSubdivision / 4);
+            const quantizedDuration = Math.max(Math.round(duration / minDuration) * minDuration, minDuration);
+            return quantizedDuration;
+        }
+
+        function getNoteFromY(y) {
+            const noteIndex = Math.floor(y / NOTE_HEIGHT);
+            return MIDI_NOTE_RANGE.max - noteIndex;
+        }
+
+        function getYFromNote(midi) {
+            const noteIndex = MIDI_NOTE_RANGE.max - midi;
+            return noteIndex * NOTE_HEIGHT;
+        }
+
+        // --- Grid Interaction ---
+        function setupGridInteraction() {
+            let startX, startNote, originalX;
+            
+            gridContainer.addEventListener('mousedown', (e) => {
+                if (activeTool === 'pencil') {
+                    handlePencilDown(e);
+                }
+            });
+
+            gridContainer.addEventListener('mousemove', (e) => {
+                if (activeTool === 'pencil') {
+                    handlePencilMove(e);
+                }
+                
+                if (snapToGrid) {
+                    updateSnapIndicator(e);
+                }
+            });
+
+            gridContainer.addEventListener('mouseup', (e) => {
+                if (activeTool === 'pencil') {
+                    handlePencilUp(e);
+                }
+            });
+
+            gridContainer.addEventListener('mouseleave', () => {
+                hideSnapIndicator();
+                if (previewNote) {
+                    previewNote.remove();
+                    previewNote = null;
+                }
+            });
+        }
+
+        function handlePencilDown(e) {
+            const rect = gridContainer.getBoundingClientRect();
+            const x = e.clientX - rect.left + gridContainer.scrollLeft;
+            const y = e.clientY - rect.top + gridContainer.scrollTop;
+            
+            const time = getTimeForPosition(x);
+            const midi = getNoteFromY(y);
+            
+            if (midi < MIDI_NOTE_RANGE.min || midi > MIDI_NOTE_RANGE.max) return;
+            
+            isDrawing = true;
+            startX = x;
+            startNote = { time, midi };
+            
+            createPreviewNote(time, midi, 0.25); // Default quarter note duration
+            e.preventDefault();
+        }
+
+        function handlePencilMove(e) {
+            if (!isDrawing || !startNote) return;
+            
+            const rect = gridContainer.getBoundingClientRect();
+            const currentX = e.clientX - rect.left + gridContainer.scrollLeft;
+            const duration = Math.max(getTimeForPosition(currentX) - startNote.time, 0.1);
+            const quantizedDuration = getQuantizedDuration(duration);
+            
+            if (previewNote) {
+                previewNote.style.width = `${quantizedDuration * zoom}px`;
+            }
+        }
+
+        function handlePencilUp(e) {
+            if (!isDrawing || !startNote) return;
+            
+            const rect = gridContainer.getBoundingClientRect();
+            const endX = e.clientX - rect.left + gridContainer.scrollLeft;
+            const duration = Math.max(getTimeForPosition(endX) - startNote.time, 0.1);
+            const quantizedDuration = getQuantizedDuration(duration);
+            
+            // Add note to MIDI data
+            addNoteToMidiData(startNote.time, startNote.midi, quantizedDuration, 0.8);
+            
+            // Clean up
+            if (previewNote) {
+                previewNote.remove();
+                previewNote = null;
+            }
+            
+            isDrawing = false;
+            startNote = null;
+            
+            // Redraw to show the actual note
+            drawPianoRoll();
+        }
+
+        function createPreviewNote(time, midi, duration) {
+            if (previewNote) {
+                previewNote.remove();
+            }
+            
+            const noteDiv = document.createElement('div');
+            noteDiv.classList.add('note', 'preview');
+            
+            const y = getYFromNote(midi);
+            const x = getPositionForTime(time);
+            const width = duration * zoom;
+            
+            noteDiv.style.top = `${y}px`;
+            noteDiv.style.left = `${x}px`;
+            noteDiv.style.width = `${width}px`;
+            noteDiv.style.height = `${NOTE_HEIGHT - 2}px`;
+            
+            noteContainer.appendChild(noteDiv);
+            previewNote = noteDiv;
+        }
+
+        function updateSnapIndicator(e) {
+            const rect = gridContainer.getBoundingClientRect();
+            const x = e.clientX - rect.left + gridContainer.scrollLeft;
+            const snappedTime = getTimeForPosition(x);
+            const snappedX = getPositionForTime(snappedTime);
+            
+            snapIndicator.style.left = `${snappedX}px`;
+            snapIndicator.style.display = 'block';
+        }
+
+        function hideSnapIndicator() {
+            snapIndicator.style.display = 'none';
+        }
+
+        function addNoteToMidiData(time, midi, duration, velocity = 0.8) {
+            if (!midiData) {
+                // Create new MIDI data if none exists
+                midiData = new Midi();
+                midiData.addTrack();
+                exportButton.disabled = false;
+            }
+            
+            if (midiData.tracks.length === 0) {
+                midiData.addTrack();
+            }
+            
+            // Add to first track for now
+            const track = midiData.tracks[0];
+            const noteName = Tone.Midi(midi).toNote();
+            
+            track.addNote({
+                name: noteName,
+                time: time,
+                duration: duration,
+                velocity: velocity
+            });
+            
+            console.log(`Added note: ${noteName} at ${time}s for ${duration}s`);
+        }
+
         // --- Drawing and UI ---
         function setupToolbar() {
             const tools = ['select', 'pencil', 'cutter'];
@@ -361,6 +778,7 @@
             drawPianoRoll();
             drawTimeline();
             drawGrid();
+            updateLoopRegionDisplay();
         }
 
         function setupPianoKeys() {
@@ -405,44 +823,70 @@
         
         function drawGrid() {
             gridLinesContainer.innerHTML = '';
-            const totalDuration = midiData ? midiData.duration : 120;
+            const totalDuration = midiData ? Math.max(midiData.duration, 32) : 32; // Minimum 32 seconds
             const containerWidth = totalDuration * zoom;
 
+            // Horizontal lines (piano keys)
             const numKeys = MIDI_NOTE_RANGE.max - MIDI_NOTE_RANGE.min + 1;
             for (let i = 0; i <= numKeys; i++) {
                 const line = document.createElement('div');
                 const isBlackKey = [1, 3, 6, 8, 10].includes((MIDI_NOTE_RANGE.max - i) % 12);
                 line.className = `absolute w-full h-px ${isBlackKey ? 'bg-zinc-700/75' : 'bg-zinc-800'}`;
-                line.style.top = `${i * NOTE_HEIGHT -1}px`;
+                line.style.top = `${i * NOTE_HEIGHT - 1}px`;
                 line.style.width = `${containerWidth}px`;
                 gridLinesContainer.appendChild(line);
             }
             
+            // Vertical lines (time grid)
             const beatsPerMeasure = Tone.Transport.timeSignature[0];
-            const subdivision = Tone.Transport.timeSignature[1];
             const secondsPerBeat = 60 / Tone.Transport.bpm.value;
-            const measureCount = Math.ceil(totalDuration / (secondsPerBeat * beatsPerMeasure));
-
-            for (let m = 0; m < measureCount; m++) {
-                for (let b = 0; b < beatsPerMeasure; b++) {
-                    const time = (m * beatsPerMeasure + b) * secondsPerBeat;
-                    const x = time * zoom;
-                    const line = document.createElement('div');
-                    line.className = `absolute h-full w-px ${b === 0 ? 'bg-zinc-600' : 'bg-zinc-700'}`;
-                    line.style.left = `${x}px`;
-                    gridLinesContainer.appendChild(line);
+            const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+            const secondsPerSubdivision = secondsPerBeat / (currentSubdivision / 4);
+            
+            // Calculate how many subdivisions we need
+            const totalSubdivisions = Math.ceil(totalDuration / secondsPerSubdivision);
+            
+            for (let i = 0; i <= totalSubdivisions; i++) {
+                const time = i * secondsPerSubdivision;
+                const x = time * zoom;
+                
+                // Determine line type
+                const subdivisionInMeasure = i % (beatsPerMeasure * currentSubdivision / 4);
+                const subdivisionInBeat = i % (currentSubdivision / 4);
+                
+                let lineClass;
+                if (subdivisionInMeasure === 0) {
+                    lineClass = 'grid-line-major'; // Measure lines
+                } else if (subdivisionInBeat === 0) {
+                    lineClass = 'grid-line-beat'; // Beat lines
+                } else {
+                    lineClass = 'grid-line-subdivision'; // Subdivision lines
                 }
+                
+                const line = document.createElement('div');
+                line.className = `absolute h-full w-px ${lineClass}`;
+                line.style.left = `${x}px`;
+                gridLinesContainer.appendChild(line);
             }
         }
 
         function drawPianoRoll() {
             noteContainer.innerHTML = '';
+            
+            // Add snap indicator back after clearing
+            const snapIndicatorElement = document.createElement('div');
+            snapIndicatorElement.id = 'snap-indicator';
+            snapIndicatorElement.className = 'snap-indicator';
+            noteContainer.appendChild(snapIndicatorElement);
+            
             if (!midiData) {
-                 noteContainer.style.width = '100%';
-                 return;
+                const totalDuration = 32; // Default duration
+                const containerWidth = Math.max(totalDuration * zoom, gridContainer.clientWidth);
+                noteContainer.style.width = `${containerWidth}px`;
+                return;
             }
 
-            const totalDuration = midiData.duration;
+            const totalDuration = Math.max(midiData.duration, 32);
             const containerWidth = Math.max(totalDuration * zoom, gridContainer.clientWidth);
             noteContainer.style.width = `${containerWidth}px`;
 
@@ -473,20 +917,68 @@
         }
 
         function drawTimeline() {
-            measuresContainer.innerHTML = '';
-            const totalDuration = midiData ? midiData.duration : 120;
+            timelineContainer.innerHTML = '';
+            
+            // Calculate timeline parameters
             const beatsPerMeasure = Tone.Transport.timeSignature[0];
             const secondsPerBeat = 60 / Tone.Transport.bpm.value;
             const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
-            const measureWidth = secondsPerMeasure * zoom;
-            const measureCount = Math.ceil(totalDuration / secondsPerMeasure);
-
-            for (let i = 0; i < measureCount; i++) {
-                const marker = document.createElement('div');
-                marker.className = 'measure-marker';
-                marker.style.width = `${measureWidth}px`;
-                marker.textContent = `${i + 1}`;
-                measuresContainer.appendChild(marker);
+            const secondsPerSubdivision = secondsPerBeat / (currentSubdivision / 4);
+            
+            // Determine total duration - either from MIDI or default minimum
+            const midiDuration = midiData ? midiData.duration : 0;
+            const minDuration = maxMeasures * secondsPerMeasure;
+            const totalDuration = Math.max(midiDuration, minDuration);
+            
+            const containerWidth = totalDuration * zoom;
+            timelineContainer.style.width = `${containerWidth}px`;
+            timelineContainer.style.position = 'relative';
+            timelineContainer.style.zIndex = '35';
+            
+            // Calculate subdivision count
+            const totalSubdivisions = Math.ceil(totalDuration / secondsPerSubdivision);
+            
+            for (let i = 0; i <= totalSubdivisions; i++) {
+                const time = i * secondsPerSubdivision;
+                const x = time * zoom;
+                
+                // Skip if beyond our view to optimize performance
+                if (x > containerWidth) break;
+                
+                // Determine tick type
+                const subdivisionInMeasure = i % (beatsPerMeasure * currentSubdivision / 4);
+                const subdivisionInBeat = i % (currentSubdivision / 4);
+                
+                const tick = document.createElement('div');
+                tick.className = 'timeline-tick';
+                tick.style.left = `${x}px`;
+                tick.style.position = 'absolute';
+                
+                if (subdivisionInMeasure === 0) {
+                    // Measure marker
+                    const measure = Math.floor(i / (beatsPerMeasure * currentSubdivision / 4)) + 1;
+                    tick.classList.add('measure');
+                    tick.textContent = measure.toString();
+                    tick.style.zIndex = '40';
+                } else if (subdivisionInBeat === 0) {
+                    // Beat marker
+                    const beatInMeasure = Math.floor(subdivisionInMeasure / (currentSubdivision / 4)) + 1;
+                    tick.classList.add('beat');
+                    tick.style.zIndex = '37';
+                    if (currentSubdivision >= 8) { // Only show beat numbers on fine subdivisions
+                        tick.textContent = beatInMeasure.toString();
+                    }
+                } else {
+                    // Subdivision marker
+                    tick.classList.add('subdivision');
+                    tick.style.zIndex = '35';
+                    if (currentSubdivision >= 16) { // Only show subdivision numbers on very fine subdivisions
+                        const subInBeat = (subdivisionInMeasure % (currentSubdivision / 4)) + 1;
+                        tick.textContent = subInBeat.toString();
+                    }
+                }
+                
+                timelineContainer.appendChild(tick);
             }
         }
 
@@ -519,13 +1011,21 @@
                 Tone.Transport.pause();
                 playIcon.classList.remove('hidden');
                 pauseIcon.classList.add('hidden');
+                stopPlaybackUpdates();
             } else {
-                if (!midiData) return;
+                if (!midiData && !isLooping) {
+                    // Create a default empty track for practice
+                    midiData = new Midi();
+                    midiData.addTrack();
+                    exportButton.disabled = false;
+                }
+                
                 prepareParts();
                 Tone.Transport.start();
                 playIcon.classList.add('hidden');
                 pauseIcon.classList.remove('hidden');
                 showPlaybackCursor();
+                startPlaybackUpdates();
             }
         }
 
@@ -539,11 +1039,18 @@
             playIcon.classList.remove('hidden');
             pauseIcon.classList.add('hidden');
             hidePlaybackCursor();
+            stopPlaybackUpdates();
+            updatePlaybackDisplay();
         }
 
         function handleRewind() {
-            Tone.Transport.position = 0;
+            if (isLooping) {
+                Tone.Transport.seconds = loopStart;
+            } else {
+                Tone.Transport.position = 0;
+            }
             updatePlaybackCursor();
+            updatePlaybackDisplay();
         }
 
         function prepareParts() {
@@ -560,6 +1067,25 @@
                 }, track.notes).start(0);
                 parts.push(part);
             });
+        }
+
+        function startPlaybackUpdates() {
+            stopPlaybackUpdates();
+            playbackUpdateInterval = setInterval(() => {
+                updatePlaybackDisplay();
+                
+                // Handle looping
+                if (isLooping && Tone.Transport.seconds >= loopEnd) {
+                    Tone.Transport.seconds = loopStart;
+                }
+            }, 50); // 20fps updates
+        }
+
+        function stopPlaybackUpdates() {
+            if (playbackUpdateInterval) {
+                clearInterval(playbackUpdateInterval);
+                playbackUpdateInterval = null;
+            }
         }
 
         // --- Playback Cursor ---
@@ -597,7 +1123,6 @@
             
             cursorAnimationFrame = requestAnimationFrame(updatePlaybackCursor);
         }
-
     </script>
 </body>
 </html>

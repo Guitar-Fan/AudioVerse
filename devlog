@@ -1,12 +1,12 @@
+- Added piano roll view with interactive grid for drawing, editing, and deleting MIDI notes.
+- Snap-to-grid and subdivision controls for precise note placement (1/1 to 1/32).
+- Improved timeline: measure, beat, and subdivision markers, zoomable horizontal scroll.
+- MIDI file upload and export support; parses tempo and time signature automatically.
+- Playback engine upgraded: uses Tone.js for accurate MIDI playback and timing.
+- Loop region selection and playback.
+- Tool system: select, pencil, and cutter tools for editing notes.
+- Custom sample upload per piano key; mapped and pitch-shifted for MIDI playback.
+- UI improvements: responsive layout, tooltips, and visual feedback.
+- Bug fixes for note drawing, playback cursor, and MIDI parsing.
 
-- Added Mixer View with per-track volume, pan, and EQ controls. Users can switch between Arrangement and Mixer views.
-- Improved arrangement view: timeline now supports zooming, auto-scroll, and better grid snapping (bars, beats, subdivisions, triplets).
-- Enhanced clip context menu: split at playhead, duplicate, quantize, fade in/out, normalize, reverse, rename, export, move to new track, and color picker.
-- Track context menu: mute/solo/arm, rename, delete, duplicate, add silence, quantize all clips, paste, and color picker.
-- Undo/redo system for non-destructive editing.
-- Improved waveform and spectrum visualization for clips.
-- Added keyboard shortcuts for common DAW actions (play, record, stop, undo/redo, copy/paste, duplicate, quantize, delete).
-- Metronome toggle and improved metronome scheduling.
-- Export clips as WAV files directly from the browser.
-- UI improvements: responsive layout, better tooltips, and visual feedback for controls.
-- Bug fixes and stability improvements for long projects and playback limits.
+In video: Tried to play Megalovania from Undertale midi file, but its too complicated for my website or device, so website crashed. Played William Tell Overture to demonstrate my website's midi playing capabilities
