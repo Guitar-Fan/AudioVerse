@@ -9,64 +9,75 @@
   <link rel="stylesheet" href="DAWstyling.css">
 </head>
 <body class="min-w-0 bg-gray-900 text-white overflow-hidden">
-  <!-- Window Management Header -->
-  <header class="bg-gray-800 border-b-2 border-orange-500 p-4 shadow-lg">
-    <div class="flex justify-between items-center">
-      <div class="flex gap-2">
-        <button id="arrangeViewBtn" class="px-4 py-2 bg-orange-500 text-black rounded font-semibold active">
-          Arrangement
+  <!-- Transport Controls - Always Visible -->
+  <div id="toolbar" class="bg-gray-800 p-4 border-b-2 border-orange-500 shadow-lg">
+    <div class="flex gap-4 items-center justify-between">
+      <div class="transport-controls flex gap-2">
+        <button id="recordBtn" title="Record (R)" class="p-2 bg-gray-700 rounded hover:bg-red-600 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6" fill="currentColor"/>
+          </svg>
         </button>
-        <button id="mixerViewBtn" class="px-4 py-2 bg-gray-600 text-white rounded font-semibold">
-          Mixer
+        <button id="stopBtn" title="Stop (S)" disabled class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-50">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <rect x="3" y="3" width="10" height="10" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="playBtn" title="Play (Space)" class="p-2 bg-green-700 rounded hover:bg-green-600 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <polygon points="4,2 4,14 13,8" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="pauseBtn" title="Pause" disabled class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-50">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <rect x="4" y="2" width="3" height="12" fill="currentColor"/>
+            <rect x="9" y="2" width="3" height="12" fill="currentColor"/>
+          </svg>
+        </button>
+        
+        <!-- View Toggle Buttons -->
+        <div class="view-controls flex gap-1 ml-4 pl-4 border-l border-gray-600">
+          <button id="arrangeViewBtn" title="Arrangement View" class="p-1.5 bg-orange-500 text-black rounded text-xs font-semibold active w-8 h-8 flex items-center justify-center">
+            <svg width="12" height="12" viewBox="0 0 16 16">
+              <rect x="1" y="3" width="14" height="2" fill="currentColor"/>
+              <rect x="1" y="7" width="14" height="2" fill="currentColor"/>
+              <rect x="1" y="11" width="14" height="2" fill="currentColor"/>
+              <rect x="3" y="1" width="4" height="6" fill="currentColor" opacity="0.6"/>
+              <rect x="9" y="5" width="6" height="6" fill="currentColor" opacity="0.6"/>
+            </svg>
+          </button>
+          <button id="mixerViewBtn" title="Mixer View" class="p-1.5 bg-gray-600 text-white rounded text-xs font-semibold w-8 h-8 flex items-center justify-center">
+            <svg width="12" height="12" viewBox="0 0 16 16">
+              <rect x="2" y="2" width="2" height="12" fill="currentColor"/>
+              <rect x="7" y="2" width="2" height="12" fill="currentColor"/>
+              <rect x="12" y="2" width="2" height="12" fill="currentColor"/>
+              <circle cx="3" cy="5" r="1.5" fill="currentColor"/>
+              <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+              <circle cx="13" cy="6" r="1.5" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <div class="file-controls flex gap-2">
+        <label class="upload-btn p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors cursor-pointer" title="Upload audio">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <path d="M8 2L5 5h2v6h2V5h2L8 2z" fill="currentColor"/>
+            <path d="M2 12h12v2H2z" fill="currentColor"/>
+          </svg>
+          <input type="file" id="fileInput" accept="audio/*" multiple class="hidden">
+        </label>
+        <button id="addTrackBtn" title="Add a new track" class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
         </button>
       </div>
     </div>
-  </header>
+  </div>
 
   <!-- Arrangement View Window -->
   <div id="arrangementWindow" class="window active">
-    <div id="toolbar" class="bg-gray-800 p-4 border-b border-gray-700">
-      <div class="flex gap-4 items-center justify-between">
-        <div class="transport-controls flex gap-2">
-          <button id="recordBtn" title="Record (R)" class="p-2 bg-gray-700 rounded hover:bg-red-600 transition-colors">
-            <svg width="16" height="16" viewBox="0 0 16 16">
-              <circle cx="8" cy="8" r="6" fill="currentColor"/>
-            </svg>
-          </button>
-          <button id="stopBtn" title="Stop (S)" disabled class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-50">
-            <svg width="16" height="16" viewBox="0 0 16 16">
-              <rect x="3" y="3" width="10" height="10" fill="currentColor"/>
-            </svg>
-          </button>
-          <button id="playBtn" title="Play (Space)" class="p-2 bg-green-700 rounded hover:bg-green-600 transition-colors">
-            <svg width="16" height="16" viewBox="0 0 16 16">
-              <polygon points="4,2 4,14 13,8" fill="currentColor"/>
-            </svg>
-          </button>
-          <button id="pauseBtn" title="Pause" disabled class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-50">
-            <svg width="16" height="16" viewBox="0 0 16 16">
-              <rect x="4" y="2" width="3" height="12" fill="currentColor"/>
-              <rect x="9" y="2" width="3" height="12" fill="currentColor"/>
-            </svg>
-          </button>
-        </div>
-        <div class="file-controls flex gap-2">
-          <label class="upload-btn p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors cursor-pointer" title="Upload audio">
-            <svg width="16" height="16" viewBox="0 0 16 16">
-              <path d="M8 2L5 5h2v6h2V5h2L8 2z" fill="currentColor"/>
-              <path d="M2 12h12v2H2z" fill="currentColor"/>
-            </svg>
-            <input type="file" id="fileInput" accept="audio/*" multiple class="hidden">
-          </label>
-          <button id="addTrackBtn" title="Add a new track" class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors">
-            <svg width="16" height="16" viewBox="0 0 16 16">
-              <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-
     <div class="settings-bar bg-gray-800 p-3 border-b border-gray-700 flex items-center gap-6 text-sm">
       <div class="tempo-section flex items-center gap-2">
         <label for="bpm" class="text-orange-400 font-semibold">BPM:</label>
@@ -119,9 +130,6 @@
 
   <!-- Mixer View Window -->
   <div id="mixerWindow" class="window hidden">
-    <div class="bg-gray-800 p-4 border-b border-gray-700">
-      <h2 class="text-xl font-semibold text-orange-400">Mixer</h2>
-    </div>
     <div id="mixerContainer" class="flex-1 overflow-auto bg-gradient-to-b from-gray-900 to-gray-800 p-4">
       <div id="mixerChannels" class="flex gap-4 min-h-full">
         <!-- Mixer channels will be dynamically generated -->

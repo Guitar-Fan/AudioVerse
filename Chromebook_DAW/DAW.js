@@ -4,8 +4,8 @@ const DEFAULT_TRACKS = 2;
 const DEFAULT_BPM = 120;
 const DEFAULT_SIG_NUM = 4;
 const DEFAULT_SIG_DEN = 4;
-const MAX_TIME = 180; // seconds
-const MAX_BARS = 128;
+const MAX_TIME = 600; // Increased from 180 to 600 seconds (10 minutes)
+const MAX_BARS = 500; // Increased from 128 to 500 bars
 const CLIP_COLORS = [
   "#1de9b6", "#42a5f5", "#ffb300", "#ec407a", "#ffd600", "#8bc34a",
   "#00bcd4", "#ba68c8", "#ff7043", "#90caf9", "#cddc39"
@@ -112,10 +112,11 @@ function getFurthestClipEnd() {
   return maxEnd;
 }
 function getTotalBars() {
-  // Calculate based on furthest clip or a large default (e.g., 1000 bars)
+  // Calculate based on furthest clip or a reasonable default
   const furthestEnd = getFurthestClipEnd();
   const barsByClips = Math.ceil(furthestEnd / getSecPerBar());
-  return Math.max(barsByClips, 1000); // 1000 bars as a practical "unlimited"
+  // Use a more reasonable maximum that allows for longer projects
+  return Math.max(barsByClips, Math.min(500, Math.max(100, barsByClips + 50))); 
 }
 function getTimelineWidth() {
   return TRACK_HEADER_WIDTH + getTotalBars() * getSecPerBar() * PIXELS_PER_SEC;
@@ -580,7 +581,7 @@ function startPlayback() {
   const startTime = audioCtx.currentTime;
   const startOffset = playheadTime;
   
-  console.log('Starting playback at', startOffset, 'seconds'); // Debug log
+  console.log('Starting playback at', startOffset, 'seconds, max bars:', getTotalBars()); // Debug log
   
   // Clear any existing sources
   stopAllAudioSources();
@@ -618,8 +619,6 @@ function startPlayback() {
         const sourceDuration = Math.min(clip.duration, clipEndTime - Math.max(startOffset, clipStartTime));
         
         if (sourceDuration > 0) {
-          console.log('Playing clip:', clip.name, 'delay:', playDelay, 'offset:', sourceOffset, 'duration:', sourceDuration); // Debug log
-          
           // Track this source so we can stop it later
           activeAudioSources.push(source);
           
@@ -646,6 +645,9 @@ function startPlayback() {
     
     playheadTime = startOffset + (audioCtx.currentTime - startTime);
     
+    // Calculate current bar for debugging
+    const currentBar = Math.floor(playheadTime / getSecPerBar()) + 1;
+    
     // Auto-scroll if enabled
     if (autoScrollEnabled) {
       const workspaceEl = document.getElementById('workspace');
@@ -658,8 +660,18 @@ function startPlayback() {
     
     renderTimeline();
     
-    // Stop at max time
-    if (playheadTime >= MAX_TIME) {
+    // More generous stopping condition - only stop if we exceed reasonable limits
+    const maxReasonableTime = Math.max(MAX_TIME, getFurthestClipEnd() + 30); // 30 seconds past last clip
+    const maxReasonableBars = Math.max(getTotalBars(), 200); // At least 200 bars
+    const currentTimeInBars = playheadTime / getSecPerBar();
+    
+    if (playheadTime >= maxReasonableTime || currentTimeInBars >= maxReasonableBars) {
+      console.log('Playback stopped at limits:', {
+        playheadTime,
+        maxReasonableTime,
+        currentBar,
+        maxReasonableBars
+      });
       stopAll();
       return;
     }
@@ -706,7 +718,8 @@ function pauseAll() {
 
 function stopAll() {
   pauseAll();
-  playheadTime = 0;
+  // Don't automatically reset to 0 - let user control playhead position
+  // playheadTime = 0; // Remove this line
   renderTimeline();
 }
 
@@ -1148,30 +1161,44 @@ function showClipContextMenu(e, tIdx, cIdx, clipDiv) {
   menu.style.top = y + 'px';
 
   const clip = tracks[tIdx].clips[cIdx];
-  const canSplitAtPlayhead = playheadTime > clip.startTime && playheadTime < clip.startTime + clip.duration;
+  const canSplitAtPlayhead = playheadTime >= clip.startTime && playheadTime <= (clip.startTime + clip.duration);
+  
+  console.log('Context menu split check:', {
+    playheadTime: playheadTime,
+    clipStart: clip.startTime,
+    clipEnd: clip.startTime + clip.duration,
+    canSplitAtPlayhead: canSplitAtPlayhead
+  });
 
   let actions = [
-    {label: 'Copy', fn: () => { selectClip(tIdx, cIdx); copySelectedClip(); }},
-    {label: 'Paste', fn: () => { pasteClip(); }},
+    {label: 'Copy', fn: () => { selectClip(tIdx, cIdx); copySelectedClip(); console.log('Copy executed'); }},
+    {label: 'Paste', fn: () => { pasteClip(); console.log('Paste executed'); }},
     {sep:true},
-    {label: canSplitAtPlayhead ? 'Split at Playhead' : 'Split at Center', fn: () => {
-      const splitTime = canSplitAtPlayhead ? playheadTime : clip.startTime + (clip.duration / 2);
-      splitClip(tIdx, cIdx, splitTime);
+    {label: canSplitAtPlayhead ? `Split at Playhead (${playheadTime.toFixed(2)}s)` : `Split at Center (${(clip.startTime + clip.duration/2).toFixed(2)}s)`, fn: () => {
+      const splitTimeToUse = canSplitAtPlayhead ? playheadTime : (clip.startTime + clip.duration / 2);
+      console.log('Executing split at:', splitTimeToUse);
+      splitClip(tIdx, cIdx, splitTimeToUse);
     }},
-    {label: 'Delete', fn: () => { tracks[tIdx].clips.splice(cIdx,1); saveState(); render(); }},
-    {label: 'Duplicate', fn: () => { duplicateClip(tIdx, cIdx); }},
-    {label: 'Quantize', fn: () => { selectClip(tIdx, cIdx); quantizeSelectedClip(); }},
+    {label: 'Delete', fn: () => { 
+      tracks[tIdx].clips.splice(cIdx,1); 
+      selectedClip = null;
+      saveState(); 
+      render(); 
+      console.log('Delete executed');
+    }},
+    {label: 'Duplicate', fn: () => { duplicateClip(tIdx, cIdx); console.log('Duplicate executed'); }},
+    {label: 'Quantize', fn: () => { selectClip(tIdx, cIdx); quantizeSelectedClip(); console.log('Quantize executed'); }},
     {sep:true},
-    {label: 'Fade In', fn: () => { fadeInClip(tIdx, cIdx); saveState(); }},
-    {label: 'Fade Out', fn: () => { fadeOutClip(tIdx, cIdx); saveState(); }},
-    {label: 'Normalize', fn: () => { normalizeClip(tIdx, cIdx); }},
-    {label: 'Reverse', fn: () => { reverseClip(tIdx, cIdx); }},
+    {label: 'Fade In', fn: () => { fadeInClip(tIdx, cIdx); saveState(); console.log('Fade In executed'); }},
+    {label: 'Fade Out', fn: () => { fadeOutClip(tIdx, cIdx); saveState(); console.log('Fade Out executed'); }},
+    {label: 'Normalize', fn: () => { normalizeClip(tIdx, cIdx); console.log('Normalize executed'); }},
+    {label: 'Reverse', fn: () => { reverseClip(tIdx, cIdx); console.log('Reverse executed'); }},
     {sep:true},
-    {label: 'Rename', fn: () => { renameClip(tIdx, cIdx); }},
-    {label: 'Export Clip', fn: () => { exportClip(tIdx, cIdx); }},
-    {label: 'Move to New Track', fn: () => { moveClipToNewTrack(tIdx, cIdx); }},
+    {label: 'Rename', fn: () => { renameClip(tIdx, cIdx); console.log('Rename executed'); }},
+    {label: 'Export Clip', fn: () => { exportClip(tIdx, cIdx); console.log('Export executed'); }},
+    {label: 'Move to New Track', fn: () => { moveClipToNewTrack(tIdx, cIdx); console.log('Move to new track executed'); }},
     {sep:true},
-    {label: 'Change Color', color:true, fn: (color) => { changeClipColor(tIdx, cIdx, color); }}
+    {label: 'Change Color', color:true, fn: (color) => { changeClipColor(tIdx, cIdx, color); console.log('Color changed to:', color); }}
   ];
   
   actions.forEach(act => {
@@ -1190,10 +1217,23 @@ function showClipContextMenu(e, tIdx, cIdx, clipDiv) {
       colorInput.value = tracks[tIdx].clips[cIdx].color;
       colorInput.className = 'color-picker';
       colorInput.onclick = (ev) => ev.stopPropagation();
-      colorInput.oninput = (ev) => { act.fn(ev.target.value); removeContextMenu(); };
+      colorInput.onchange = (ev) => { 
+        act.fn(ev.target.value); 
+        removeContextMenu(); 
+      };
       item.appendChild(colorInput);
     } else {
-      item.onclick = () => { act.fn(); removeContextMenu(); };
+      item.onclick = (ev) => { 
+        ev.stopPropagation();
+        ev.preventDefault();
+        console.log('Menu item clicked:', act.label);
+        try {
+          act.fn();
+        } catch (error) {
+          console.error('Error executing action:', act.label, error);
+        }
+        removeContextMenu(); 
+      };
     }
     menu.appendChild(item);
   });
@@ -1222,7 +1262,7 @@ function showClipContextMenu(e, tIdx, cIdx, clipDiv) {
         removeContextMenu();
       }
     }, { once: true });
-  }, 50);
+  }, 100); // Increased timeout
 }
 
 function showTrackContextMenu(e, tIdx) {
@@ -1247,11 +1287,11 @@ function showTrackContextMenu(e, tIdx) {
   menu.style.top = y + 'px';
 
   let actions = [
-    {label: tracks[tIdx].muted ? "Unmute" : "Mute", fn: () => { toggleTrackMute(tIdx); }},
-    {label: tracks[tIdx].solo ? "Unsolo" : "Solo", fn: () => { toggleTrackSolo(tIdx); }},
-    {label: tracks[tIdx].armed ? "Disarm" : "Arm for Recording", fn: () => { toggleTrackArm(tIdx); }},
+    {label: tracks[tIdx].muted ? "Unmute" : "Mute", fn: () => { toggleTrackMute(tIdx); console.log('Track mute toggled'); }},
+    {label: tracks[tIdx].solo ? "Unsolo" : "Solo", fn: () => { toggleTrackSolo(tIdx); console.log('Track solo toggled'); }},
+    {label: tracks[tIdx].armed ? "Disarm" : "Arm for Recording", fn: () => { toggleTrackArm(tIdx); console.log('Track arm toggled'); }},
     {sep:true},
-    {label: 'Rename Track', fn: () => { renameTrack(tIdx); }},
+    {label: 'Rename Track', fn: () => { renameTrack(tIdx); console.log('Rename track executed'); }},
     {label: 'Delete Track', fn: () => { 
       if (tracks.length <= 1) {
         alert('Cannot delete the last track');
@@ -1262,15 +1302,16 @@ function showTrackContextMenu(e, tIdx) {
         if (selectedTrackIndex >= tracks.length) selectedTrackIndex = tracks.length - 1;
         saveState();
         render();
+        console.log('Track deleted');
       }
     }},
-    {label: 'Duplicate Track', fn: () => { duplicateTrack(tIdx); }},
+    {label: 'Duplicate Track', fn: () => { duplicateTrack(tIdx); console.log('Track duplicated'); }},
     {sep:true},
-    {label: 'Add Silence Clip', fn: () => { addSilenceClip(tIdx); }},
-    {label: 'Quantize All Clips', fn: () => { quantizeAllClipsInTrack(tIdx); }},
+    {label: 'Add Silence Clip', fn: () => { addSilenceClip(tIdx); console.log('Silence clip added'); }},
+    {label: 'Quantize All Clips', fn: () => { quantizeAllClipsInTrack(tIdx); console.log('All clips quantized'); }},
     {sep:true},
-    {label: 'Paste', fn: () => { pasteClip(); }},
-    {label: 'Change Track Color', color:true, fn: (color) => { tracks[tIdx].color = color; saveState(); render(); }}
+    {label: 'Paste', fn: () => { pasteClip(); console.log('Paste executed'); }},
+    {label: 'Change Track Color', color:true, fn: (color) => { tracks[tIdx].color = color; saveState(); render(); console.log('Track color changed to:', color); }}
   ];
   
   actions.forEach(act => {
@@ -1289,10 +1330,23 @@ function showTrackContextMenu(e, tIdx) {
       colorInput.value = tracks[tIdx].color;
       colorInput.className = 'color-picker';
       colorInput.onclick = (ev) => ev.stopPropagation();
-      colorInput.oninput = (ev) => { act.fn(ev.target.value); removeContextMenu(); };
+      colorInput.onchange = (ev) => { 
+        act.fn(ev.target.value); 
+        removeContextMenu(); 
+      };
       item.appendChild(colorInput);
     } else {
-      item.onclick = () => { act.fn(); removeContextMenu(); };
+      item.onclick = (ev) => { 
+        ev.stopPropagation();
+        ev.preventDefault();
+        console.log('Menu item clicked:', act.label);
+        try {
+          act.fn();
+        } catch (error) {
+          console.error('Error executing action:', act.label, error);
+        }
+        removeContextMenu(); 
+      };
     }
     menu.appendChild(item);
   });
@@ -1304,699 +1358,58 @@ function showTrackContextMenu(e, tIdx) {
   menu.offsetHeight;
   
   setTimeout(() => {
-    document.addEventListener('mousedown', removeContextMenu, {once: true});
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') removeContextMenu();
-    }, {once: true});
-  }, 10);
-}
-
-function duplicateTrack(tIdx) {
-  const originalTrack = tracks[tIdx];
-  const newTrack = createTrack(originalTrack.label + ' Copy', originalTrack.color);
-  newTrack.volume = originalTrack.volume;
-  newTrack.pan = originalTrack.pan;
-  newTrack.muted = originalTrack.muted;
-  newTrack.solo = false; // Don't duplicate solo state
-  
-  // Duplicate all clips
-  originalTrack.clips.forEach(clip => {
-    const newClip = createClip(
-      clip.audioBuffer,
-      clip.startTime,
-      clip.duration,
-      clip.offset,
-      clip.color,
-      clip.name + ' Copy'
-    );
-    newTrack.clips.push(newClip);
-  });
-  
-  tracks.splice(tIdx + 1, 0, newTrack);
-  saveState();
-  render();
-}
-
-// --- Recording ---
-recordBtn.onclick = async () => {
-  if (isRecording) return;
-  
-  // Find armed tracks or use selected track
-  let armedTracks = tracks.filter(t => t.armed);
-  if (armedTracks.length === 0) {
-    // Auto-arm selected track if no tracks are armed
-    tracks[selectedTrackIndex].armed = true;
-    render();
-  }
-  
-  initAudioContext();
-  let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-  recordedChunks = [];
-  liveRecordingBuffer = [];
-  liveRecordingStart = playheadTime;
-  let inputNode = audioCtx.createMediaStreamSource(stream);
-
-  // Create processing chain: input -> analyser -> gain -> destination
-  let recordGain = audioCtx.createGain();
-  recordGain.gain.value = 0.8;
-  
-  inputNode.connect(analyserNode);
-  analyserNode.connect(recordGain);
-  recordGain.connect(audioCtx.destination);
-
-  // Live preview processing - FIX THIS PART
-  let processor = audioCtx.createScriptProcessor(4096, 1, 1);
-  inputNode.connect(processor);
-  processor.connect(audioCtx.destination); // Connect to hear the input
-  
-  processor.onaudioprocess = (e) => {
-    if (!isRecording) return;
-    
-    let input = e.inputBuffer.getChannelData(0);
-    // Convert Float32Array to regular array and add to buffer
-    liveRecordingBuffer = liveRecordingBuffer.concat(Array.from(input));
-    
-    // Limit buffer size to prevent memory issues
-    if (liveRecordingBuffer.length > audioCtx.sampleRate * 300) {
-      processor.disconnect();
-      inputNode.disconnect();
-    }
-    
-    // Trigger re-render to show recording preview
-    render();
-  };
-
-  mediaRecorder.ondataavailable = e => { recordedChunks.push(e.data); };
-  mediaRecorder.onstop = async () => {
-    processor.disconnect();
-    inputNode.disconnect();
-    recordGain.disconnect();
-    
-    if (recordedChunks.length === 0) { 
-      isRecording = false; 
-      recordBtn.disabled = false; 
-      stopBtn.disabled = true; 
-      return; 
-    }
-    
-    const blob = new Blob(recordedChunks, { type: 'audio/webm' });
-    const arrayBuffer = await blob.arrayBuffer();
-    audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
-      let targetTracks = tracks.filter(t => t.armed);
-      if (targetTracks.length === 0) targetTracks = [tracks[selectedTrackIndex]];
-      
-      targetTracks.forEach(track => {
-        let trackIndex = tracks.indexOf(track);
-        addClipToTrack(trackIndex, buffer, liveRecordingStart, buffer.duration);
-      });
-      
-      liveRecordingBuffer = [];
-      saveState();
-      render();
-    });
-    isRecording = false;
-    recordBtn.disabled = false;
-    stopBtn.disabled = true;
-  };
-
-  mediaRecorder.start();
-  isRecording = true;
-  recordBtn.disabled = true;
-  stopBtn.disabled = false;
-  if (metronomeEnabled) startMetronome();
-};
-
-// Add this handler to allow stopping recording via stopBtn
-stopBtn.onclick = () => {
-  if (isRecording && mediaRecorder && mediaRecorder.state === "recording") {
-    mediaRecorder.stop();
-  }
-  stopAll();
-};
-
-// --- Audio Playback Functions (MODIFY EXISTING) ---
-function playAll() {
-  if (playing) return;
-  
-  initAudioContext();
-  
-  // Ensure audio context is running
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume().then(() => {
-      startPlayback();
-    });
-  } else {
-    startPlayback();
-  }
-}
-
-function startPlayback() {
-  playing = true;
-  playBtn.disabled = true;
-  pauseBtn.disabled = false;
-  
-  const startTime = audioCtx.currentTime;
-  const startOffset = playheadTime;
-  
-  console.log('Starting playback at', startOffset, 'seconds'); // Debug log
-  
-  // Clear any existing sources
-  stopAllAudioSources();
-  
-  // Start metronome if enabled
-  if (metronomeEnabled) startMetronome();
-  
-  // Schedule all clips for playback
-  let activeSourcesCount = 0;
-  tracks.forEach((track, trackIndex) => {
-    if (track.muted) return;
-    
-    // Check if any track is soloed
-    const hasSoloTracks = tracks.some(t => t.solo);
-    if (hasSoloTracks && !track.solo) return;
-    
-    const trackGain = getTrackGainNode(trackIndex);
-    trackGain.gain.value = track.volume;
-    
-    track.clips.forEach(clip => {
-      if (!clip.audioBuffer) return;
-      
-      const clipStartTime = clip.startTime;
-      const clipEndTime = clipStartTime + clip.duration;
-      
-      // Only play clips that intersect with current playhead position
-      if (clipEndTime > startOffset) {
-        const source = audioCtx.createBufferSource();
-        source.buffer = clip.audioBuffer;
-        source.connect(trackGain);
-        
-        // Calculate when to start playing this clip
-        const playDelay = Math.max(0, clipStartTime - startOffset);
-        const sourceOffset = Math.max(0, startOffset - clipStartTime) + clip.offset;
-        const sourceDuration = Math.min(clip.duration, clipEndTime - Math.max(startOffset, clipStartTime));
-        
-        if (sourceDuration > 0) {
-          console.log('Playing clip:', clip.name, 'delay:', playDelay, 'offset:', sourceOffset, 'duration:', sourceDuration); // Debug log
-          
-          // Track this source so we can stop it later
-          activeAudioSources.push(source);
-          
-          // Set up automatic cleanup when source ends
-          source.onended = () => {
-            const index = activeAudioSources.indexOf(source);
-            if (index > -1) {
-              activeAudioSources.splice(index, 1);
-            }
-          };
-          
-          source.start(startTime + playDelay, sourceOffset, sourceDuration);
-          activeSourcesCount++;
-        }
+    const closeMenu = (event) => {
+      if (!menu.contains(event.target)) {
+        removeContextMenu();
+        document.removeEventListener('mousedown', closeMenu);
+        document.removeEventListener('contextmenu', closeMenu);
       }
-    });
-  });
-  
-  console.log('Active audio sources:', activeSourcesCount); // Debug log
-  
-  // Update playhead during playback
-  const updatePlayheadLoop = () => {
-    if (!playing) return;
-    
-    playheadTime = startOffset + (audioCtx.currentTime - startTime);
-    
-    // Auto-scroll if enabled
-    if (autoScrollEnabled) {
-      const workspaceEl = document.getElementById('workspace');
-      const gridOffset = TRACK_HEADER_WIDTH;
-      const playheadX = gridOffset + playheadTime * PIXELS_PER_SEC;
-      const workspaceWidth = workspaceEl.clientWidth;
-      const scrollLeft = Math.max(0, playheadX - workspaceWidth / 2);
-      workspaceEl.scrollLeft = scrollLeft;
-    }
-    
-    renderTimeline();
-    
-    // Stop at max time
-    if (playheadTime >= MAX_TIME) {
-      stopAll();
-      return;
-    }
-    
-    playRequestId = requestAnimationFrame(updatePlayheadLoop);
-  };
-  
-  updatePlayheadLoop();
-}
-
-function stopAllAudioSources() {
-  // Stop all currently playing audio sources
-  activeAudioSources.forEach(source => {
-    try {
-      source.stop();
-      source.disconnect();
-    } catch (e) {
-      // Source might already be stopped, ignore error
-    }
-  });
-  activeAudioSources = [];
-  console.log('Stopped all audio sources'); // Debug log
-}
-
-function pauseAll() {
-  if (!playing) return;
-  
-  console.log('Pausing playback'); // Debug log
-  
-  playing = false;
-  playBtn.disabled = false;
-  pauseBtn.disabled = true;
-  
-  if (playRequestId) {
-    cancelAnimationFrame(playRequestId);
-    playRequestId = null;
-  }
-  
-  stopMetronome();
-  
-  // Stop all active audio sources
-  stopAllAudioSources();
-}
-
-function stopAll() {
-  pauseAll();
-  playheadTime = 0;
-  renderTimeline();
-}
-
-// --- Clip Management ---
-function addClipToTrack(trackIndex, buffer, startTime, duration, color, name) {
-  if (trackIndex >= tracks.length) return;
-  tracks[trackIndex].clips.push(createClip(buffer, startTime, duration, 0, color, name));
-  render();
-}
-
-function addClipToFirstTrack(buffer, startTime, duration, color, name) {
-  if (tracks.length === 0) tracks.push(createTrack());
-  addClipToTrack(selectedTrackIndex, buffer, startTime, duration, color, name);
-}
-
-// --- Timeline and Playhead (MODIFY EXISTING) ---
-timelineDiv.onclick = (e) => {
-  // Fix offset calculation to account for header width
-  const rect = timelineDiv.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  const adjustedX = clickX - TRACK_HEADER_WIDTH; // Account for header offset
-  let rawTime = Math.max(0, adjustedX / PIXELS_PER_SEC);
-  
-  let gridTimes = getGridTimes();
-
-  // Collect all clip edges
-  let clipEdges = [];
-  tracks.forEach(track => {
-    track.clips.forEach(clip => {
-      clipEdges.push(clip.startTime);
-      clipEdges.push(clip.startTime + clip.duration);
-    });
-  });
-
-  // Combine grid and clip edges
-  let snapPoints = gridTimes.concat(clipEdges);
-
-  // Find nearest snap point
-  let minDist = Infinity, snapTime = rawTime;
-  snapPoints.forEach(t => {
-    let dist = Math.abs(t - rawTime);
-    if (dist < minDist) {
-      minDist = dist;
-      snapTime = t;
-    }
-  });
-
-  playheadTime = Math.max(0, snapTime);
-  renderTimeline();
-};
-
-// Helper: get all grid times (bars, beats, subdivisions, triplets)
-function getGridTimes() {
-  const gridTimes = [];
-  const secPerBar = getSecPerBar();
-  const secPerBeat = getSecPerBeat();
-  const totalBars = getTotalBars();
-  let subdivisions = 1;
-  if (zoomLevel > 1.5) subdivisions = 4;
-  else if (zoomLevel > 1.1) subdivisions = 2;
-  const showTriplets = zoomLevel > 1.2;
-
-  for (let bar = 0; bar <= totalBars; bar++) {
-    let barTime = bar * secPerBar;
-    gridTimes.push(barTime);
-    if (bar < totalBars) {
-      for (let beat = 1; beat < timeSigNum; beat++) {
-        let beatTime = barTime + beat * secPerBeat;
-        gridTimes.push(beatTime);
-
-        // Subdivisions
-        if (subdivisions > 1) {
-          for (let sub = 1; sub < subdivisions; sub++) {
-            gridTimes.push(beatTime + (sub * secPerBeat) / subdivisions);
-          }
-        }
-        // Triplets
-        if (showTriplets) {
-          for (let trip = 1; trip < 3; trip++) {
-            gridTimes.push(beatTime + (trip * secPerBeat) / 3);
-          }
-        }
-      }
-    }
-  }
-  return gridTimes;
-}
-
-// --- Audio Processing Setup (MODIFY EXISTING) ---
-function initAudioContext() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    // Master gain node
-    masterGainNode = audioCtx.createGain();
-    masterGainNode.connect(audioCtx.destination);
-    
-    // Analyser for visualization
-    analyserNode = audioCtx.createAnalyser();
-    analyserNode.fftSize = 2048;
-    analyserNode.connect(masterGainNode);
-  }
-  
-  // Resume audio context if suspended (required for user interaction)
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-  
-  return audioCtx;
-}
-
-function getTrackGainNode(trackIndex) {
-  if (!trackGainNodes.has(trackIndex)) {
-    const gainNode = audioCtx.createGain();
-    gainNode.connect(analyserNode);
-    trackGainNodes.set(trackIndex, gainNode);
-  }
-  return trackGainNodes.get(trackIndex);
-}
-
-function createTrackFilter(trackIndex, type = 'lowpass', frequency = 1000, Q = 1) {
-  if (!audioCtx) initAudioContext();
-  const filter = audioCtx.createBiquadFilter();
-  filter.type = type;
-  filter.frequency.value = frequency;
-  filter.Q.value = Q;
-  filterNodes.set(trackIndex, filter);
-  return filter;
-}
-
-// --- Copy/Paste Functionality ---
-function selectClip(tIdx, cIdx) {
-  // Deselect all clips first
-  tracks.forEach(track => {
-    track.clips.forEach(clip => clip.selected = false);
-  });
-  
-  if (tIdx < tracks.length && cIdx < tracks[tIdx].clips.length) {
-    tracks[tIdx].clips[cIdx].selected = true;
-    selectedClip = {trackIndex: tIdx, clipIndex: cIdx};
-  }
-  render();
-}
-
-function deselectAllClips() {
-  tracks.forEach(track => {
-    track.clips.forEach(clip => clip.selected = false);
-  });
-  selectedClip = null;
-}
-
-function copySelectedClip() {
-  if (selectedClip) {
-    const {trackIndex, clipIndex} = selectedClip;
-    const clip = tracks[trackIndex].clips[clipIndex];
-    clipboard = {
-      audioBuffer: clip.audioBuffer,
-      duration: clip.duration,
-      offset: clip.offset,
-      color: clip.color,
-      name: clip.name + " Copy"
     };
-  }
-}
-
-function pasteClip() {
-  if (clipboard && selectedTrackIndex < tracks.length) {
-    const newClip = createClip(
-      clipboard.audioBuffer,
-      playheadTime,
-      clipboard.duration,
-      clipboard.offset,
-      clipboard.color,
-      clipboard.name
-    );
-    tracks[selectedTrackIndex].clips.push(newClip);
-    saveState(); // For undo
-    render();
-  }
-}
-
-// --- Quantize Functionality ---
-function quantizeSelectedClip() {
-  if (!selectedClip) return;
-  
-  const {trackIndex, clipIndex} = selectedClip;
-  const clip = tracks[trackIndex].clips[clipIndex];
-  const secPerBeat = getSecPerBeat();
-  
-  // Quantize to nearest beat
-  const nearestBeat = Math.round(clip.startTime / secPerBeat) * secPerBeat;
-  clip.startTime = nearestBeat;
-  
-  saveState();
-  render();
-}
-
-function quantizeAllClipsInTrack(trackIndex) {
-  const secPerBeat = getSecPerBeat();
-  tracks[trackIndex].clips.forEach(clip => {
-    clip.startTime = Math.round(clip.startTime / secPerBeat) * secPerBeat;
-  });
-  saveState();
-  render();
-}
-
-// --- Undo/Redo System ---
-function saveState() {
-  const state = JSON.stringify({
-    tracks: tracks.map(track => ({
-      ...track,
-      clips: track.clips.map(clip => ({
-        ...clip,
-        audioBuffer: null // Don't serialize audio buffer
-      }))
-    })),
-    playheadTime,
-    bpm,
-    timeSigNum,
-    timeSigDen
-  });
-  undoStack.push(state);
-  if (undoStack.length > 50) undoStack.shift(); // Limit stack size
-  redoStack = []; // Clear redo when new action performed
-}
-
-function undo() {
-  if (undoStack.length > 1) {
-    redoStack.push(undoStack.pop());
-    const state = JSON.parse(undoStack[undoStack.length - 1]);
-    // Restore state (simplified - would need proper audio buffer restoration)
-    playheadTime = state.playheadTime;
-    bpm = state.bpm;
-    timeSigNum = state.timeSigNum;
-    timeSigDen = state.timeSigDen;
-    render();
-  }
-}
-
-function redo() {
-  if (redoStack.length > 0) {
-    const state = JSON.parse(redoStack.pop());
-    undoStack.push(JSON.stringify(state));
-    // Restore state
-    playheadTime = state.playheadTime;
-    bpm = state.bpm;
-    timeSigNum = state.timeSigNum;
-    timeSigDen = state.timeSigDen;
-    render();
-  }
-}
-
-// --- Enhanced Clip Operations ---
-function moveClip(fromTrackIdx, clipIdx, toTrackIdx, newStartTime) {
-  if (fromTrackIdx >= tracks.length || toTrackIdx >= tracks.length) return;
-  
-  const clip = tracks[fromTrackIdx].clips.splice(clipIdx, 1)[0];
-  clip.startTime = Math.max(0, newStartTime);
-  tracks[toTrackIdx].clips.push(clip);
-  
-  // Sort clips by start time
-  tracks[toTrackIdx].clips.sort((a, b) => a.startTime - b.startTime);
-  
-  saveState();
-  render();
-}
-
-function trimClip(tIdx, cIdx, newDuration, fromStart = false) {
-  const clip = tracks[tIdx].clips[cIdx];
-  if (fromStart) {
-    const trimAmount = newDuration - clip.duration;
-    clip.startTime -= trimAmount;
-    clip.offset += trimAmount;
-  }
-  clip.duration = Math.max(0.1, newDuration);
-  saveState();
-  render();
-}
-
-function fadeInClip(tIdx, cIdx, fadeDuration = 0.5) {
-  const clip = tracks[tIdx].clips[cIdx];
-  if (!clip.audioBuffer) return;
-  
-  const buffer = clip.audioBuffer;
-  const sampleRate = buffer.sampleRate;
-  const fadeLength = Math.floor(fadeDuration * sampleRate);
-  
-  for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-    const channelData = buffer.getChannelData(channel);
-    for (let i = 0; i < Math.min(fadeLength, channelData.length); i++) {
-      channelData[i] *= (i / fadeLength);
-    }
-  }
-  render();
-}
-
-function fadeOutClip(tIdx, cIdx, fadeDuration = 0.5) {
-  const clip = tracks[tIdx].clips[cIdx];
-  if (!clip.audioBuffer) return;
-  
-  const buffer = clip.audioBuffer;
-  const sampleRate = buffer.sampleRate;
-  const fadeLength = Math.floor(fadeDuration * sampleRate);
-  
-  for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-    const channelData = buffer.getChannelData(channel);
-    const startFade = channelData.length - fadeLength;
-    for (let i = startFade; i < channelData.length; i++) {
-      const fadePosition = (channelData.length - i) / fadeLength;
-      channelData[i] *= fadePosition;
-    }
-  }
-  render();
-}
-
-// --- Audio Analysis and Visualization ---
-function drawSpectrum(canvas, track) {
-  if (!analyserNode) return;
-  
-  const ctx = canvas.getContext('2d');
-  const bufferLength = analyserNode.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
-  
-  analyserNode.getByteFrequencyData(dataArray);
-  
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  const barWidth = canvas.width / bufferLength * 2.5;
-  let x = 0;
-  
-  for (let i = 0; i < bufferLength; i++) {
-    const barHeight = (dataArray[i] / 255) * canvas.height;
     
-    const r = barHeight + 25 * (i / bufferLength);
-    const g = 250 * (i / bufferLength);
-    const b = 50;
+    document.addEventListener('mousedown', closeMenu);
+    document.addEventListener('contextmenu', closeMenu);
     
-    ctx.fillStyle = `rgb(${r},${g},${b})`;
-    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-    
-    x += barWidth + 1;
-  }
-}
-
-// --- Enhanced Waveform Drawing with Selection ---
-function drawWaveform(canvas, audioBufferOrBuffer, offset, duration, isRawBuffer, isSelected = false) {
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  
-  // Selection highlight
-  if (isSelected) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-  
-  ctx.strokeStyle = isRawBuffer ? "rgba(255,60,60,1)" : (isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(50,50,70,0.99)');
-  ctx.lineWidth = 2.2;
-  ctx.beginPath();
-  
-  let channel;
-  let sampleRate = 44100;
-  if (isRawBuffer && Array.isArray(audioBufferOrBuffer)) {
-    channel = audioBufferOrBuffer;
-    sampleRate = audioCtx ? audioCtx.sampleRate : 44100;
-  } else if (audioBufferOrBuffer && audioBufferOrBuffer.getChannelData) {
-    channel = audioBufferOrBuffer.getChannelData(0);
-    sampleRate = audioBufferOrBuffer.sampleRate;
-  } else {
-    return;
-  }
-  
-  const start = Math.floor(offset * sampleRate);
-  const end = Math.min(channel.length, Math.floor((offset+duration) * sampleRate));
-  const samples = end - start;
-  const step = Math.max(1, Math.floor(samples / canvas.width));
-  
-  for (let x = 0; x < canvas.width; x++) {
-    const idx = start + Math.floor(x * samples / canvas.width);
-    let min = 1.0, max = -1.0;
-    for (let j = 0; j < step && idx + j < end; j++) {
-      const val = channel[idx + j];
-      min = Math.min(min, val);
-      max = Math.max(max, val);
-    }
-    const y1 = (1 - (max+1)/2) * canvas.height;
-    const y2 = (1 - (min+1)/2) * canvas.height;
-    ctx.moveTo(x, y1);
-    ctx.lineTo(x, y2);
-  }
-  ctx.stroke();
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        removeContextMenu();
+      }
+    }, { once: true });
+  }, 100);
 }
 
 // --- Missing Context Menu Functions ---
 function duplicateClip(tIdx, cIdx) {
   const clip = tracks[tIdx].clips[cIdx];
+  if (!clip || !clip.audioBuffer) {
+    console.error('Cannot duplicate clip: clip or audioBuffer missing');
+    return;
+  }
+  
   const newClip = createClip(
     clip.audioBuffer,
-    clip.startTime + clip.duration,
+    clip.startTime + clip.duration, // Place after original clip
     clip.duration,
     clip.offset,
     clip.color,
     clip.name + " Copy"
   );
+  
   tracks[tIdx].clips.push(newClip);
+  
+  // Sort clips by start time
+  tracks[tIdx].clips.sort((a, b) => a.startTime - b.startTime);
+  
   saveState();
   render();
+  console.log('Clip duplicated successfully');
 }
 
 function normalizeClip(tIdx, cIdx) {
   const clip = tracks[tIdx].clips[cIdx];
-  if (!clip.audioBuffer) return;
+  if (!clip.audioBuffer) {
+    console.error('Cannot normalize clip: audioBuffer missing');
+    return;
+  }
   
   // Find peak
   let peak = 0;
@@ -2016,20 +1429,34 @@ function normalizeClip(tIdx, cIdx) {
         data[i] *= gain;
       }
     }
+    console.log('Clip normalized with gain:', gain);
+  } else {
+    console.log('Clip is silent, no normalization needed');
   }
+  
   saveState();
   render();
 }
 
 function changeClipColor(tIdx, cIdx, color) {
+  if (tIdx >= tracks.length || cIdx >= tracks[tIdx].clips.length) {
+    console.error('Cannot change clip color: invalid indices');
+    return;
+  }
+  
   tracks[tIdx].clips[cIdx].color = color;
   saveState();
   render();
+  console.log('Clip color changed to:', color);
 }
 
 function exportClip(tIdx, cIdx) {
   const clip = tracks[tIdx].clips[cIdx];
-  if (!clip.audioBuffer) return;
+  if (!clip.audioBuffer) {
+    console.error('Cannot export clip: audioBuffer missing');
+    alert('Cannot export clip: no audio data');
+    return;
+  }
   
   try {
     const wavData = audioBufferToWav(clip.audioBuffer, clip.offset, clip.duration);
@@ -2038,11 +1465,13 @@ function exportClip(tIdx, cIdx) {
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${clip.name}.wav`;
+    a.download = `${clip.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.wav`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    
+    console.log('Clip exported successfully as:', a.download);
   } catch (error) {
     console.error('Error exporting clip:', error);
     alert('Error exporting clip. Please try again.');
@@ -2051,6 +1480,12 @@ function exportClip(tIdx, cIdx) {
 
 function moveClipToNewTrack(tIdx, cIdx) {
   const clip = tracks[tIdx].clips[cIdx];
+  if (!clip) {
+    console.error('Cannot move clip: clip not found');
+    return;
+  }
+  
+  // Create new track
   const newTrack = createTrack(`Track ${tracks.length + 1}`);
   tracks.push(newTrack);
   
@@ -2060,24 +1495,88 @@ function moveClipToNewTrack(tIdx, cIdx) {
   
   saveState();
   render();
+  console.log('Clip moved to new track');
+}
+
+function reverseClip(tIdx, cIdx) {
+  const clip = tracks[tIdx].clips[cIdx];
+  if (!clip.audioBuffer) {
+    console.error('Cannot reverse clip: audioBuffer missing');
+    return;
+  }
+  
+  for (let ch = 0; ch < clip.audioBuffer.numberOfChannels; ch++) {
+    const data = clip.audioBuffer.getChannelData(ch);
+    Array.prototype.reverse.call(data);
+  }
+  
+  saveState();
+  render();
+  console.log('Clip reversed');
+}
+
+function duplicateTrack(tIdx) {
+  if (tIdx >= tracks.length) {
+    console.error('Cannot duplicate track: invalid index');
+    return;
+  }
+  
+  const originalTrack = tracks[tIdx];
+  const newTrack = createTrack(originalTrack.label + ' Copy', originalTrack.color);
+  newTrack.volume = originalTrack.volume;
+  newTrack.pan = originalTrack.pan;
+  newTrack.muted = originalTrack.muted;
+  newTrack.solo = false; // Don't duplicate solo state
+  
+  // Duplicate all clips
+  originalTrack.clips.forEach(clip => {
+    if (clip.audioBuffer) {
+      const newClip = createClip(
+        clip.audioBuffer,
+        clip.startTime,
+        clip.duration,
+        clip.offset,
+        clip.color,
+        clip.name + ' Copy'
+      );
+      newTrack.clips.push(newClip);
+    }
+  });
+  
+  tracks.splice(tIdx + 1, 0, newTrack);
+  saveState();
+  render();
+  console.log('Track duplicated');
 }
 
 // Fixed split function
 function splitClip(tIdx, cIdx, splitTime) {
   const clip = tracks[tIdx].clips[cIdx];
-  
-  // If splitTime is a ratio (from context menu), convert to actual time
-  if (splitTime <= 1) {
-    splitTime = clip.startTime + (splitTime * clip.duration);
-  }
-  
-  if (splitTime <= clip.startTime || splitTime >= clip.startTime + clip.duration) {
-    console.log('Split time is outside clip bounds');
+  if (!clip || !clip.audioBuffer) {
+    console.error('Cannot split clip: clip or audioBuffer missing');
     return;
   }
   
+  console.log('Split parameters:', {
+    clipStart: clip.startTime,
+    clipEnd: clip.startTime + clip.duration,
+    splitTime: splitTime,
+    playheadTime: playheadTime
+  });
+  
+  // Validate that split time is within the clip bounds
+  if (splitTime < clip.startTime || splitTime > clip.startTime + clip.duration) {
+    console.log('Split time is outside clip bounds');
+    alert(`Split time ${splitTime.toFixed(2)}s is outside clip bounds (${clip.startTime.toFixed(2)}s - ${(clip.startTime + clip.duration).toFixed(2)}s)`);
+    return;
+  }
+  
+  // Calculate the split position relative to clip start
   const splitOffset = splitTime - clip.startTime;
   
+  console.log('Split offset from clip start:', splitOffset);
+  
+  // Create first clip (from start to split point)
   let firstClip = createClip(
     clip.audioBuffer, 
     clip.startTime, 
@@ -2087,6 +1586,7 @@ function splitClip(tIdx, cIdx, splitTime) {
     clip.name + " (1)"
   );
   
+  // Create second clip (from split point to end)
   let secondClip = createClip(
     clip.audioBuffer, 
     splitTime, 
@@ -2101,157 +1601,63 @@ function splitClip(tIdx, cIdx, splitTime) {
   
   saveState();
   render();
+  console.log('Clip split successfully');
 }
 
-// --- Enhanced Context Menus ---
-function showClipContextMenu(e, tIdx, cIdx, clipDiv) {
-  removeContextMenu();
-  const menu = document.createElement('div');
-  menu.className = 'context-menu';
-  menu.style.left = e.clientX + 'px';
-  menu.style.top = e.clientY + 'px';
-
+function renameClip(tIdx, cIdx) {
   const clip = tracks[tIdx].clips[cIdx];
-  const canSplitAtPlayhead = playheadTime > clip.startTime && playheadTime < clip.startTime + clip.duration;
-
-  let actions = [
-    {label: 'Copy', fn: () => { selectClip(tIdx, cIdx); copySelectedClip(); }},
-    {label: 'Paste', fn: () => { pasteClip(); }},
-    {sep:true},
-    {label: canSplitAtPlayhead ? 'Split at Playhead' : 'Split at Center', fn: () => {
-      const splitTime = canSplitAtPlayhead ? playheadTime : clip.startTime + (clip.duration / 2);
-      splitClip(tIdx, cIdx, splitTime);
-    }},
-    {label: 'Delete', fn: () => { tracks[tIdx].clips.splice(cIdx,1); saveState(); render(); }},
-    {label: 'Duplicate', fn: () => { duplicateClip(tIdx, cIdx); }},
-    {label: 'Quantize', fn: () => { selectClip(tIdx, cIdx); quantizeSelectedClip(); }},
-    {sep:true},
-    {label: 'Fade In', fn: () => { fadeInClip(tIdx, cIdx); saveState(); }},
-    {label: 'Fade Out', fn: () => { fadeOutClip(tIdx, cIdx); saveState(); }},
-    {label: 'Normalize', fn: () => { normalizeClip(tIdx, cIdx); }},
-    {label: 'Reverse', fn: () => { reverseClip(tIdx, cIdx); }},
-    {sep:true},
-    {label: 'Rename', fn: () => { renameClip(tIdx, cIdx); }},
-    {label: 'Export Clip', fn: () => { exportClip(tIdx, cIdx); }},
-    {label: 'Move to New Track', fn: () => { moveClipToNewTrack(tIdx, cIdx); }},
-    {sep:true},
-    {label: 'Change Color', color:true, fn: (color) => { changeClipColor(tIdx, cIdx, color); }}
-  ];
+  if (!clip) {
+    console.error('Cannot rename clip: clip not found');
+    return;
+  }
   
-  actions.forEach(act => {
-    if (act.sep) {
-      let sep = document.createElement('div');
-      sep.className = 'context-menu-sep';
-      menu.appendChild(sep);
-      return;
-    }
-    let item = document.createElement('div');
-    item.className = 'context-menu-item';
-    item.innerText = act.label;
-    if (act.color) {
-      let colorInput = document.createElement('input');
-      colorInput.type = 'color';
-      colorInput.value = tracks[tIdx].clips[cIdx].color;
-      colorInput.className = 'color-picker';
-      colorInput.onclick = (ev) => ev.stopPropagation();
-      colorInput.oninput = (ev) => { act.fn(ev.target.value); removeContextMenu(); };
-      item.appendChild(colorInput);
-    } else {
-      item.onclick = () => { act.fn(); removeContextMenu(); };
-    }
-    menu.appendChild(item);
-  });
-  document.body.appendChild(menu);
-  contextMenuEl = menu;
-  
-  // Prevent menu from closing immediately
-  setTimeout(() => {
-    document.addEventListener('mousedown', removeContextMenu, {once: true});
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') removeContextMenu();
-    }, {once: true});
-  }, 10);
+  const newName = prompt("Enter new clip name:", clip.name);
+  if (newName && newName.trim()) {
+    clip.name = newName.trim();
+    saveState();
+    render();
+    console.log('Clip renamed to:', newName.trim());
+  }
 }
 
-function showTrackContextMenu(e, tIdx) {
-  removeContextMenu();
-  const menu = document.createElement('div');
-  menu.className = 'context-menu';
-  menu.style.left = e.clientX + 'px';
-  menu.style.top = e.clientY + 'px';
-
-  let actions = [
-    {label: tracks[tIdx].muted ? "Unmute" : "Mute", fn: () => { toggleTrackMute(tIdx); }},
-    {label: tracks[tIdx].solo ? "Unsolo" : "Solo", fn: () => { toggleTrackSolo(tIdx); }},
-    {label: tracks[tIdx].armed ? "Disarm" : "Arm for Recording", fn: () => { toggleTrackArm(tIdx); }},
-    {sep:true},
-    {label: 'Rename Track', fn: () => { renameTrack(tIdx); }},
-    {label: 'Delete Track', fn: () => { 
-      if (tracks.length <= 1) {
-        alert('Cannot delete the last track');
-        return;
-      }
-      if (confirm(`Delete track "${tracks[tIdx].label}"?`)) {
-        tracks.splice(tIdx, 1);
-        if (selectedTrackIndex >= tracks.length) selectedTrackIndex = tracks.length - 1;
-        saveState();
-        render();
-      }
-    }},
-    {label: 'Duplicate Track', fn: () => { duplicateTrack(tIdx); }},
-    {sep:true},
-    {label: 'Add Silence Clip', fn: () => { addSilenceClip(tIdx); }},
-    {label: 'Quantize All Clips', fn: () => { quantizeAllClipsInTrack(tIdx); }},
-    {sep:true},
-    {label: 'Paste', fn: () => { pasteClip(); }},
-    {label: 'Change Track Color', color:true, fn: (color) => { tracks[tIdx].color = color; saveState(); render(); }}
-  ];
-  
-  actions.forEach(act => {
-    if (act.sep) {
-      let sep = document.createElement('div');
-      sep.className = 'context-menu-sep';
-      menu.appendChild(sep);
-      return;
-    }
-    let item = document.createElement('div');
-    item.className = 'context-menu-item';
-    item.innerText = act.label;
-    if (act.color) {
-      let colorInput = document.createElement('input');
-      colorInput.type = 'color';
-      colorInput.value = tracks[tIdx].color;
-      colorInput.className = 'color-picker';
-      colorInput.onclick = (ev) => ev.stopPropagation();
-      colorInput.oninput = (ev) => { act.fn(ev.target.value); removeContextMenu(); };
-      item.appendChild(colorInput);
-    } else {
-      item.onclick = () => { act.fn(); removeContextMenu(); };
-    }
-    menu.appendChild(item);
-  });
-  document.body.appendChild(menu);
-  contextMenuEl = menu;
-  
-  setTimeout(() => {
-    document.addEventListener('mousedown', removeContextMenu, {once: true});
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') removeContextMenu();
-    }, {once: true});
-  }, 10);
-}
-
-// --- Track DAW Actions ---
 function renameTrack(tIdx) {
-  let newName = prompt("Enter new track name:", tracks[tIdx].label);
-  if (newName) { tracks[tIdx].label = newName; render(); }
+  if (tIdx >= tracks.length) {
+    console.error('Cannot rename track: invalid index');
+    return;
+  }
+  
+  const track = tracks[tIdx];
+  const newName = prompt("Enter new track name:", track.label);
+  if (newName && newName.trim()) { 
+    track.label = newName.trim(); 
+    saveState();
+    render(); 
+    console.log('Track renamed to:', newName.trim());
+  }
 }
+
 function addSilenceClip(tIdx) {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  let dur = 2;
-  let buffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate*dur), audioCtx.sampleRate);
-  tracks[tIdx].clips.push(createClip(buffer, 0, dur, 0, undefined, "Silence"));
+  if (tIdx >= tracks.length) {
+    console.error('Cannot add silence clip: invalid track index');
+    return;
+  }
+  
+  initAudioContext();
+  let dur = 2; // 2 seconds of silence
+  let buffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * dur), audioCtx.sampleRate);
+  
+  // Fill with silence (zeros) - actually already zero by default
+  const channelData = buffer.getChannelData(0);
+  for (let i = 0; i < channelData.length; i++) {
+    channelData[i] = 0;
+  }
+  
+  const clip = createClip(buffer, playheadTime, dur, 0, undefined, "Silence");
+  tracks[tIdx].clips.push(clip);
+  
+  saveState();
   render();
+  console.log('Silence clip added');
 }
 
 // --- Simple WAV Export Function ---
@@ -2576,7 +1982,7 @@ function createMixerChannel(trackIndex, track) {
         <div class="fader-track bg-gray-900 w-6 h-24 mx-auto relative rounded">
           <input type="range" class="volume-fader absolute inset-0 w-full h-full opacity-0 cursor-pointer" min="0" max="1" value="${track.volume}" step="0.01" data-track="${trackIndex}" data-param="volume" orient="vertical">
           <div class="fader-handle absolute w-6 h-3 bg-orange-500 rounded shadow-lg transition-all duration-75" style="bottom: ${track.volume * 100}%; transform: translateY(50%);"></div>
-        </div>
+               </div>
         <div class="text-xs text-center mt-1 text-gray-300 volume-display">${Math.round(track.volume * 100)}</div>
       </div>
       
