@@ -1,0 +1,12 @@
+
+- Added Mixer View with per-track volume, pan, and EQ controls. Users can switch between Arrangement and Mixer views.
+- Improved arrangement view: timeline now supports zooming, auto-scroll, and better grid snapping (bars, beats, subdivisions, triplets).
+- Enhanced clip context menu: split at playhead, duplicate, quantize, fade in/out, normalize, reverse, rename, export, move to new track, and color picker.
+- Track context menu: mute/solo/arm, rename, delete, duplicate, add silence, quantize all clips, paste, and color picker.
+- Undo/redo system for non-destructive editing.
+- Improved waveform and spectrum visualization for clips.
+- Added keyboard shortcuts for common DAW actions (play, record, stop, undo/redo, copy/paste, duplicate, quantize, delete).
+- Metronome toggle and improved metronome scheduling.
+- Export clips as WAV files directly from the browser.
+- UI improvements: responsive layout, better tooltips, and visual feedback for controls.
+- Bug fixes and stability improvements for long projects and playback limits.
