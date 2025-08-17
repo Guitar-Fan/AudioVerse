@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Functional MIDI DAW</title>
+    <title>Upgraded MIDI DAW</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@tonejs/midi"></script>
     <script src="https://cdn.jsdelivr.net/npm/tone@latest/build/Tone.js"></script>
@@ -22,14 +22,15 @@
         .piano-key.white { fill: #f4f4f5; } /* zinc-100 */
         .piano-key.black { fill: #27272a; } /* zinc-800 */
         .piano-key:hover {
-            fill: #3b82f6; /* blue-500 */
+            fill: #60a5fa; /* blue-400 */
         }
         .note {
             border-radius: 4px;
-            border: 1px solid rgba(0,0,0,0.5);
+            border: 1px solid rgba(0,0,0,0.7);
             position: absolute;
             box-sizing: border-box;
-            background-color: #3b82f6; /* blue-500 */
+            min-width: 4px;
+            /* background-color is set dynamically */
         }
         .piano-label {
             font-size: 10px;
@@ -42,7 +43,7 @@
             background: #27272a; /* zinc-800 */
             border-bottom: 1px solid #3f3f46; /* zinc-700 */
             position: relative;
-            z-index: 30;
+            z-index: 40;
             display: flex;
             align-items: center;
             padding: 0 16px;
@@ -83,25 +84,30 @@
             border-left: 1px solid #3f3f46; /* zinc-700 */
             height: 100%;
         }
-        .transport-btn {
+        .transport-btn, #toolbar button {
             background: transparent;
             border: none;
             color: #e4e4e7;
             border-radius: 6px;
             padding: 8px;
-            margin: 0 4px;
+            margin: 0 2px;
             cursor: pointer;
             transition: background 0.2s, color 0.2s;
         }
-        .transport-btn:hover {
-            background: #3b82f6;
+        .transport-btn:hover, #toolbar button:hover {
+            background: #3f3f46; /* zinc-700 */
+        }
+        #toolbar button[data-active='true'] {
+             background-color: #3b82f6; /* blue-500 */
+             color: white;
         }
         .transport-btn.active {
             color: #3b82f6;
         }
-        .transport-btn svg {
-            width: 24px;
-            height: 24px;
+        .transport-btn svg, #toolbar svg {
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
         }
         select, input[type="number"], input[type="range"] {
             background: #3f3f46 !important; /* zinc-700 */
@@ -123,13 +129,13 @@
             height:100%;
             background:#facc15; /* yellow-400 */
             z-index:25;
+            pointer-events: none;
             display:none;
         }
     </style>
 </head>
 <body class="flex flex-col h-screen overflow-hidden">
 
-    <!-- Top Control Bar -->
     <div class="top-bar">
         <h1 class="text-xl font-bold text-white mr-4">JS MIDI DAW</h1>
         
@@ -141,7 +147,6 @@
             <button id="export" class="ml-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md shadow transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed text-sm" disabled>Export MIDI</button>
         </div>
 
-        <!-- Transport Controls -->
         <div class="control-group">
             <button id="rewind-btn" class="transport-btn" title="Rewind to Start">
                 <svg fill="currentColor" viewBox="0 0 20 20"><path d="M8.445 14.832A1 1 0 0010 14.032V5.968a1 1 0 00-1.555-.832L4 9.168V6a1 1 0 00-2 0v8a1 1 0 102 0v-3.168l4.445 4zM15.555 14.832A1 1 0 0017 14.032V5.968a1 1 0 00-1.555-.832L11 9.168V6a1 1 0 10-2 0v8a1 1 0 102 0v-3.168l4.555 4z"/></svg>
@@ -154,14 +159,7 @@
                 <svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3.75A1.75 1.75 0 016.75 2h6.5A1.75 1.75 0 0115 3.75v12.5A1.75 1.75 0 0113.25 18h-6.5A1.75 1.75 0 015 16.25V3.75z"/></svg>
             </button>
         </div>
-
-        <!-- Track & View Controls -->
-        <div class="control-group">
-            <label for="track-select" class="text-sm mr-2">Track:</label>
-            <select id="track-select" class="text-sm rounded-md p-1"></select>
-        </div>
         
-        <!-- Signature & Tempo -->
         <div class="control-group">
             <label for="signature-select" class="text-sm mr-2">Signature:</label>
             <select id="signature-select" class="text-sm rounded-md p-1">
@@ -174,28 +172,37 @@
             <input type="number" id="tempo-input" min="20" max="300" value="120" class="w-16 text-sm">
         </div>
 
-        <!-- Zoom -->
         <div class="control-group">
             <label for="zoom-range" class="text-sm mr-2">Zoom:</label>
             <input type="range" id="zoom-range" min="20" max="500" value="100" class="w-24">
         </div>
     </div>
+    
+    <div id="toolbar" class="flex items-center h-10 bg-zinc-800/80 backdrop-blur-sm border-b border-zinc-700 px-2 space-x-1 shrink-0">
+        <button id="tool-select" title="Select Tool (V)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M14.615 1.585a.75.75 0 0 1 .292.858l-1.076 4.246a.75.75 0 0 1-1.424-.36l1.076-4.246a.75.75 0 0 1 1.132-.5zM16.5 7.5a.75.75 0 0 0-.75-.75h-1.5a.75.75 0 0 0 0 1.5h1.5a.75.75 0 0 0 .75-.75Zm-6.425 1.5a.75.75 0 0 1 .858-.292l4.246 1.076a.75.75 0 0 1 .36 1.424l-4.246-1.076a.75.75 0 0 1-.292-.858Z M10.5 13.5a.75.75 0 0 0-.75.75v1.5a.75.75 0 0 0 1.5 0v-1.5a.75.75 0 0 0-.75-.75ZM9.385 14.615a.75.75 0 0 0-.858.292l-1.076 4.246a.75.75 0 0 0 1.424.36l1.076-4.246a.75.75 0 0 0-.292-.858Z M7.5 16.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1 0-1.5h1.5a.75.75 0 0 1 .75.75Zm-1.425-6.425a.75.75 0 0 0-.292-.858L1.53 8.14a.75.75 0 0 0-.36 1.424l4.246 1.076a.75.75 0 0 0 .858-.292L6.075 10.075Zm-.292-5.115a.75.75 0 0 1 .858.292l1.076 4.246a.75.75 0 0 1-1.424.36L5.209 5.62a.75.75 0 0 1 .292-.858ZM9.75 4.5a.75.75 0 0 0 .75-.75V2.25a.75.75 0 0 0-1.5 0V3.75a.75.75 0 0 0 .75.75ZM2.25 9.75a.75.75 0 0 1-.75-.75V7.5a.75.75 0 0 1 1.5 0v1.5a.75.75 0 0 1-.75.75Zm12-6.425a.75.75 0 0 0-.292-.858L9.708 1.39a.75.75 0 0 0-.36 1.424l4.246 1.076a.75.75 0 0 0 .858-.292l.000-.001ZM15.75 14.25a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75Zm4.243 2.133a.75.75 0 0 0 .36-1.424l-4.246-1.076a.75.75 0 0 0-.858.292l-1.076 4.246a.75.75 0 0 0 1.424.36l4.246-1.076a.75.75 0 0 0 .292-.858Z" clip-rule="evenodd" /></svg>
+        </button>
+        <button id="tool-pencil" title="Pencil Tool (B)">
+             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" /> <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" /></svg>
+        </button>
+        <button id="tool-cutter" title="Cutter Tool (C)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M3 10.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5ZM5.25 15a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0Zm8.65-6.69.884-3.536a.75.75 0 0 0-1.42-.354l-.884 3.536a.75.75 0 1 0 1.42.354ZM12 12.75a.75.75 0 0 0-.75-.75h-1.5a.75.75 0 0 0 0 1.5h1.5a.75.75 0 0 0 .75-.75Zm3.31 2.373.53-2.651a.75.75 0 1 0-1.474-.294l-.53 2.651a.75.75 0 1 0 1.474.294ZM19.5 15a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0Zm-2.25-4.5a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm-4.28 1.151a.75.75 0 0 0-1.06 0l-6 6a.75.75 0 0 0 1.06 1.06l6-6a.75.75 0 0 0 0-1.06Z" clip-rule="evenodd" /></svg>
+        </button>
+    </div>
 
-    <!-- Timeline Header -->
     <div id="timeline-header">
         <div id="measures-container"></div>
     </div>
 
-    <!-- Main Content -->
     <main id="main-content" class="flex-grow flex overflow-hidden">
         <div id="piano-roll-view" class="flex w-full h-full">
-            <div id="piano-keys" class="bg-zinc-800 h-full flex-shrink-0" style="width: 80px;">
+            <div id="piano-keys" class="bg-zinc-800 h-full flex-shrink-0 z-30" style="width: 80px;">
                 <svg id="piano-keys-svg" width="80" class="h-full"></svg>
             </div>
             <div id="grid-container" class="flex-grow h-full overflow-auto bg-zinc-900 relative">
-                <div id="note-container" class="relative">
-                    <div id="playback-cursor"></div>
-                </div>
+                <div id="grid-lines-container" class="absolute top-0 left-0 w-full h-full pointer-events-none z-0"></div>
+                <div id="note-container" class="relative z-10 h-full"></div>
+                <div id="playback-cursor"></div>
             </div>
         </div>
     </main>
@@ -212,10 +219,10 @@
         // --- DOM Elements ---
         const uploadInput = document.getElementById('upload');
         const exportButton = document.getElementById('export');
-        const trackSelect = document.getElementById('track-select');
         
         const pianoKeysSVG = document.getElementById('piano-keys-svg');
         const gridContainer = document.getElementById('grid-container');
+        const gridLinesContainer = document.getElementById('grid-lines-container');
         const noteContainer = document.getElementById('note-container');
         const playbackCursor = document.getElementById('playback-cursor');
 
@@ -230,17 +237,19 @@
         const rewindBtn = document.getElementById('rewind-btn');
         const zoomRange = document.getElementById('zoom-range');
         const signatureSelect = document.getElementById('signature-select');
+        const toolbar = document.getElementById('toolbar');
 
         // --- State ---
         let midiData = null;
-        let selectedTrackIndex = 0;
         let zoom = 100; // Represents pixels per second
-        let currentPart = null;
+        let parts = [];
+        let synths = [];
+        let activeTool = 'select';
 
         // --- Instruments ---
-        let synth = new Tone.PolySynth(Tone.Synth).toDestination();
         let sampler = new Tone.Sampler().toDestination();
         let samplesLoaded = false;
+        const trackColors = ['#3b82f6','#22c55e','#ef4444','#eab308','#a855f7','#f97316','#ec4899','#6366f1'];
 
         // --- Constants ---
         const NOTE_HEIGHT = 16;
@@ -249,6 +258,7 @@
         // --- Initialization ---
         window.onload = () => {
             setupPianoKeys();
+            setupToolbar();
             draw();
             Tone.Transport.bpm.value = parseInt(tempoInput.value, 10);
             const sig = signatureSelect.value.split('/').map(n => parseInt(n));
@@ -258,10 +268,6 @@
         // --- Event Listeners ---
         uploadInput.addEventListener('change', handleFileUpload);
         exportButton.addEventListener('click', handleExport);
-        trackSelect.addEventListener('change', () => {
-            selectedTrackIndex = parseInt(trackSelect.value, 10);
-            draw();
-        });
         tempoInput.addEventListener('change', (e) => {
             const tempo = parseInt(e.target.value, 10) || 120;
             Tone.Transport.bpm.value = tempo;
@@ -293,8 +299,7 @@
                 const arrayBuffer = await file.arrayBuffer();
                 midiData = new Midi(arrayBuffer);
                 exportButton.disabled = false;
-                populateTrackSelector();
-                selectedTrackIndex = 0;
+                
                 if (midiData.header.tempos.length > 0) {
                     const tempo = Math.round(midiData.header.tempos[0].bpm);
                     tempoInput.value = tempo;
@@ -317,7 +322,6 @@
 
         function handleExport() {
             if (!midiData) return;
-            // Note: This exports the original MIDI. To export edits, you'd need to update midiData object.
             try {
                 const midiArray = midiData.toArray();
                 const blob = new Blob([midiArray], { type: "audio/midi" });
@@ -330,25 +334,31 @@
                 console.error("Error exporting MIDI file:", error);
             }
         }
-
-        function populateTrackSelector() {
-            trackSelect.innerHTML = '';
-            if (!midiData) return;
-            midiData.tracks.forEach((track, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = `Track ${index + 1}: ${track.name || 'Unnamed'} (${track.notes.length} notes)`;
-                trackSelect.appendChild(option);
+        
+        // --- Drawing and UI ---
+        function setupToolbar() {
+            const tools = ['select', 'pencil', 'cutter'];
+            tools.forEach(tool => {
+                const btn = document.getElementById(`tool-${tool}`);
+                if(btn) btn.addEventListener('click', () => setActiveTool(tool));
             });
+            setActiveTool('select'); // Set default tool
         }
 
-        // --- Drawing and UI ---
+        function setActiveTool(toolName) {
+            activeTool = toolName;
+            ['select', 'pencil', 'cutter'].forEach(tool => {
+                const btn = document.getElementById(`tool-${tool}`);
+                if(btn) btn.dataset.active = (tool === toolName);
+            });
+            gridContainer.style.cursor = toolName === 'pencil' ? 'crosshair' : 'default';
+        }
+
         function draw() {
-            if (Tone.Transport.state === 'started') {
-                handleStop();
-            }
+            if (Tone.Transport.state === 'started') handleStop();
             drawPianoRoll();
             drawTimeline();
+            drawGrid();
         }
 
         function setupPianoKeys() {
@@ -362,6 +372,12 @@
             const svgNS = "http://www.w3.org/2000/svg";
             const keyWidth = 80;
             const blackKeyWidth = 50;
+            const totalHeight = keys.length * NOTE_HEIGHT;
+            
+            pianoKeysSVG.setAttribute('viewBox', `0 0 ${keyWidth} ${totalHeight}`);
+            pianoKeysSVG.style.height = `${totalHeight}px`;
+            noteContainer.style.height = `${totalHeight}px`;
+            gridLinesContainer.style.height = `${totalHeight}px`;
 
             keys.forEach((key, idx) => {
                 const y = idx * NOTE_HEIGHT;
@@ -383,50 +399,80 @@
                     pianoKeysSVG.appendChild(text);
                 }
             });
-
-            const totalHeight = keys.length * NOTE_HEIGHT;
-            pianoKeysSVG.setAttribute('viewBox', `0 0 ${keyWidth} ${totalHeight}`);
-            pianoKeysSVG.style.height = `${totalHeight}px`;
-            noteContainer.style.height = `${totalHeight}px`;
         }
         
+        function drawGrid() {
+            gridLinesContainer.innerHTML = '';
+            const totalDuration = midiData ? midiData.duration : 120;
+            const containerWidth = totalDuration * zoom;
+
+            const numKeys = MIDI_NOTE_RANGE.max - MIDI_NOTE_RANGE.min + 1;
+            for (let i = 0; i <= numKeys; i++) {
+                const line = document.createElement('div');
+                const isBlackKey = [1, 3, 6, 8, 10].includes((MIDI_NOTE_RANGE.max - i) % 12);
+                line.className = `absolute w-full h-px ${isBlackKey ? 'bg-zinc-700/75' : 'bg-zinc-800'}`;
+                line.style.top = `${i * NOTE_HEIGHT -1}px`;
+                line.style.width = `${containerWidth}px`;
+                gridLinesContainer.appendChild(line);
+            }
+            
+            const beatsPerMeasure = Tone.Transport.timeSignature[0];
+            const subdivision = Tone.Transport.timeSignature[1];
+            const secondsPerBeat = 60 / Tone.Transport.bpm.value;
+            const measureCount = Math.ceil(totalDuration / (secondsPerBeat * beatsPerMeasure));
+
+            for (let m = 0; m < measureCount; m++) {
+                for (let b = 0; b < beatsPerMeasure; b++) {
+                    const time = (m * beatsPerMeasure + b) * secondsPerBeat;
+                    const x = time * zoom;
+                    const line = document.createElement('div');
+                    line.className = `absolute h-full w-px ${b === 0 ? 'bg-zinc-600' : 'bg-zinc-700'}`;
+                    line.style.left = `${x}px`;
+                    gridLinesContainer.appendChild(line);
+                }
+            }
+        }
+
         function drawPianoRoll() {
-            noteContainer.innerHTML = '<div id="playback-cursor" style="position:absolute;top:0;left:0;width:2px;height:100%;background:#facc15;z-index:25;display:none;"></div>';
-            if (!midiData || !midiData.tracks[selectedTrackIndex]) {
+            noteContainer.innerHTML = '';
+            if (!midiData) {
                  noteContainer.style.width = '100%';
                  return;
             }
 
-            const track = midiData.tracks[selectedTrackIndex];
             const totalDuration = midiData.duration;
-            const containerWidth = totalDuration * zoom;
+            const containerWidth = Math.max(totalDuration * zoom, gridContainer.clientWidth);
             noteContainer.style.width = `${containerWidth}px`;
 
             const midiKeys = Array.from({ length: MIDI_NOTE_RANGE.max - MIDI_NOTE_RANGE.min + 1 }, (_, i) => MIDI_NOTE_RANGE.max - i);
 
-            track.notes.forEach(note => {
-                const keyIdx = midiKeys.indexOf(note.midi);
-                if (keyIdx === -1) return;
+            midiData.tracks.forEach((track, trackIndex) => {
+                const color = trackColors[trackIndex % trackColors.length];
+                track.notes.forEach(note => {
+                    const keyIdx = midiKeys.indexOf(note.midi);
+                    if (keyIdx === -1) return;
 
-                const noteDiv = document.createElement('div');
-                noteDiv.classList.add('note');
-                const y = keyIdx * NOTE_HEIGHT;
-                const x = note.time * zoom;
-                const width = note.duration * zoom;
-                
-                noteDiv.style.top = `${y}px`;
-                noteDiv.style.left = `${x}px`;
-                noteDiv.style.width = `${width}px`;
-                noteDiv.style.height = `${NOTE_HEIGHT - 2}px`;
-                noteDiv.style.opacity = note.velocity * 0.8 + 0.2;
-                noteDiv.title = `Note: ${note.name}, Time: ${note.time.toFixed(2)}s, Vel: ${Math.round(note.velocity * 100)}%`;
-                noteContainer.appendChild(noteDiv);
+                    const noteDiv = document.createElement('div');
+                    noteDiv.classList.add('note');
+                    const y = keyIdx * NOTE_HEIGHT;
+                    const x = note.time * zoom;
+                    const width = note.duration * zoom;
+                    
+                    noteDiv.style.top = `${y}px`;
+                    noteDiv.style.left = `${x}px`;
+                    noteDiv.style.width = `${width}px`;
+                    noteDiv.style.height = `${NOTE_HEIGHT - 2}px`;
+                    noteDiv.style.backgroundColor = color;
+                    noteDiv.style.opacity = note.velocity * 0.7 + 0.3;
+                    noteDiv.title = `Track ${trackIndex + 1}\nNote: ${note.name}\nTime: ${note.time.toFixed(2)}s\nVel: ${Math.round(note.velocity * 100)}%`;
+                    noteContainer.appendChild(noteDiv);
+                });
             });
         }
 
         function drawTimeline() {
             measuresContainer.innerHTML = '';
-            const totalDuration = midiData ? midiData.duration : 60; // Default to 60s
+            const totalDuration = midiData ? midiData.duration : 120;
             const beatsPerMeasure = Tone.Transport.timeSignature[0];
             const secondsPerBeat = 60 / Tone.Transport.bpm.value;
             const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
@@ -447,7 +493,8 @@
             if (!e.target.dataset.midi) return;
             const midi = parseInt(e.target.dataset.midi);
             const noteName = Tone.Midi(midi).toNote();
-
+            alert(`Click a key to play. To load a sample for ${noteName}, create an input element.`);
+            // Existing sampler loading logic preserved
             const fileInput = document.createElement('input');
             fileInput.type = 'file';
             fileInput.accept = 'audio/*';
@@ -472,7 +519,7 @@
                 pauseIcon.classList.add('hidden');
             } else {
                 if (!midiData) return;
-                preparePart();
+                prepareParts();
                 Tone.Transport.start();
                 playIcon.classList.add('hidden');
                 pauseIcon.classList.remove('hidden');
@@ -483,11 +530,10 @@
         function handleStop() {
             Tone.Transport.stop();
             Tone.Transport.position = 0;
-            if (currentPart) {
-                currentPart.stop(0);
-                currentPart.dispose();
-                currentPart = null;
-            }
+            parts.forEach(p => { p.stop(0); p.dispose(); });
+            parts = [];
+            synths.forEach(s => s.dispose());
+            synths = [];
             playIcon.classList.remove('hidden');
             pauseIcon.classList.add('hidden');
             hidePlaybackCursor();
@@ -495,35 +541,35 @@
 
         function handleRewind() {
             Tone.Transport.position = 0;
+            updatePlaybackCursor();
         }
 
-        function preparePart() {
-            if (currentPart) {
-                currentPart.dispose();
-            }
-            const track = midiData.tracks[selectedTrackIndex];
-            if (!track || track.notes.length === 0) return;
+        function prepareParts() {
+            if (parts.length > 0) handleStop();
+            if (!midiData) return;
 
-            const instrument = samplesLoaded ? sampler : synth;
-            
-            currentPart = new Tone.Part((time, note) => {
-                instrument.triggerAttackRelease(note.name, note.duration, time, note.velocity);
-            }, track.notes).start(0);
+            midiData.tracks.forEach(track => {
+                if (track.notes.length === 0) return;
+                const instrument = samplesLoaded ? sampler : new Tone.PolySynth(Tone.Synth).toDestination();
+                if (!samplesLoaded) synths.push(instrument);
+
+                const part = new Tone.Part((time, note) => {
+                    instrument.triggerAttackRelease(note.name, note.duration, time, note.velocity);
+                }, track.notes).start(0);
+                parts.push(part);
+            });
         }
 
         // --- Playback Cursor ---
         let cursorAnimationFrame = null;
 
         function showPlaybackCursor() {
-            const cursor = document.getElementById('playback-cursor');
-            if (!cursor) return;
-            cursor.style.display = 'block';
+            playbackCursor.style.display = 'block';
             updatePlaybackCursor();
         }
 
         function hidePlaybackCursor() {
-            const cursor = document.getElementById('playback-cursor');
-            if (cursor) cursor.style.display = 'none';
+            playbackCursor.style.display = 'none';
             if (cursorAnimationFrame) {
                 cancelAnimationFrame(cursorAnimationFrame);
                 cursorAnimationFrame = null;
@@ -531,23 +577,20 @@
         }
 
         function updatePlaybackCursor() {
-            const cursor = document.getElementById('playback-cursor');
-            if (!cursor || Tone.Transport.state !== 'started') {
-                hidePlaybackCursor();
+            if (Tone.Transport.state !== 'started') {
+                const x = Tone.Transport.seconds * zoom;
+                playbackCursor.style.transform = `translateX(${x}px)`;
+                if (Tone.Transport.state === "stopped") hidePlaybackCursor();
                 return;
             }
-            const currentTime = Tone.Transport.seconds;
-            const x = currentTime * zoom;
-            cursor.style.transform = `translateX(${x}px)`;
+            const x = Tone.Transport.seconds * zoom;
+            playbackCursor.style.transform = `translateX(${x}px)`;
 
-            // Auto-scroll logic
             const gridRect = gridContainer.getBoundingClientRect();
-            const cursorScreenX = gridContainer.getBoundingClientRect().left + x - gridContainer.scrollLeft;
-
-            if (cursorScreenX > gridRect.right - 50) { // If cursor is near the right edge
-                gridContainer.scrollLeft += 5;
-            } else if (cursorScreenX < gridRect.left + 50) { // If cursor is near the left edge
-                gridContainer.scrollLeft -= 5;
+            if (x > gridContainer.scrollLeft + gridRect.width - 50) {
+                gridContainer.scrollLeft = x - gridRect.width + 50;
+            } else if (x < gridContainer.scrollLeft + 50) {
+                gridContainer.scrollLeft = Math.max(0, x - 50);
             }
             
             cursorAnimationFrame = requestAnimationFrame(updatePlaybackCursor);
