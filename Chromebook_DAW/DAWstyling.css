@@ -766,3 +766,156 @@ label.upload-btn input[type="file"] { display: none; }
 .view-controls button:hover::after {
   opacity: 1;
 }
+
+/* Audio Editor Styles */
+.editor-header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--timeline);
+}
+
+.editor-content {
+  background: var(--bg);
+}
+
+#editorWaveformDisplay {
+  background: var(--track-bg);
+  border: 2px solid var(--timeline);
+  position: relative;
+}
+
+#editorWaveformCanvas {
+  display: block;
+  cursor: crosshair;
+}
+
+#editorPlayhead {
+  background: var(--accent2);
+  box-shadow: 0 0 6px var(--accent2);
+  pointer-events: none;
+}
+
+#editorSelection {
+  background: rgba(59, 130, 246, 0.3);
+  border: 1px solid #3b82f6;
+  pointer-events: none;
+}
+
+#editorTimeline {
+  background: var(--timeline);
+  border: 1px solid var(--grid);
+  position: relative;
+}
+
+.timeline-marker {
+  background: var(--grid);
+  opacity: 0.7;
+}
+
+.timeline-label {
+  color: var(--text2);
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.editor-controls-panel {
+  background: var(--panel);
+  border: 1px solid var(--timeline);
+}
+
+.editor-controls-panel h4 {
+  color: var(--text);
+  border-bottom: 1px solid var(--timeline);
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.editor-controls-panel input {
+  background: var(--timeline);
+  color: var(--text);
+  border: 1px solid var(--grid);
+}
+
+.editor-controls-panel input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.editor-controls-panel button {
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.editor-controls-panel button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.editor-controls-panel button:active {
+  transform: translateY(0);
+}
+
+.clip-properties input,
+.audio-processing button,
+.selection-tools button,
+.playback-control button {
+  width: 100%;
+}
+
+/* Editor tool buttons in header */
+.editor-tools button {
+  background: var(--timeline);
+  border: 1px solid var(--grid);
+  color: var(--text2);
+  transition: all 0.2s ease;
+}
+
+.editor-tools button:hover {
+  background: var(--grid);
+  color: var(--text);
+  border-color: var(--accent2);
+}
+
+.editor-tools button:active {
+  background: var(--accent2);
+  color: #fff;
+}
+
+/* Back button styling */
+#backButton {
+  background: var(--timeline);
+  border: 1px solid var(--grid);
+  color: var(--text2);
+  transition: all 0.2s ease;
+}
+
+#backButton:hover {
+  background: var(--accent);
+  color: #222;
+  border-color: var(--accent);
+}
+
+/* Responsive adjustments for editor */
+@media (max-width: 768px) {
+  .editor-controls-panel {
+    grid-template-columns: 1fr;
+  }
+  
+  .editor-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .editor-tools {
+    justify-content: center;
+  }
+}
+
+/* Hide scrollbars in editor for cleaner look */
+#editorWaveformContainer::-webkit-scrollbar {
+  display: none;
+}
+
+#editorWaveformContainer {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

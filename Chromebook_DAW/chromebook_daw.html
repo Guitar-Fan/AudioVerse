@@ -56,6 +56,14 @@
               <circle cx="13" cy="6" r="1.5" fill="currentColor"/>
             </svg>
           </button>
+          <!-- Audio Editor View Button -->
+          <button id="editorViewBtn" title="Audio Editor" class="p-1.5 bg-gray-600 text-white rounded text-xs font-semibold w-8 h-8 flex items-center justify-center hidden">
+            <svg width="12" height="12" viewBox="0 0 16 16">
+              <path d="M2 8 L14 8" stroke="currentColor" stroke-width="1"/>
+              <path d="M1 4 L15 4 L15 12 L1 12 Z" fill="none" stroke="currentColor" stroke-width="1"/>
+              <path d="M3 6 L5 10 L7 4 L9 12 L11 6 L13 10" stroke="currentColor" stroke-width="1" fill="none"/>
+            </svg>
+          </button>
         </div>
       </div>
       
@@ -133,6 +141,122 @@
     <div id="mixerContainer" class="flex-1 overflow-auto bg-gradient-to-b from-gray-900 to-gray-800 p-4">
       <div id="mixerChannels" class="flex gap-4 min-h-full">
         <!-- Mixer channels will be dynamically generated -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Editor View Window -->
+  <div id="editorWindow" class="window hidden">
+    <!-- Editor Header with Back Button and Clip Info -->
+    <div class="editor-header bg-gray-800 p-4 border-b border-gray-700 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <button id="backButton" class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors" title="Back to Arrangement">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <path d="M8 2 L2 8 L8 14 M2 8 L14 8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="clip-info">
+          <h2 id="editorClipName" class="text-xl font-bold text-white">Audio Editor</h2>
+          <p id="editorClipDetails" class="text-sm text-gray-400">No clip selected</p>
+        </div>
+      </div>
+      
+      <!-- Editor Tools -->
+      <div class="editor-tools flex gap-2">
+        <button id="editorZoomFit" class="px-3 py-1 bg-gray-700 border border-gray-500 text-gray-300 rounded hover:bg-gray-600 transition-colors" title="Zoom to Fit">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <rect x="1" y="1" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1"/>
+            <path d="M4 4 L12 12 M4 12 L12 4" stroke="currentColor" stroke-width="1"/>
+          </svg>
+        </button>
+        <button id="editorZoomIn" class="px-3 py-1 bg-gray-700 border border-gray-500 text-gray-300 rounded hover:bg-gray-600 transition-colors" title="Zoom In">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button id="editorZoomOut" class="px-3 py-1 bg-gray-700 border border-gray-500 text-gray-300 rounded hover:bg-gray-600 transition-colors" title="Zoom Out">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M5 8h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Editor Main Content Area -->
+    <div class="editor-content flex-1 overflow-hidden bg-gray-900">
+      <!-- Waveform Display Area -->
+      <div id="editorWaveformContainer" class="h-full p-4">
+        <div id="editorWaveformDisplay" class="w-full h-full bg-gray-800 rounded-lg border border-gray-700 relative overflow-hidden">
+          <!-- Large waveform canvas will be inserted here -->
+          <canvas id="editorWaveformCanvas" class="w-full h-full"></canvas>
+          
+          <!-- Editor playhead -->
+          <div id="editorPlayhead" class="absolute top-0 w-0.5 h-full bg-red-500 z-10 hidden"></div>
+          
+          <!-- Selection overlay -->
+          <div id="editorSelection" class="absolute top-0 h-full bg-blue-500 bg-opacity-30 z-5 hidden"></div>
+        </div>
+        
+        <!-- Editor Timeline -->
+        <div id="editorTimeline" class="mt-2 h-8 bg-gray-800 rounded border border-gray-700 relative">
+          <!-- Timeline markers will be inserted here -->
+        </div>
+        
+        <!-- Editor Controls Panel -->
+        <div class="editor-controls-panel mt-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- Clip Properties -->
+            <div class="clip-properties">
+              <h4 class="text-sm font-semibold text-gray-300 mb-2">Clip Properties</h4>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <label class="text-xs text-gray-400 w-16">Start:</label>
+                  <input type="number" id="editorClipStart" step="0.01" class="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs">
+                </div>
+                <div class="flex items-center gap-2">
+                  <label class="text-xs text-gray-400 w-16">Length:</label>
+                  <input type="number" id="editorClipLength" step="0.01" class="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs">
+                </div>
+                <div class="flex items-center gap-2">
+                  <label class="text-xs text-gray-400 w-16">Offset:</label>
+                  <input type="number" id="editorClipOffset" step="0.01" class="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs">
+                </div>
+              </div>
+            </div>
+            
+            <!-- Audio Processing -->
+            <div class="audio-processing">
+              <h4 class="text-sm font-semibold text-gray-300 mb-2">Processing</h4>
+              <div class="space-y-2">
+                <button id="editorNormalize" class="w-full px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs transition-colors">Normalize</button>
+                <button id="editorReverse" class="w-full px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs transition-colors">Reverse</button>
+                <button id="editorFadeIn" class="w-full px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs transition-colors">Fade In</button>
+                <button id="editorFadeOut" class="w-full px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs transition-colors">Fade Out</button>
+              </div>
+            </div>
+            
+            <!-- Selection Tools -->
+            <div class="selection-tools">
+              <h4 class="text-sm font-semibold text-gray-300 mb-2">Selection</h4>
+              <div class="space-y-2">
+                <button id="editorSelectAll" class="w-full px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs transition-colors">Select All</button>
+                <button id="editorClearSelection" class="w-full px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs transition-colors">Clear Selection</button>
+                <button id="editorCrop" class="w-full px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs transition-colors">Crop to Selection</button>
+              </div>
+            </div>
+            
+            <!-- Playback Control -->
+            <div class="playback-control">
+              <h4 class="text-sm font-semibold text-gray-300 mb-2">Playback</h4>
+              <div class="space-y-2">
+                <button id="editorPlaySelection" class="w-full px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs transition-colors">Play Selection</button>
+                <button id="editorLoop" class="w-full px-2 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-xs transition-colors">Loop</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
