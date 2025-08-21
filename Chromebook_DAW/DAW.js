@@ -2224,6 +2224,9 @@ document.addEventListener('keydown', (e) => {
         quantizeSelectedClip();
       }
       break;
+  }
+});
+
 // --- Audio Editor Functions ---
 
 /**
@@ -2359,7 +2362,6 @@ function drawEditorWaveform() {
   // Clear canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
- 
   // Draw background
   ctx.fillStyle = '#1f2937';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -2585,7 +2587,7 @@ if (editorViewBtn) {
   };
 }
 
-// Editor tool buttons
+// Editor tool buttons - Add this to the existing DOMContentLoaded event listener
 document.addEventListener('DOMContentLoaded', () => {
   // Zoom controls
   const editorZoomFit = document.getElementById('editorZoomFit');
@@ -2701,6 +2703,43 @@ window.addEventListener('resize', () => {
     setTimeout(() => {
       drawEditorWaveform();
       drawEditorTimeline();
-    }, 100);      
+    }, 100);
   }
-})}})
+});
+
+// Update the existing window management functions to include editor view
+function showArrangementView() {
+  currentView = 'arrangement';
+  arrangementWindow.classList.remove('hidden');
+  arrangementWindow.classList.add('active');
+  mixerWindow.classList.add('hidden');
+  mixerWindow.classList.remove('active');
+  editorWindow.classList.add('hidden');
+  editorWindow.classList.remove('active');
+  
+  arrangeViewBtn.classList.add('bg-orange-500', 'text-black');
+  arrangeViewBtn.classList.remove('bg-gray-600', 'text-white');
+  mixerViewBtn.classList.add('bg-gray-600', 'text-white');
+  mixerViewBtn.classList.remove('bg-orange-500', 'text-black');
+  editorViewBtn.classList.add('bg-gray-600', 'text-white');
+  editorViewBtn.classList.remove('bg-orange-500', 'text-black');
+}
+
+function showMixerView() {
+  currentView = 'mixer';
+  mixerWindow.classList.remove('hidden');
+  mixerWindow.classList.add('active');
+  arrangementWindow.classList.add('hidden');
+  arrangementWindow.classList.remove('active');
+  editorWindow.classList.add('hidden');
+  editorWindow.classList.remove('active');
+  
+  mixerViewBtn.classList.add('bg-orange-500', 'text-black');
+  mixerViewBtn.classList.remove('bg-gray-600', 'text-white');
+  arrangeViewBtn.classList.add('bg-gray-600', 'text-white');
+  arrangeViewBtn.classList.remove('bg-orange-500', 'text-black');
+  editorViewBtn.classList.add('bg-gray-600', 'text-white');
+  editorViewBtn.classList.remove('bg-orange-500', 'text-black');
+  
+  renderMixer();
+}
