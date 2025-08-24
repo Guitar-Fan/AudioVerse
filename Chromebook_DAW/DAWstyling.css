@@ -919,3 +919,179 @@ label.upload-btn input[type="file"] { display: none; }
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Pro Tools-like Mixer Strip Enhancements */
+.mixer-strip { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.mixer-strip .strip-color { position:absolute; left:0; top:0; bottom:0; width:3px; border-radius: 8px 0 0 8px; opacity:.6; }
+.mixer-strip .strip-header { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+.mixer-strip .strip-title { font-weight:600; color:#fff; font-size: 0.9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mixer-strip .strip-buttons { display:flex; gap:6px; }
+.mixer-strip .strip-btn { background:#374151; color:#e5e7eb; border:1px solid #4b5563; border-radius:4px; padding:2px 6px; font-size:11px; }
+.mixer-strip .strip-btn.active { background:#f59e0b; color:#111827; border-color:#fb923c; }
+
+.io-section { background:#111827; border:1px solid #374151; border-radius:6px; padding:6px; display:flex; flex-direction:column; gap:6px; }
+.io-row { display:flex; align-items:center; gap:6px; }
+.io-label { width:30px; color:#9ca3af; font-size:12px; }
+.io-input, .automation-select { flex:1; background:#1f2937; color:#e5e7eb; border:1px solid #374151; border-radius:4px; padding:3px 6px; font-size:12px; }
+
+.inserts, .sends, .automation { background:#0f172a; border:1px solid #374151; border-radius:6px; padding:6px; }
+.section-label { color:#9ca3af; font-size:11px; margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em; }
+.insert-slot { width:100%; text-align:left; background:#1f2937; border:1px dashed #374151; color:#9ca3af; padding:4px 6px; border-radius:4px; font-size:12px; margin-bottom:4px; }
+.insert-slot:hover { border-style:solid; color:#e5e7eb; }
+.send { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+.send-label { color:#9ca3af; font-size:12px; width:16px; text-align:center; }
+.send-knob { width:100%; }
+
+.fader-meter { display:flex; align-items:flex-end; justify-content:space-between; gap:8px; }
+.meter-block { display:flex; flex-direction:column; align-items:center; gap:4px; width:22px; }
+.clip-led { width:10px; height:10px; border-radius:50%; background:#111827; border:1px solid #374151; box-shadow: inset 0 0 4px rgba(0,0,0,.6); cursor:pointer; }
+.clip-led.active { background:#ef4444; box-shadow: 0 0 8px rgba(239,68,68,.8); border-color:#ef4444; }
+.output-meter .meter-fill { background: linear-gradient(to top, #16a34a 0%, #16a34a 60%, #f59e0b 85%, #ef4444 100%); box-shadow: 0 0 6px rgba(16,163,74,.25); transition: height 120ms ease-out; }
+.db-marks { position:absolute; inset:0; pointer-events:none; }
+
+/* Physical-style fader */
+.fader-track {
+  background: linear-gradient(180deg, rgba(31,41,55,1) 0%, rgba(17,24,39,1) 100%);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.fader-track::before { /* central groove */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(75,85,99,0.6) 0%, rgba(31,41,55,0.4) 100%);
+  border-radius: 1px;
+}
+.fader-handle {
+  transition: top 140ms cubic-bezier(0.22, 1, 0.36, 1), background 160ms ease;
+}
+.fader-handle::after { /* small notch */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 60%;
+  height: 2px;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.25);
+  border-radius: 1px;
+}
+
+/* Settings Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10050;
+  backdrop-filter: blur(2px);
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal-dialog {
+  width: min(760px, 92vw);
+  max-height: 80vh;
+  background: var(--panel);
+  border: 1px solid var(--timeline);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalIn 180ms ease-out;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--timeline);
+  background: linear-gradient(to bottom, #1f2937, #111827);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.modal-close {
+  background: var(--timeline);
+  border: 1px solid var(--grid);
+  color: var(--text2);
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.modal-content {
+  padding: 14px 16px;
+  overflow: auto;
+  background: var(--bg);
+}
+
+.modal-section { margin-bottom: 16px; }
+.modal-section h4 {
+  margin: 0 0 8px 0;
+  color: var(--text);
+  border-bottom: 1px solid var(--timeline);
+  padding-bottom: 4px;
+}
+.setting-item {
+  margin: 8px 0;
+  color: var(--text2);
+}
+
+.shortcuts-list {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  align-items: center;
+}
+.shortcut-key {
+  background: var(--timeline);
+  color: var(--text);
+  border: 1px solid var(--grid);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+}
+.shortcut-label { color: var(--text2); font-size: 13px; }
+
+.modal-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--timeline);
+  background: #0f172a;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.modal-btn {
+  background: var(--timeline);
+  border: 1px solid var(--grid);
+  color: var(--text2);
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+.modal-btn.primary {
+  background: var(--accent);
+  color: #222;
+  border-color: var(--accent2);
+}

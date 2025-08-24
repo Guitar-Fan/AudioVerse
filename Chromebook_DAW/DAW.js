@@ -48,6 +48,31 @@ let clipboard = null; // For copy/paste operations
 let undoStack = [];
 let redoStack = [];
 let activeAudioSources = []; // Track active audio sources for proper stopping
+// Settings state
+let settings = {
+  autoScroll: true,
+  snapToGrid: true,
+  showTriplets: true,
+  confirmDelete: false,
+  faderCurve: 'db' // 'db' or 'linear'
+};
+
+// Shortcut definitions
+const SHORTCUTS = [
+  { keys: 'Space', label: 'Play/Pause' },
+  { keys: 'R', label: 'Record' },
+  { keys: 'S', label: 'Stop' },
+  { keys: 'Ctrl/Cmd+Z', label: 'Undo' },
+  { keys: 'Ctrl/Cmd+Shift+Z', label: 'Redo' },
+  { keys: 'Ctrl/Cmd+C', label: 'Copy Clip' },
+  { keys: 'Ctrl/Cmd+V', label: 'Paste Clip at Playhead' },
+  { keys: 'D', label: 'Duplicate Clip' },
+  { keys: 'Q', label: 'Quantize Selected Clip' },
+  { keys: 'Delete / Backspace', label: 'Delete Selected Clip' },
+  { keys: '+ / =', label: 'Zoom In' },
+  { keys: '- / _', label: 'Zoom Out' },
+  { keys: 'Shift+/', label: 'Open Settings' }
+];
 
 // DOM Elements
 const recordBtn = document.getElementById('recordBtn');
@@ -79,6 +104,18 @@ const editorWaveformCanvas = document.getElementById('editorWaveformCanvas');
 const editorPlayhead = document.getElementById('editorPlayhead');
 const editorSelection = document.getElementById('editorSelection');
 const editorTimeline = document.getElementById('editorTimeline');
+// Settings DOM
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsOverlay = document.getElementById('settingsOverlay');
+const settingsDialog = document.getElementById('settingsDialog');
+const settingsClose = document.getElementById('settingsClose');
+const settingsSave = document.getElementById('settingsSave');
+const settingsCancel = document.getElementById('settingsCancel');
+const setAutoScroll = document.getElementById('setAutoScroll');
+const setSnapToGrid = document.getElementById('setSnapToGrid');
+const setTripletGuides = document.getElementById('setTripletGuides');
+const setConfirmDelete = document.getElementById('setConfirmDelete');
+const shortcutsList = document.getElementById('shortcutsList');
 
 // --- Data Model ---
 function createTrack(label, color) {
@@ -89,8 +126,13 @@ function createTrack(label, color) {
     muted: false,
     solo: false,
     armed: false,
-    volume: 0.8,
+  volume: 0.8, // linear gain applied to audio graph
+  faderPos: 0.8, // UI position 0..1 mapped via pos->gain
     pan: 0,
+  io: { input: 'Input 1', output: 'Master' },
+  inserts: [null, null, null, null, null], // placeholders
+  sends: { A: 0, B: 0, C: 0, D: 0, E: 0 }, // 0..1
+  automation: 'read', // read | write | latch | touch
     selected: false,
     id: Math.random().toString(36).slice(2,9)
   };
@@ -149,7 +191,7 @@ function renderTimeline() {
   else if (zoomLevel > 1.1) subdivisions = 2; // 8th notes
 
   // Triplet grid always shown if zoomed in enough
-  const showTriplets = zoomLevel > 1.2;
+  const showTriplets = settings.showTriplets && zoomLevel > 1.2;
 
   for (let bar = 0; bar <= totalBars; bar++) {
     let left = gridOffset + bar * secPerBar * PIXELS_PER_SEC;
@@ -472,6 +514,8 @@ function toggleTrackSolo(trackIndex) {
 
 function setTrackVolume(trackIndex, volume) {
   tracks[trackIndex].volume = volume;
+  tracks[trackIndex].faderPos = gainToPos(volume);
+  updateTrackGainImmediate(trackIndex);
   render();
 }
 
@@ -615,7 +659,7 @@ function startPlayback() {
     if (hasSoloTracks && !track.solo) return;
     
     const trackGain = getTrackGainNode(trackIndex);
-    trackGain.gain.value = track.volume;
+  trackGain.gain.value = track.volume;
     
     track.clips.forEach(clip => {
       if (!clip.audioBuffer) return;
@@ -759,7 +803,7 @@ timelineDiv.onclick = (e) => {
   const adjustedX = clickX - TRACK_HEADER_WIDTH; // Account for header offset
   let rawTime = Math.max(0, adjustedX / PIXELS_PER_SEC);
   
-  let gridTimes = getGridTimes();
+  let gridTimes = settings.snapToGrid ? getGridTimes() : [];
 
   // Collect all clip edges
   let clipEdges = [];
@@ -771,7 +815,7 @@ timelineDiv.onclick = (e) => {
   });
 
   // Combine grid and clip edges
-  let snapPoints = gridTimes.concat(clipEdges);
+  let snapPoints = settings.snapToGrid ? gridTimes.concat(clipEdges) : clipEdges;
 
   // Find nearest snap point
   let minDist = Infinity, snapTime = rawTime;
@@ -796,7 +840,7 @@ function getGridTimes() {
   let subdivisions = 1;
   if (zoomLevel > 1.5) subdivisions = 4;
   else if (zoomLevel > 1.1) subdivisions = 2;
-  const showTriplets = zoomLevel > 1.2;
+  const showTriplets = settings.showTriplets && zoomLevel > 1.2;
 
   for (let bar = 0; bar <= totalBars; bar++) {
     let barTime = bar * secPerBar;
@@ -854,6 +898,67 @@ function getTrackGainNode(trackIndex) {
     trackGainNodes.set(trackIndex, gainNode);
   }
   return trackGainNodes.get(trackIndex);
+}
+
+// --- Fader mapping helpers (supreme fader experience) ---
+const FADER_DB_MIN = -60;
+const FADER_DB_MAX = 6; // allow small boost over unity
+
+function dbToGain(db) {
+  if (db === -Infinity) return 0;
+  return Math.pow(10, db / 20);
+}
+
+function gainToDb(gain) {
+  if (gain <= 0) return -Infinity;
+  return 20 * Math.log10(gain);
+}
+
+function posToGain(pos) {
+  pos = Math.min(1, Math.max(0, pos));
+  // Hard mute zone near bottom
+  if (pos <= 0.005) return 0;
+  if (settings.faderCurve === 'linear') {
+    return pos; // direct linear mapping
+  }
+  const db = FADER_DB_MIN + pos * (FADER_DB_MAX - FADER_DB_MIN);
+  return dbToGain(db);
+}
+
+function gainToPos(gain) {
+  if (gain <= 0) return 0;
+  if (settings.faderCurve === 'linear') {
+    return Math.min(1, Math.max(0, gain));
+  }
+  const db = gainToDb(gain);
+  const pos = (db - FADER_DB_MIN) / (FADER_DB_MAX - FADER_DB_MIN);
+  return Math.min(1, Math.max(0, pos));
+}
+
+function formatDb(gain) {
+  if (gain <= 0) return '-∞ dB';
+  const db = gainToDb(gain);
+  const fixed = Math.abs(db) < 0.05 ? '0.0' : db.toFixed(1);
+  return `${db > 0 ? '+' : ''}${fixed} dB`;
+}
+
+function updateTrackGainImmediate(trackIndex) {
+  const node = getTrackGainNode(trackIndex);
+  node.gain.value = tracks[trackIndex].volume;
+}
+
+function feedbackClick() {
+  try {
+    initAudioContext();
+    const dur = 0.01;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.frequency.value = 2200;
+    g.gain.value = 0.0008; // subtle
+    osc.connect(g).connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+  } catch {}
 }
 
 function createTrackFilter(trackIndex, type = 'lowpass', frequency = 1000, Q = 1) {
@@ -960,6 +1065,52 @@ function saveState() {
   undoStack.push(state);
   if (undoStack.length > 50) undoStack.shift(); // Limit stack size
   redoStack = []; // Clear redo when new action performed
+}
+
+// --- Settings helpers ---
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem('daw_settings');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      settings = { ...settings, ...parsed };
+    }
+  } catch {}
+  // apply to legacy flag
+  autoScrollEnabled = !!settings.autoScroll;
+}
+
+function persistSettings() {
+  try { localStorage.setItem('daw_settings', JSON.stringify(settings)); } catch {}
+}
+
+function openSettings() {
+  if (!settingsOverlay) return;
+  // sync checkboxes
+  if (setAutoScroll) setAutoScroll.checked = !!settings.autoScroll;
+  if (setSnapToGrid) setSnapToGrid.checked = !!settings.snapToGrid;
+  if (setTripletGuides) setTripletGuides.checked = !!settings.showTriplets;
+  if (setConfirmDelete) setConfirmDelete.checked = !!settings.confirmDelete;
+  // render shortcuts
+  if (shortcutsList) {
+    shortcutsList.innerHTML = '';
+    SHORTCUTS.forEach(sc => {
+      const label = document.createElement('div');
+      label.className = 'shortcut-label';
+      label.textContent = sc.label;
+      const key = document.createElement('div');
+      key.className = 'shortcut-key';
+      key.textContent = sc.keys;
+      shortcutsList.appendChild(label);
+      shortcutsList.appendChild(key);
+    });
+  }
+  settingsOverlay.classList.remove('hidden');
+}
+
+function closeSettings() {
+  if (!settingsOverlay) return;
+  settingsOverlay.classList.add('hidden');
 }
 
 function undo() {
@@ -1196,6 +1347,9 @@ function showClipContextMenu(e, tIdx, cIdx, clipDiv) {
       splitClip(tIdx, cIdx, splitTimeToUse);
     }},
     {label: 'Delete', fn: () => { 
+      if (settings.confirmDelete) {
+        if (!confirm('Delete this clip?')) return;
+      }
       tracks[tIdx].clips.splice(cIdx,1); 
       selectedClip = null;
       saveState(); 
@@ -1805,6 +1959,7 @@ function init() {
   }
   if (tracks.length > 0) tracks[0].selected = true;
   initAudioContext();
+  loadSettings();
   
   // Set up button handlers here to ensure DOM elements exist
   playBtn.onclick = () => {
@@ -1892,13 +2047,7 @@ function showArrangementView() {
   mixerWindow.classList.remove('active');
   editorWindow.classList.add('hidden');
   editorWindow.classList.remove('active');
-  
-  arrangeViewBtn.classList.add('bg-orange-500', 'text-black');
-  arrangeViewBtn.classList.remove('bg-gray-600', 'text-white');
-  mixerViewBtn.classList.add('bg-gray-600', 'text-white');
-  mixerViewBtn.classList.remove('bg-orange-500', 'text-black');
-  editorViewBtn.classList.add('bg-gray-600', 'text-white');
-  editorViewBtn.classList.remove('bg-orange-500', 'text-black');
+  updateViewButtons('arrangement');
 }
 
 function showMixerView() {
@@ -1909,14 +2058,7 @@ function showMixerView() {
   arrangementWindow.classList.remove('active');
   editorWindow.classList.add('hidden');
   editorWindow.classList.remove('active');
-  
-  mixerViewBtn.classList.add('bg-orange-500', 'text-black');
-  mixerViewBtn.classList.remove('bg-gray-600', 'text-white');
-  arrangeViewBtn.classList.add('bg-gray-600', 'text-white');
-  arrangeViewBtn.classList.remove('bg-orange-500', 'text-black');
-  editorViewBtn.classList.add('bg-gray-600', 'text-white');
-  editorViewBtn.classList.remove('bg-orange-500', 'text-black');
-  
+  updateViewButtons('mixer');
   renderMixer();
 }
 
@@ -1927,101 +2069,105 @@ mixerViewBtn.onclick = showMixerView;
 // Mixer Channel Creation and Management
 function createMixerChannel(trackIndex, track) {
   const channelId = `mixer-channel-${trackIndex}`;
+  const pos = typeof track.faderPos === 'number' ? track.faderPos : gainToPos(track.volume);
   
   return `
-    <div id="${channelId}" class="mixer-channel bg-gray-800 rounded-lg p-4 w-24 min-h-full border border-gray-700 shadow-lg">
-      <!-- Channel Header -->
-      <div class="text-center mb-4">
-        <div class="text-xs text-gray-400 mb-1">CH ${trackIndex + 1}</div>
-        <div class="text-sm font-semibold text-white truncate" title="${track.label}">${track.label}</div>
-      </div>
-      
-      <!-- Input Level Meter -->
-      <div class="mb-4">
-        <div class="text-xs text-gray-400 mb-1 text-center">IN</div>
-        <div class="input-meter bg-gray-900 rounded h-16 w-4 mx-auto relative overflow-hidden">
-          <div class="meter-fill bg-gradient-to-t from-green-500 via-yellow-500 to-red-500 w-full absolute bottom-0 transition-all duration-75" style="height: 0%"></div>
+  <div id="${channelId}" class="mixer-channel mixer-strip bg-gray-800 rounded-lg p-2 w-32 min-h-full border border-gray-700 shadow-lg">
+      <div class="strip-color" style="background:${track.color}"></div>
+      <!-- Header: Name + buttons -->
+      <div class="strip-header">
+        <div class="strip-title" title="${track.label}">${track.label}</div>
+        <div class="strip-buttons">
+          <button class="strip-btn record ${track.armed ? 'active' : ''}" data-track="${trackIndex}" title="Arm (R)">R</button>
+          <button class="strip-btn solo ${track.solo ? 'active' : ''}" data-track="${trackIndex}" title="Solo">S</button>
+          <button class="strip-btn mute ${track.muted ? 'active' : ''}" data-track="${trackIndex}" title="Mute">M</button>
         </div>
       </div>
-      
-      <!-- High EQ Knob -->
-      <div class="knob-container mb-3">
-        <div class="text-xs text-gray-400 text-center mb-1">HIGH</div>
-        <div class="knob-wrapper mx-auto w-12 h-12 relative">
-          <svg class="knob-svg w-full h-full" viewBox="0 0 48 48">
-            <circle cx="24" cy="24" r="20" fill="#374151" stroke="#4B5563" stroke-width="2"/>
-            <circle cx="24" cy="24" r="16" fill="#1F2937" stroke="#6B7280" stroke-width="1"/>
-            <path class="knob-indicator" d="M24 8 L24 16" stroke="#F97316" stroke-width="2" stroke-linecap="round" transform="rotate(0 24 24)"/>
-            <circle cx="24" cy="24" r="2" fill="#F97316"/>
-          </svg>
-          <input type="range" class="knob-input opacity-0 absolute inset-0 w-full h-full cursor-pointer" min="-12" max="12" value="0" step="0.5" data-track="${trackIndex}" data-param="high">
+
+      <!-- I/O -->
+      <div class="io-section">
+        <div class="io-row">
+          <label class="io-label">In</label>
+          <select class="io-input" data-track="${trackIndex}" data-io="input">
+            <option ${track.io.input==='Input 1'?'selected':''}>Input 1</option>
+            <option ${track.io.input==='Input 2'?'selected':''}>Input 2</option>
+            <option ${track.io.input==='None'?'selected':''}>None</option>
+          </select>
+        </div>
+        <div class="io-row">
+          <label class="io-label">Out</label>
+          <select class="io-input" data-track="${trackIndex}" data-io="output">
+            <option ${track.io.output==='Master'?'selected':''}>Master</option>
+            <option ${track.io.output==='Bus 1-2'?'selected':''}>Bus 1-2</option>
+          </select>
         </div>
       </div>
-      
-      <!-- Mid EQ Knob -->
-      <div class="knob-container mb-3">
-        <div class="text-xs text-gray-400 text-center mb-1">MID</div>
-        <div class="knob-wrapper mx-auto w-12 h-12 relative">
-          <svg class="knob-svg w-full h-full" viewBox="0 0 48 48">
-            <circle cx="24" cy="24" r="20" fill="#374151" stroke="#4B5563" stroke-width="2"/>
-            <circle cx="24" cy="24" r="16" fill="#1F2937" stroke="#6B7280" stroke-width="1"/>
-            <path class="knob-indicator" d="M24 8 L24 16" stroke="#F97316" stroke-width="2" stroke-linecap="round" transform="rotate(0 24 24)"/>
-            <circle cx="24" cy="24" r="2" fill="#F97316"/>
-          </svg>
-          <input type="range" class="knob-input opacity-0 absolute inset-0 w-full h-full cursor-pointer" min="-12" max="12" value="0" step="0.5" data-track="${trackIndex}" data-param="mid">
-        </div>
+
+      <!-- Inserts -->
+      <div class="inserts">
+        <div class="section-label">Inserts</div>
+        ${track.inserts.map((inst, i)=>`<button class="insert-slot" data-track="${trackIndex}" data-slot="${i}" title="Insert ${i+1}">${inst?inst:'—'}</button>`).join('')}
       </div>
-      
-      <!-- Low EQ Knob -->
-      <div class="knob-container mb-4">
-        <div class="text-xs text-gray-400 text-center mb-1">LOW</div>
-        <div class="knob-wrapper mx-auto w-12 h-12 relative">
-          <svg class="knob-svg w-full h-full" viewBox="0 0 48 48">
-            <circle cx="24" cy="24" r="20" fill="#374151" stroke="#4B5563" stroke-width="2"/>
-            <circle cx="24" cy="24" r="16" fill="#1F2937" stroke="#6B7280" stroke-width="1"/>
-            <path class="knob-indicator" d="M24 8 L24 16" stroke="#F97316" stroke-width="2" stroke-linecap="round" transform="rotate(0 24 24)"/>
-            <circle cx="24" cy="24" r="2" fill="#F97316"/>
-          </svg>
-          <input type="range" class="knob-input opacity-0 absolute inset-0 w-full h-full cursor-pointer" min="-12" max="12" value="0" step="0.5" data-track="${trackIndex}" data-param="low">
-        </div>
+
+      <!-- Sends A-E -->
+      <div class="sends">
+        <div class="section-label">Sends</div>
+        ${['A','B','C','D','E'].map(letter=>`<div class="send"><span class="send-label">${letter}</span><input type="range" min="0" max="1" step="0.01" value="${track.sends[letter]}" class="send-knob" data-track="${trackIndex}" data-send="${letter}"></div>`).join('')}
       </div>
-      
-      <!-- Pan Knob -->
-      <div class="knob-container mb-4">
+
+      <!-- Pan -->
+      <div class="knob-container mb-2">
         <div class="text-xs text-gray-400 text-center mb-1">PAN</div>
         <div class="knob-wrapper mx-auto w-12 h-12 relative">
           <svg class="knob-svg w-full h-full" viewBox="0 0 48 48">
             <circle cx="24" cy="24" r="20" fill="#374151" stroke="#4B5563" stroke-width="2"/>
             <circle cx="24" cy="24" r="16" fill="#1F2937" stroke="#6B7280" stroke-width="1"/>
-            <path class="knob-indicator" d="M24 8 L24 16" stroke="#10B981" stroke-width="2" stroke-linecap="round" transform="rotate(0 24 24)"/>
+            <path class="knob-indicator" d="M24 8 L24 16" stroke="#10B981" stroke-width="2" stroke-linecap="round" transform="rotate(${track.pan*135} 24 24)"/>
             <circle cx="24" cy="24" r="2" fill="#10B981"/>
           </svg>
           <input type="range" class="knob-input opacity-0 absolute inset-0 w-full h-full cursor-pointer" min="-100" max="100" value="${track.pan * 100}" step="1" data-track="${trackIndex}" data-param="pan">
         </div>
       </div>
-      
-      <!-- Volume Fader -->
-      <div class="fader-container mb-4 h-32">
-        <div class="text-xs text-gray-400 text-center mb-2">VOLUME</div>
-        <div class="fader-track bg-gray-900 w-6 h-24 mx-auto relative rounded">
-          <input type="range" class="volume-fader absolute inset-0 w-full h-full opacity-0 cursor-pointer" min="0" max="1" value="${track.volume}" step="0.01" data-track="${trackIndex}" data-param="volume" orient="vertical">
-          <div class="fader-handle absolute w-6 h-3 bg-orange-500 rounded shadow-lg transition-all duration-75" style="bottom: ${track.volume * 100}%; transform: translateY(50%);"></div>
-               </div>
-        <div class="text-xs text-center mt-1 text-gray-300 volume-display">${Math.round(track.volume * 100)}</div>
-      </div>
-      
-      <!-- Solo/Mute Buttons -->
-      <div class="button-group flex gap-1 mb-4">
-        <button class="solo-btn flex-1 px-2 py-1 text-xs rounded font-semibold transition-colors ${track.solo ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-gray-300 hover:bg-yellow-600'}" data-track="${trackIndex}">S</button>
-        <button class="mute-btn flex-1 px-2 py-1 text-xs rounded font-semibold transition-colors ${track.muted ? 'bg-red-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-red-600'}" data-track="${trackIndex}">M</button>
-      </div>
-      
-      <!-- Output Level Meter -->
-      <div class="mb-2">
-        <div class="text-xs text-gray-400 mb-1 text-center">OUT</div>
-        <div class="output-meter bg-gray-900 rounded h-16 w-4 mx-auto relative overflow-hidden">
-          <div class="meter-fill bg-gradient-to-t from-green-500 via-yellow-500 to-red-500 w-full absolute bottom-0 transition-all duration-75" style="height: 0%"></div>
+
+      <!-- Fader + Meter -->
+      <div class="fader-meter">
+        <div class="fader-container h-28 flex flex-col items-center">
+          <div class="text-[10px] text-gray-400 text-center mb-1 tracking-wide">VOLUME</div>
+          <div class="fader-track relative mx-auto rounded-md w-6 h-24 bg-gray-900/90 border border-gray-700 shadow-inner overflow-hidden">
+            <svg class="fader-svg absolute inset-0 pointer-events-none" viewBox="0 0 24 100" preserveAspectRatio="none">
+              <line x1="12" x2="12" y1="4" y2="96" stroke="#4B5563" stroke-width="1"/>
+              <g stroke="#6B7280" stroke-width="1">
+                <line x1="8" x2="16" y1="20" y2="20"/>
+                <line x1="10" x2="14" y1="40" y2="40"/>
+                <line x1="6" x2="18" y1="60" y2="60"/>
+                <line x1="10" x2="14" y1="80" y2="80"/>
+              </g>
+              <!-- Unity marker at 0 dB -->
+              <line x1="6" x2="18" y1="${(1 - gainToPos(1.0)) * 100}" y2="${(1 - gainToPos(1.0)) * 100}" stroke="#F59E0B" stroke-width="1"/>
+            </svg>
+            <input type="range" class="volume-fader absolute inset-0 w-full h-full opacity-0 cursor-pointer" min="0" max="1" value="${pos}" step="0.001" data-track="${trackIndex}" data-param="volume" orient="vertical">
+            <div class="fader-handle absolute w-6 h-3 rounded-md shadow-lg ring-1 ring-orange-300/60 bg-gradient-to-b from-orange-400 to-orange-600" style="top: ${(1 - pos) * 100}%; transform: translateY(-50%);"></div>
+          </div>
+          <div class="text-[10px] text-center mt-1 text-gray-300 volume-display">${formatDb(track.volume)}</div>
         </div>
+        <div class="meter-block">
+          <div class="clip-led" title="Clip (click to reset)"></div>
+          <div class="output-meter bg-gray-900 rounded h-24 w-4 mx-auto relative overflow-hidden">
+            <div class="meter-fill w-full absolute bottom-0 transition-all duration-75" style="height: 0%"></div>
+            <div class="db-marks"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Automation -->
+      <div class="automation">
+        <label class="io-label">Auto</label>
+        <select class="automation-select" data-track="${trackIndex}">
+          <option ${track.automation==='read'?'selected':''} value="read">Read</option>
+          <option ${track.automation==='write'?'selected':''} value="write">Write</option>
+          <option ${track.automation==='latch'?'selected':''} value="latch">Latch</option>
+          <option ${track.automation==='touch'?'selected':''} value="touch">Touch</option>
+        </select>
       </div>
     </div>
   `;
@@ -2032,13 +2178,40 @@ function renderMixer() {
   
   let mixerHTML = '';
   tracks.forEach((track, index) => {
+  if (typeof track.faderPos !== 'number') track.faderPos = gainToPos(track.volume);
     mixerHTML += createMixerChannel(index, track);
   });
-  
+  // Master strip
+  mixerHTML += createMasterChannel();
   mixerChannels.innerHTML = mixerHTML;
   
   // Add event listeners for mixer controls
   setupMixerEventListeners();
+}
+
+function createMasterChannel() {
+  return `
+  <div class="mixer-channel mixer-strip master bg-gray-900 rounded-lg p-2 w-32 min-h-full border border-gray-700 shadow-lg">
+      <div class="strip-header">
+        <div class="strip-title" title="Master">Master</div>
+      </div>
+      <div class="fader-meter">
+        <div class="fader-container h-28 flex flex-col items-center">
+          <div class="text-[10px] text-gray-400 text-center mb-1 tracking-wide">MASTER</div>
+          <div class="fader-track relative mx-auto rounded-md w-6 h-24 bg-gray-900/90 border border-gray-700 shadow-inner overflow-hidden">
+            <div class="fader-handle absolute w-6 h-3 rounded-md shadow-lg ring-1 ring-orange-200 bg-gradient-to-b from-orange-300 to-orange-500" style="top: 20%; transform: translateY(-50%);"></div>
+          </div>
+        </div>
+        <div class="meter-block">
+          <div class="clip-led" title="Clip (click to reset)"></div>
+          <div class="output-meter bg-gray-900 rounded h-24 w-4 mx-auto relative overflow-hidden">
+            <div class="meter-fill w-full absolute bottom-0 transition-all duration-75" style="height: 0%"></div>
+            <div class="db-marks"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function setupMixerEventListeners() {
@@ -2058,15 +2231,34 @@ function setupMixerEventListeners() {
   document.querySelectorAll('.volume-fader').forEach(fader => {
     fader.addEventListener('input', (e) => {
       const trackIndex = parseInt(e.target.dataset.track);
-      const value = parseFloat(e.target.value);
-      
-      updateFaderVisualization(e.target, value);
-      setTrackVolume(trackIndex, value);
+      let pos = parseFloat(e.target.value); // 0..1 UI position
+      // Detent snaps
+      const unityPos = gainToPos(1.0);
+      if (Math.abs(pos - unityPos) < 0.01) pos = unityPos; // snap near 0 dB
+      if (pos < 0.01) pos = 0; // snap to mute
+
+      const gain = posToGain(pos);
+      tracks[trackIndex].faderPos = pos;
+      tracks[trackIndex].volume = gain; // linear gain for node
+      updateFaderVisualization(e.target, pos);
+      updateTrackGainImmediate(trackIndex);
+      // Update display
+      const display = e.target.parentElement.parentElement.querySelector('.volume-display');
+      if (display) display.textContent = formatDb(gain);
+    });
+    fader.addEventListener('change', (e) => {
+      const trackIndex = parseInt(e.target.dataset.track);
+      const pos = tracks[trackIndex].faderPos ?? parseFloat(e.target.value);
+      const unityPos = gainToPos(1.0);
+      if (pos === 0 || Math.abs(pos - unityPos) < 0.0001) {
+        feedbackClick();
+      }
+      saveState();
     });
   });
   
   // Solo buttons
-  document.querySelectorAll('.solo-btn').forEach(btn => {
+  document.querySelectorAll('.strip-btn.solo').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const trackIndex = parseInt(e.target.dataset.track);
       toggleTrackSolo(trackIndex);
@@ -2075,11 +2267,58 @@ function setupMixerEventListeners() {
   });
   
   // Mute buttons
-  document.querySelectorAll('.mute-btn').forEach(btn => {
+  document.querySelectorAll('.strip-btn.mute').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const trackIndex = parseInt(e.target.dataset.track);
       toggleTrackMute(trackIndex);
       renderMixer(); // Re-render to update button states
+    });
+  });
+
+  // Record arm
+  document.querySelectorAll('.strip-btn.record').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const trackIndex = parseInt(e.target.dataset.track);
+      toggleTrackArm(trackIndex);
+      renderMixer();
+    });
+  });
+
+  // IO selects
+  document.querySelectorAll('.io-input').forEach(sel => {
+    sel.addEventListener('change', (e) => {
+      const trackIndex = parseInt(e.target.dataset.track);
+      const which = e.target.dataset.io;
+      if (trackIndex >= tracks.length) return;
+      tracks[trackIndex].io[which] = e.target.value;
+    });
+  });
+
+  // Automation
+  document.querySelectorAll('.automation-select').forEach(sel => {
+    sel.addEventListener('change', (e) => {
+      const trackIndex = parseInt(e.target.dataset.track);
+      const value = e.target.value;
+      if (trackIndex >= tracks.length) return;
+      tracks[trackIndex].automation = value;
+    });
+  });
+
+  // Sends
+  document.querySelectorAll('.send-knob').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const trackIndex = parseInt(e.target.dataset.track);
+      const send = e.target.dataset.send;
+      const val = parseFloat(e.target.value);
+      if (trackIndex >= tracks.length) return;
+      tracks[trackIndex].sends[send] = val;
+    });
+  });
+
+  // Clip LED reset
+  document.querySelectorAll('.clip-led').forEach(led => {
+    led.addEventListener('click', () => {
+      led.classList.remove('active');
     });
   });
 }
@@ -2096,16 +2335,19 @@ function updateKnobVisualization(knobInput, value) {
   }
 }
 
-function updateFaderVisualization(faderInput, value) {
+function updateFaderVisualization(faderInput, pos) {
   const faderHandle = faderInput.parentElement.querySelector('.fader-handle');
   const volumeDisplay = faderInput.parentElement.parentElement.querySelector('.volume-display');
   
   if (faderHandle) {
-    faderHandle.style.bottom = `${value * 100}%`;
+  // Map pos (0..1) to top% such that 0 => 100% (bottom), 1 => 0% (top)
+  const topPercent = (1 - pos) * 100;
+  faderHandle.style.top = `${topPercent}%`;
   }
   
   if (volumeDisplay) {
-    volumeDisplay.textContent = Math.round(value * 100);
+  const gain = posToGain(pos);
+  volumeDisplay.textContent = formatDb(gain);
   }
 }
 
@@ -2137,10 +2379,13 @@ function updateTrackParameter(trackIndex, param, value) {
 function updateLevelMeters() {
   if (currentView !== 'mixer') return;
   
-  document.querySelectorAll('.meter-fill').forEach((meter, index) => {
-    // Simulate random levels for demo
-    const level = Math.random() * (playing ? 80 : 10);
+  const fills = document.querySelectorAll('.mixer-channel .meter-fill');
+  fills.forEach((meter) => {
+    // Simulate levels: higher when playing
+    let level = Math.random() * (playing ? 95 : 20);
     meter.style.height = `${level}%`;
+    const led = meter.closest('.mixer-channel').querySelector('.clip-led');
+    if (level > 92 && led) led.classList.add('active');
   });
 }
 
@@ -2159,12 +2404,31 @@ render = function() {
 // --- Keyboard Shortcuts (Enhanced) ---
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  // If settings modal is open, only handle Escape
+  const settingsOpen = settingsOverlay && !settingsOverlay.classList.contains('hidden');
+  if (settingsOpen && e.key !== 'Escape') return;
   
   switch (e.key) {
     case ' ':
       e.preventDefault();
       if (playing) pauseAll();
       else playAll();
+      break;
+    case '+':
+    case '=':
+      e.preventDefault();
+      zoomInBtn.click();
+      break;
+    case '-':
+    case '_':
+      e.preventDefault();
+      zoomOutBtn.click();
+      break;
+    case '?':
+      if (e.shiftKey) {
+        e.preventDefault();
+        openSettings();
+      }
       break;
     case 'r':
     case 'R':
@@ -2187,6 +2451,12 @@ document.addEventListener('keydown', (e) => {
         else undo();
       }
       break;
+    case 'Escape':
+      if (settingsOpen) {
+        e.preventDefault();
+        closeSettings();
+      }
+      break;
     case 'c':
     case 'C':
       if (e.ctrlKey || e.metaKey) {
@@ -2205,10 +2475,12 @@ document.addEventListener('keydown', (e) => {
     case 'Backspace':
       if (selectedClip) {
         const {trackIndex, clipIndex} = selectedClip;
-        tracks[trackIndex].clips.splice(clipIndex, 1);
-        selectedClip = null;
-        saveState();
-        render();
+        if (!settings.confirmDelete || confirm('Delete this clip?')) {
+          tracks[trackIndex].clips.splice(clipIndex, 1);
+          selectedClip = null;
+          saveState();
+          render();
+        }
       }
       break;
     case 'd':
@@ -2226,6 +2498,39 @@ document.addEventListener('keydown', (e) => {
       break;
   }
 });
+
+// View button highlighting helper
+function updateViewButtons(which) {
+  const buttons = [
+    { el: arrangeViewBtn, id: 'arrangement' },
+    { el: mixerViewBtn, id: 'mixer' },
+    { el: editorViewBtn, id: 'editor' }
+  ];
+  buttons.forEach(({el, id}) => {
+    if (!el) return;
+    if (id === which) el.classList.add('active');
+    else el.classList.remove('active');
+  });
+}
+
+// Settings UI events
+if (settingsBtn) settingsBtn.onclick = openSettings;
+if (settingsClose) settingsClose.onclick = closeSettings;
+if (settingsCancel) settingsCancel.onclick = closeSettings;
+if (settingsOverlay) settingsOverlay.addEventListener('click', (e) => {
+  if (e.target === settingsOverlay) closeSettings();
+});
+if (settingsDialog) settingsDialog.addEventListener('click', (e) => e.stopPropagation());
+if (settingsSave) settingsSave.onclick = () => {
+  settings.autoScroll = !!(setAutoScroll && setAutoScroll.checked);
+  settings.snapToGrid = !!(setSnapToGrid && setSnapToGrid.checked);
+  settings.showTriplets = !!(setTripletGuides && setTripletGuides.checked);
+  settings.confirmDelete = !!(setConfirmDelete && setConfirmDelete.checked);
+  autoScrollEnabled = settings.autoScroll;
+  persistSettings();
+  closeSettings();
+  render();
+};
 
 // --- Audio Editor Functions ---
 
@@ -2274,14 +2579,7 @@ function showAudioEditorView() {
   // Show editor window
   editorWindow.classList.remove('hidden');
   editorWindow.classList.add('active');
-  
-  // Update view buttons
-  arrangeViewBtn.classList.add('bg-gray-600', 'text-white');
-  arrangeViewBtn.classList.remove('bg-orange-500', 'text-black');
-  mixerViewBtn.classList.add('bg-gray-600', 'text-white');
-  mixerViewBtn.classList.remove('bg-orange-500', 'text-black');
-  editorViewBtn.classList.add('bg-orange-500', 'text-black');
-  editorViewBtn.classList.remove('bg-gray-600', 'text-white');
+  updateViewButtons('editor');
   
   // Show the editor view button if it was hidden
   editorViewBtn.classList.remove('hidden');
