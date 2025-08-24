@@ -580,6 +580,7 @@ label.upload-btn input[type="file"] { display: none; }
   top: 80px; /* Start after toolbar */
   left: 0;
   transition: opacity 0.3s ease-in-out;
+  z-index: 10;
 }
 
 .window.hidden {
@@ -1008,6 +1009,11 @@ label.upload-btn input[type="file"] { display: none; }
   flex-direction: column;
   overflow: hidden;
   animation: modalIn 180ms ease-out;
+}
+
+/* Wider variant for FX manager */
+.modal-dialog.modal-wide {
+  width: min(1000px, 96vw);
 }
 
 @keyframes modalIn {

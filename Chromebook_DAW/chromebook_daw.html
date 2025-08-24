@@ -56,6 +56,16 @@
               <circle cx="13" cy="6" r="1.5" fill="currentColor"/>
             </svg>
           </button>
+          <!-- FX Plugins View Button -->
+          <button id="fxViewBtn" title="FX Plugins" class="p-1.5 bg-gray-600 text-white rounded text-xs font-semibold w-8 h-8 flex items-center justify-center">
+            <svg width="12" height="12" viewBox="0 0 16 16">
+              <rect x="2" y="2" width="12" height="12" rx="2" fill="currentColor"/>
+              <circle cx="6" cy="6" r="1.5" fill="#111"/>
+              <rect x="8.5" y="5.25" width="4" height="1.5" rx="0.75" fill="#111"/>
+              <circle cx="6" cy="10" r="1.5" fill="#111"/>
+              <rect x="8.5" y="9.25" width="4" height="1.5" rx="0.75" fill="#111"/>
+            </svg>
+          </button>
           <!-- Audio Editor View Button -->
           <button id="editorViewBtn" title="Audio Editor" class="p-1.5 bg-gray-600 text-white rounded text-xs font-semibold w-8 h-8 flex items-center justify-center hidden">
             <svg width="12" height="12" viewBox="0 0 16 16">
@@ -150,6 +160,24 @@
     <div id="mixerContainer" class="flex-1 overflow-auto bg-gradient-to-b from-gray-900 to-gray-800 p-4">
       <div id="mixerChannels" class="flex gap-4 min-h-full">
         <!-- Mixer channels will be dynamically generated -->
+      </div>
+    </div>
+  </div>
+
+  <!-- FX Plugins Modal Overlay -->
+  <div id="fxOverlay" class="modal-overlay hidden">
+    <div id="fxDialog" class="modal-dialog modal-wide">
+      <div class="modal-header">
+        <h3>FX Plugins</h3>
+        <button id="fxClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div id="fxView" class="modal-content">
+        <!-- Populated dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button id="fxCloseFooter" class="modal-btn">Close</button>
       </div>
     </div>
   </div>
@@ -307,6 +335,7 @@
     </div>
   </div>
 
+  <script src="FXPlugins.js"></script>
   <script src="DAW.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>

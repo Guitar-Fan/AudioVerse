@@ -44,6 +44,9 @@ let masterGainNode = null;
 let analyserNode = null;
 let filterNodes = new Map(); // Per-track filters
 let trackGainNodes = new Map(); // Per-track gain nodes
+let trackInsertChains = new Map(); // Per-track insert plugin chains { chain: [{id, instance, slotIndex}], inputNode, outputNode }
+let fxPendingSelect = null; // { trackIndex, slotIndex }
+let fxSelected = null; // { trackIndex, slotIndex }
 let clipboard = null; // For copy/paste operations
 let undoStack = [];
 let redoStack = [];
@@ -92,8 +95,14 @@ const zoomOutBtn = document.getElementById('zoomOutBtn');
 const workspace = document.getElementById('workspace');
 const arrangeViewBtn = document.getElementById('arrangeViewBtn');
 const mixerViewBtn = document.getElementById('mixerViewBtn');
+const fxViewBtn = document.getElementById('fxViewBtn');
 const arrangementWindow = document.getElementById('arrangementWindow');
 const mixerWindow = document.getElementById('mixerWindow');
+// FX modal elements
+const fxOverlay = document.getElementById('fxOverlay');
+const fxDialog = document.getElementById('fxDialog');
+const fxClose = document.getElementById('fxClose');
+const fxCloseFooter = document.getElementById('fxCloseFooter');
 const mixerChannels = document.getElementById('mixerChannels');
 const editorViewBtn = document.getElementById('editorViewBtn');
 const editorWindow = document.getElementById('editorWindow');
@@ -130,7 +139,9 @@ function createTrack(label, color) {
   faderPos: 0.8, // UI position 0..1 mapped via pos->gain
     pan: 0,
   io: { input: 'Input 1', output: 'Master' },
-  inserts: [null, null, null, null, null], // placeholders
+  inserts: [null, null, null, null, null], // plugin ids or null
+  insertEnabled: [true, true, true, true, true],
+  fxBypass: false,
   sends: { A: 0, B: 0, C: 0, D: 0, E: 0 }, // 0..1
   automation: 'read', // read | write | latch | touch
     selected: false,
@@ -659,7 +670,13 @@ function startPlayback() {
     if (hasSoloTracks && !track.solo) return;
     
     const trackGain = getTrackGainNode(trackIndex);
-  trackGain.gain.value = track.volume;
+    trackGain.gain.value = track.volume;
+    // Prepare insert chain once per track
+    const trackChain = ensureTrackInsertChain(trackIndex);
+    if (trackChain && trackChain.inputNode && trackChain.outputNode) {
+      try { trackChain.outputNode.disconnect(); } catch {}
+      try { trackChain.outputNode.connect(trackGain); } catch {}
+    }
     
     track.clips.forEach(clip => {
       if (!clip.audioBuffer) return;
@@ -671,7 +688,12 @@ function startPlayback() {
       if (clipEndTime > startOffset) {
         const source = audioCtx.createBufferSource();
         source.buffer = clip.audioBuffer;
-        source.connect(trackGain);
+        // Route through insert chain if present (already connected output once)
+        if (trackChain && trackChain.inputNode && trackChain.outputNode) {
+          source.connect(trackChain.inputNode);
+        } else {
+          source.connect(trackGain);
+        }
         
         // Calculate when to start playing this clip
         const playDelay = Math.max(0, clipStartTime - startOffset);
@@ -2045,6 +2067,7 @@ function showArrangementView() {
   arrangementWindow.classList.add('active');
   mixerWindow.classList.add('hidden');
   mixerWindow.classList.remove('active');
+  if (fxOverlay) { fxOverlay.classList.add('hidden'); }
   editorWindow.classList.add('hidden');
   editorWindow.classList.remove('active');
   updateViewButtons('arrangement');
@@ -2056,15 +2079,38 @@ function showMixerView() {
   mixerWindow.classList.add('active');
   arrangementWindow.classList.add('hidden');
   arrangementWindow.classList.remove('active');
+  if (fxOverlay) { fxOverlay.classList.add('hidden'); }
   editorWindow.classList.add('hidden');
   editorWindow.classList.remove('active');
   updateViewButtons('mixer');
   renderMixer();
 }
 
+function showFxView() {
+  // Open as modal over current view; keep highlight on existing view
+  if (fxOverlay) fxOverlay.classList.remove('hidden');
+  updateViewButtons(currentView);
+  renderFxView();
+}
+
 // Event listeners for window switching
 arrangeViewBtn.onclick = showArrangementView;
 mixerViewBtn.onclick = showMixerView;
+if (fxViewBtn) fxViewBtn.onclick = showFxView;
+// FX modal close controls
+if (fxOverlay) {
+  fxOverlay.addEventListener('click', (e) => { if (e.target === fxOverlay) fxOverlay.classList.add('hidden'); });
+}
+if (fxClose) fxClose.onclick = () => fxOverlay.classList.add('hidden');
+if (fxCloseFooter) fxCloseFooter.onclick = () => fxOverlay.classList.add('hidden');
+// Close FX overlay on Escape
+document.addEventListener('keydown', (e) => {
+  const fxOpen = fxOverlay && !fxOverlay.classList.contains('hidden');
+  if (fxOpen && e.key === 'Escape') {
+    e.preventDefault();
+    fxOverlay.classList.add('hidden');
+  }
+});
 
 // Mixer Channel Creation and Management
 function createMixerChannel(trackIndex, track) {
@@ -2106,7 +2152,7 @@ function createMixerChannel(trackIndex, track) {
       <!-- Inserts -->
       <div class="inserts">
         <div class="section-label">Inserts</div>
-        ${track.inserts.map((inst, i)=>`<button class="insert-slot" data-track="${trackIndex}" data-slot="${i}" title="Insert ${i+1}">${inst?inst:'—'}</button>`).join('')}
+        ${track.inserts.map((inst, i)=>`<button class="insert-slot" data-track="${trackIndex}" data-slot="${i}" title="Insert ${i+1}">${inst ? (window.FXPlugins && FXPlugins.get(inst) ? FXPlugins.get(inst).name : inst) : '—'}</button>`).join('')}
       </div>
 
       <!-- Sends A-E -->
@@ -2291,6 +2337,15 @@ function setupMixerEventListeners() {
       const which = e.target.dataset.io;
       if (trackIndex >= tracks.length) return;
       tracks[trackIndex].io[which] = e.target.value;
+    });
+  });
+
+  // Insert slot click -> open FX picker
+  document.querySelectorAll('.insert-slot').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const trackIndex = parseInt(e.currentTarget.dataset.track);
+      const slotIndex = parseInt(e.currentTarget.dataset.slot);
+      openFxPicker(trackIndex, slotIndex);
     });
   });
 
@@ -2504,7 +2559,8 @@ function updateViewButtons(which) {
   const buttons = [
     { el: arrangeViewBtn, id: 'arrangement' },
     { el: mixerViewBtn, id: 'mixer' },
-    { el: editorViewBtn, id: 'editor' }
+  { el: editorViewBtn, id: 'editor' },
+  { el: fxViewBtn, id: 'fx' }
   ];
   buttons.forEach(({el, id}) => {
     if (!el) return;
@@ -2531,6 +2587,246 @@ if (settingsSave) settingsSave.onclick = () => {
   closeSettings();
   render();
 };
+
+// --- Insert Plugin Chain Management ---
+function ensureTrackInsertChain(trackIndex) {
+  if (!audioCtx) return null;
+  const track = tracks[trackIndex];
+  if (!track) return null;
+  if (track.fxBypass) { trackInsertChains.set(trackIndex, { chain: [], inputNode: null, outputNode: null }); return null; }
+  // Disconnect existing chain, but try to reuse instances by slot
+  const existing = trackInsertChains.get(trackIndex);
+  if (existing && existing.chain) {
+    existing.chain.forEach(p => {
+      try { p.instance.output && p.instance.output.disconnect && p.instance.output.disconnect(); } catch {}
+      try { p.instance.input && p.instance.input.disconnect && p.instance.input.disconnect(); } catch {}
+    });
+  }
+
+  const chain = [];
+  let head = null;
+  let tail = null;
+  (track.inserts || []).forEach((id, idx) => {
+    if (!id) return;
+    if (Array.isArray(track.insertEnabled) && track.insertEnabled[idx] === false) return;
+    const def = window.FXPlugins && FXPlugins.get(id);
+    if (!def) return;
+    // Reuse instance if same id at same slot
+    let inst = null;
+    if (existing) {
+      const prev = existing.chain.find(c => c.slotIndex === idx && c.id === id);
+      if (prev) inst = prev.instance;
+    }
+    if (!inst) inst = def.create(audioCtx);
+    const nodeIn = inst.input || inst;
+    const nodeOut = inst.output || inst;
+    if (!head) head = nodeIn;
+    if (tail) { try { tail.connect(nodeIn); } catch{} }
+    tail = nodeOut;
+    chain.push({ id, instance: inst, slotIndex: idx });
+  });
+
+  const built = { chain, inputNode: head, outputNode: tail };
+  trackInsertChains.set(trackIndex, built);
+  return built;
+}
+
+// --- FX View / Plugin Picker ---
+function renderFxView() {
+  const fxView = document.getElementById('fxView');
+  if (!fxView) return;
+  // Determine selected slot
+  const sel = fxSelected || fxPendingSelect;
+  if (!sel) {
+    fxView.innerHTML = '<div class="text-gray-400">Open FX from a mixer insert, or pick a track to manage its FX chain.</div>';
+    return;
+  }
+  const { trackIndex, slotIndex } = sel;
+  if (!fxSelected) fxSelected = { trackIndex, slotIndex };
+  const track = tracks[trackIndex];
+  const chainList = track.inserts.map((id, idx) => ({ idx, id, name: id ? (FXPlugins.get(id)?.name || id) : null, enabled: track.insertEnabled[idx] !== false }));
+
+  // Build two-pane UI
+  const selectedId = track.inserts[fxSelected.slotIndex];
+  const showBrowser = !selectedId;
+  const pluginParams = selectedId ? FXPlugins.getParams(selectedId) : [];
+  const pluginName = selectedId ? (FXPlugins.get(selectedId)?.name || selectedId) : '';
+  const searchBox = `<input id="fxSearch" type="text" placeholder="Search plugins..." class="w-full px-2 py-1 rounded bg-gray-700 border border-gray-600 text-sm text-gray-200" />`;
+
+  fxView.innerHTML = `
+    <div class="h-full grid grid-cols-12 gap-4">
+      <div class="col-span-4 bg-gray-800 rounded border border-gray-700 p-3 flex flex-col">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-sm font-semibold text-gray-200">${track.label} FX Chain</div>
+          <label class="text-xs text-gray-300 flex items-center gap-2"><input id="fxTrackBypass" type="checkbox" ${track.fxBypass?'checked':''}/> Bypass</label>
+        </div>
+        <div class="flex items-center gap-2 mb-2">
+          <button id="fxAddPlugin" class="px-2 py-1 text-xs bg-orange-600 hover:bg-orange-500 rounded">Add</button>
+          <div class="flex-1">${searchBox}</div>
+        </div>
+        <div id="fxChainList" class="flex-1 overflow-auto space-y-1">
+          ${chainList.map(item => `
+            <div class=\"fx-item flex items-center gap-2 p-2 rounded ${item.idx===fxSelected.slotIndex?'bg-gray-700':'bg-gray-900'} border border-gray-700\" data-index=\"${item.idx}\">
+              <input type=\"checkbox\" class=\"fx-enable\" data-index=\"${item.idx}\" ${item.enabled?'checked':''} />
+              <div class=\"flex-1 text-xs ${item.id? 'text-gray-100' : 'text-gray-500'}\">${item.name || '— Empty —'}</div>
+              <div class=\"flex items-center gap-1\">
+                <button class=\"fx-up px-1 text-xs bg-gray-700 rounded\" data-index=\"${item.idx}\">↑</button>
+                <button class=\"fx-down px-1 text-xs bg-gray-700 rounded\" data-index=\"${item.idx}\">↓</button>
+                <button class=\"fx-remove px-1 text-xs bg-red-700 rounded\" data-index=\"${item.idx}\">✕</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="col-span-8 bg-gray-800 rounded border border-gray-700 p-4">
+        ${showBrowser ? `
+          <div class=\"mb-3 text-sm text-gray-300\">Select a plugin for Insert ${fxSelected.slotIndex+1} on ${track.label}</div>
+          <div id=\"fxBrowser\" class=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4\"></div>
+        ` : `
+          <div class=\"flex items-center justify-between mb-3\">
+            <div class=\"text-sm font-semibold text-orange-400\">${pluginName} — Insert ${fxSelected.slotIndex+1}</div>
+            <div class=\"flex gap-2\">
+              <button id=\"fxChangePlugin\" class=\"px-2 py-1 text-xs bg-gray-700 rounded\">Change</button>
+            </div>
+          </div>
+          <div class=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4\">
+            ${pluginParams.map(pm => `
+              <label class=\"block text-xs text-gray-300\">
+                <span class=\"block mb-1\">${pm.name}</span>
+                <input type=\"range\" class=\"w-full fx-param\" data-param=\"${pm.id}\" min=\"${pm.min}\" max=\"${pm.max}\" step=\"${pm.step}\" />
+              </label>
+            `).join('')}
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+
+  // Wire chain list actions
+  const listEl = document.getElementById('fxChainList');
+  if (listEl) {
+    listEl.querySelectorAll('.fx-item').forEach(row => {
+      row.addEventListener('click', (e) => {
+        const idx = parseInt(row.dataset.index);
+        fxSelected = { trackIndex, slotIndex: idx };
+        renderFxView();
+      });
+    });
+    listEl.querySelectorAll('.fx-enable').forEach(cb => {
+      cb.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(cb.dataset.index);
+        track.insertEnabled[idx] = cb.checked;
+        ensureTrackInsertChain(trackIndex);
+      });
+    });
+    listEl.querySelectorAll('.fx-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.index);
+        track.inserts[idx] = null;
+        track.insertEnabled[idx] = true;
+        ensureTrackInsertChain(trackIndex);
+        renderFxView();
+        renderMixer();
+      });
+    });
+    listEl.querySelectorAll('.fx-up').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.index);
+        if (idx <= 0) return;
+        // swap with previous
+        const tmpId = track.inserts[idx-1];
+        const tmpEn = track.insertEnabled[idx-1];
+        track.inserts[idx-1] = track.inserts[idx];
+        track.insertEnabled[idx-1] = track.insertEnabled[idx];
+        track.inserts[idx] = tmpId;
+        track.insertEnabled[idx] = tmpEn;
+        fxSelected = { trackIndex, slotIndex: idx-1 };
+        ensureTrackInsertChain(trackIndex);
+        renderFxView();
+        renderMixer();
+      });
+    });
+    listEl.querySelectorAll('.fx-down').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.index);
+        if (idx >= track.inserts.length - 1) return;
+        const tmpId = track.inserts[idx+1];
+        const tmpEn = track.insertEnabled[idx+1];
+        track.inserts[idx+1] = track.inserts[idx];
+        track.insertEnabled[idx+1] = track.insertEnabled[idx];
+        track.inserts[idx] = tmpId;
+        track.insertEnabled[idx] = tmpEn;
+        fxSelected = { trackIndex, slotIndex: idx+1 };
+        ensureTrackInsertChain(trackIndex);
+        renderFxView();
+        renderMixer();
+      });
+    });
+  }
+
+  // Track bypass
+  const trackBypass = document.getElementById('fxTrackBypass');
+  if (trackBypass) trackBypass.onchange = () => { track.fxBypass = trackBypass.checked; ensureTrackInsertChain(trackIndex); };
+
+  // Add plugin or search
+  const addBtn = document.getElementById('fxAddPlugin');
+  const searchEl = document.getElementById('fxSearch');
+  const updateBrowser = () => {
+    const q = (searchEl?.value || '').toLowerCase();
+    const list = (window.FXPlugins ? FXPlugins.list() : []);
+    const matches = list.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q));
+    const grid = document.getElementById('fxBrowser');
+    if (grid) {
+      grid.innerHTML = matches.map(p=>`
+        <div class=\"p-4 rounded-lg border border-gray-700 bg-gray-900 shadow\">
+          <div class=\"text-base font-semibold text-white\">${p.name}</div>
+          <div class=\"text-xs text-gray-400 mb-2\">${p.description || ''}</div>
+          <button class=\"px-2 py-1 text-xs bg-orange-600 hover:bg-orange-500 rounded add-plugin\" data-plugin=\"${p.id}\">Add</button>
+        </div>
+      `).join('');
+      grid.querySelectorAll('.add-plugin').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.plugin;
+          track.inserts[fxSelected.slotIndex] = id;
+          track.insertEnabled[fxSelected.slotIndex] = true;
+          ensureTrackInsertChain(trackIndex);
+          renderFxView();
+          renderMixer();
+        });
+      });
+    }
+  };
+  if (addBtn) addBtn.onclick = () => { track.inserts[fxSelected.slotIndex] = null; renderFxView(); };
+  if (searchEl) searchEl.oninput = () => updateBrowser();
+  updateBrowser();
+
+  // Plugin params for selected
+  if (!showBrowser) {
+  const chain = ensureTrackInsertChain(trackIndex);
+  const instEntry = chain && chain.chain.find(c => c.slotIndex === fxSelected.slotIndex);
+    document.querySelectorAll('.fx-param').forEach(input => {
+      const id = input.dataset.param;
+      const val = instEntry?.instance?.api?.getParam ? instEntry.instance.api.getParam(id) : undefined;
+      if (typeof val !== 'undefined') input.value = val;
+      input.addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        if (instEntry?.instance?.api?.setParam) instEntry.instance.api.setParam(id, v);
+      });
+    });
+    const changeBtn = document.getElementById('fxChangePlugin');
+    if (changeBtn) changeBtn.onclick = () => { track.inserts[fxSelected.slotIndex] = null; renderFxView(); };
+  }
+}
+
+function openFxPicker(trackIndex, slotIndex) {
+  fxPendingSelect = { trackIndex, slotIndex };
+  fxSelected = { trackIndex, slotIndex };
+  showFxView();
+}
 
 // --- Audio Editor Functions ---
 
@@ -2575,6 +2871,7 @@ function showAudioEditorView() {
   arrangementWindow.classList.remove('active');
   mixerWindow.classList.add('hidden');
   mixerWindow.classList.remove('active');
+  if (fxOverlay) { fxOverlay.classList.add('hidden'); }
   
   // Show editor window
   editorWindow.classList.remove('hidden');
@@ -3012,6 +3309,7 @@ function showArrangementView() {
   arrangementWindow.classList.add('active');
   mixerWindow.classList.add('hidden');
   mixerWindow.classList.remove('active');
+  if (fxOverlay) { fxOverlay.classList.add('hidden'); }
   editorWindow.classList.add('hidden');
   editorWindow.classList.remove('active');
   
@@ -3029,6 +3327,7 @@ function showMixerView() {
   mixerWindow.classList.add('active');
   arrangementWindow.classList.add('hidden');
   arrangementWindow.classList.remove('active');
+  if (fxOverlay) { fxOverlay.classList.add('hidden'); }
   editorWindow.classList.add('hidden');
   editorWindow.classList.remove('active');
   
