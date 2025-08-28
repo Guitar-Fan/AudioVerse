@@ -2118,9 +2118,10 @@ function createMixerChannel(trackIndex, track) {
   const pos = typeof track.faderPos === 'number' ? track.faderPos : gainToPos(track.volume);
   
   return `
-  <div id="${channelId}" class="mixer-channel mixer-strip bg-gray-800 rounded-lg p-2 w-32 min-h-full border border-gray-700 shadow-lg">
+  <div id="${channelId}" class="mixer-channel mixer-strip bg-gray-800 rounded-lg border border-gray-700 shadow-lg">
       <div class="strip-color" style="background:${track.color}"></div>
-      <!-- Header: Name + buttons -->
+      
+      <!-- Compact Header: Name + buttons -->
       <div class="strip-header">
         <div class="strip-title" title="${track.label}">${track.label}</div>
         <div class="strip-buttons">
@@ -2130,7 +2131,7 @@ function createMixerChannel(trackIndex, track) {
         </div>
       </div>
 
-      <!-- I/O -->
+      <!-- Compact I/O -->
       <div class="io-section">
         <div class="io-row">
           <label class="io-label">In</label>
@@ -2149,70 +2150,60 @@ function createMixerChannel(trackIndex, track) {
         </div>
       </div>
 
-      <!-- Inserts -->
+      <!-- Compact Inserts -->
       <div class="inserts">
-        <div class="section-label">Inserts</div>
-        ${track.inserts.map((inst, i)=>`<button class="insert-slot" data-track="${trackIndex}" data-slot="${i}" title="Insert ${i+1}">${inst ? (window.FXPlugins && FXPlugins.get(inst) ? FXPlugins.get(inst).name : inst) : '—'}</button>`).join('')}
+        <div class="section-label">FX</div>
+        ${track.inserts.slice(0, 3).map((inst, i)=>`<button class="insert-slot" data-track="${trackIndex}" data-slot="${i}" title="Insert ${i+1}">${inst ? (window.FXPlugins && FXPlugins.get(inst) ? FXPlugins.get(inst).name : inst) : '—'}</button>`).join('')}
       </div>
 
-      <!-- Sends A-E -->
+      <!-- Compact Sends -->
       <div class="sends">
         <div class="section-label">Sends</div>
-        ${['A','B','C','D','E'].map(letter=>`<div class="send"><span class="send-label">${letter}</span><input type="range" min="0" max="1" step="0.01" value="${track.sends[letter]}" class="send-knob" data-track="${trackIndex}" data-send="${letter}"></div>`).join('')}
+        ${['A','B','C'].map(letter=>`<div class="send"><span class="send-label">${letter}</span><input type="range" min="0" max="1" step="0.01" value="${track.sends[letter]}" class="send-knob" data-track="${trackIndex}" data-send="${letter}"></div>`).join('')}
       </div>
 
-      <!-- Pan -->
-      <div class="knob-container mb-2">
+      <!-- Compact Pan -->
+      <div class="knob-container">
         <div class="text-xs text-gray-400 text-center mb-1">PAN</div>
-        <div class="knob-wrapper mx-auto w-12 h-12 relative">
+        <div class="knob-wrapper mx-auto relative">
           <svg class="knob-svg w-full h-full" viewBox="0 0 48 48">
-            <circle cx="24" cy="24" r="20" fill="#374151" stroke="#4B5563" stroke-width="2"/>
-            <circle cx="24" cy="24" r="16" fill="#1F2937" stroke="#6B7280" stroke-width="1"/>
-            <path class="knob-indicator" d="M24 8 L24 16" stroke="#10B981" stroke-width="2" stroke-linecap="round" transform="rotate(${track.pan*135} 24 24)"/>
-            <circle cx="24" cy="24" r="2" fill="#10B981"/>
+            <circle cx="24" cy="24" r="14" fill="#374151" stroke="#4B5563" stroke-width="1"/>
+            <circle cx="24" cy="24" r="10" fill="#1F2937" stroke="#6B7280" stroke-width="1"/>
+            <path class="knob-indicator" d="M24 6 L24 12" stroke="#10B981" stroke-width="2" stroke-linecap="round" transform="rotate(${track.pan*135} 24 24)"/>
+            <circle cx="24" cy="24" r="1" fill="#10B981"/>
           </svg>
           <input type="range" class="knob-input opacity-0 absolute inset-0 w-full h-full cursor-pointer" min="-100" max="100" value="${track.pan * 100}" step="1" data-track="${trackIndex}" data-param="pan">
         </div>
       </div>
 
-      <!-- Fader + Meter -->
-      <div class="fader-meter">
-        <div class="fader-container h-28 flex flex-col items-center">
-          <div class="text-[10px] text-gray-400 text-center mb-1 tracking-wide">VOLUME</div>
-          <div class="fader-track relative mx-auto rounded-md w-6 h-24 bg-gray-900/90 border border-gray-700 shadow-inner overflow-hidden">
-            <svg class="fader-svg absolute inset-0 pointer-events-none" viewBox="0 0 24 100" preserveAspectRatio="none">
-              <line x1="12" x2="12" y1="4" y2="96" stroke="#4B5563" stroke-width="1"/>
-              <g stroke="#6B7280" stroke-width="1">
-                <line x1="8" x2="16" y1="20" y2="20"/>
-                <line x1="10" x2="14" y1="40" y2="40"/>
-                <line x1="6" x2="18" y1="60" y2="60"/>
-                <line x1="10" x2="14" y1="80" y2="80"/>
-              </g>
-              <!-- Unity marker at 0 dB -->
-              <line x1="6" x2="18" y1="${(1 - gainToPos(1.0)) * 100}" y2="${(1 - gainToPos(1.0)) * 100}" stroke="#F59E0B" stroke-width="1"/>
-            </svg>
-            <input type="range" class="volume-fader absolute inset-0 w-full h-full opacity-0 cursor-pointer" min="0" max="1" value="${pos}" step="0.001" data-track="${trackIndex}" data-param="volume" orient="vertical">
-            <div class="fader-handle absolute w-6 h-3 rounded-md shadow-lg ring-1 ring-orange-300/60 bg-gradient-to-b from-orange-400 to-orange-600" style="top: ${(1 - pos) * 100}%; transform: translateY(-50%);"></div>
-          </div>
-          <div class="text-[10px] text-center mt-1 text-gray-300 volume-display">${formatDb(track.volume)}</div>
+      <!-- PROFESSIONAL FADER - The Main Feature -->
+      <div class="fader-container">
+        <div class="text-[10px] text-gray-400 text-center mb-2 tracking-wide font-bold">VOLUME</div>
+        <div class="fader-track" data-track="${trackIndex}" data-min="0" data-max="1" data-step="0.001">
+          <!-- Unity gain marker -->
+          <div class="unity-marker" style="top: ${(1 - gainToPos(1.0)) * 100}%;"></div>
+          <!-- Professional fader handle -->
+          <div class="fader-handle" style="top: ${(1 - pos) * 100}%;"></div>
+          <!-- Hidden range input for fallback -->
+          <input type="range" class="volume-fader" min="0" max="1" value="${pos}" step="0.001" data-track="${trackIndex}" data-param="volume" orient="vertical">
         </div>
-        <div class="meter-block">
-          <div class="clip-led" title="Clip (click to reset)"></div>
-          <div class="output-meter bg-gray-900 rounded h-24 w-4 mx-auto relative overflow-hidden">
-            <div class="meter-fill w-full absolute bottom-0 transition-all duration-75" style="height: 0%"></div>
-            <div class="db-marks"></div>
-          </div>
+        <div class="volume-display">${formatDb(track.volume)}</div>
+      </div>
+
+      <!-- Compact Level Meter -->
+      <div class="meter-block">
+        <div class="clip-led" title="Clip (click to reset)"></div>
+        <div class="output-meter bg-gray-900 rounded relative overflow-hidden">
+          <div class="meter-fill w-full absolute bottom-0 transition-all duration-75" style="height: 0%"></div>
         </div>
       </div>
 
-      <!-- Automation -->
+      <!-- Compact Automation -->
       <div class="automation">
         <label class="io-label">Auto</label>
         <select class="automation-select" data-track="${trackIndex}">
           <option ${track.automation==='read'?'selected':''} value="read">Read</option>
           <option ${track.automation==='write'?'selected':''} value="write">Write</option>
-          <option ${track.automation==='latch'?'selected':''} value="latch">Latch</option>
-          <option ${track.automation==='touch'?'selected':''} value="touch">Touch</option>
         </select>
       </div>
     </div>
@@ -2237,23 +2228,28 @@ function renderMixer() {
 
 function createMasterChannel() {
   return `
-  <div class="mixer-channel mixer-strip master bg-gray-900 rounded-lg p-2 w-32 min-h-full border border-gray-700 shadow-lg">
+  <div class="mixer-channel mixer-strip master bg-gray-900 rounded-lg border border-gray-700 shadow-lg">
       <div class="strip-header">
         <div class="strip-title" title="Master">Master</div>
       </div>
-      <div class="fader-meter">
-        <div class="fader-container h-28 flex flex-col items-center">
-          <div class="text-[10px] text-gray-400 text-center mb-1 tracking-wide">MASTER</div>
-          <div class="fader-track relative mx-auto rounded-md w-6 h-24 bg-gray-900/90 border border-gray-700 shadow-inner overflow-hidden">
-            <div class="fader-handle absolute w-6 h-3 rounded-md shadow-lg ring-1 ring-orange-200 bg-gradient-to-b from-orange-300 to-orange-500" style="top: 20%; transform: translateY(-50%);"></div>
-          </div>
+      
+      <!-- PROFESSIONAL MASTER FADER -->
+      <div class="fader-container">
+        <div class="text-[10px] text-gray-400 text-center mb-2 tracking-wide font-bold">MASTER</div>
+        <div class="fader-track master-fader" data-track="master" data-min="0" data-max="1" data-step="0.001">
+          <!-- Unity gain marker -->
+          <div class="unity-marker" style="top: 20%;"></div>
+          <!-- Professional master fader handle -->
+          <div class="fader-handle master-handle" style="top: 20%;"></div>
         </div>
-        <div class="meter-block">
-          <div class="clip-led" title="Clip (click to reset)"></div>
-          <div class="output-meter bg-gray-900 rounded h-24 w-4 mx-auto relative overflow-hidden">
-            <div class="meter-fill w-full absolute bottom-0 transition-all duration-75" style="height: 0%"></div>
-            <div class="db-marks"></div>
-          </div>
+        <div class="volume-display">0.0 dB</div>
+      </div>
+      
+      <!-- Master Level Meter -->
+      <div class="meter-block">
+        <div class="clip-led" title="Master Clip (click to reset)"></div>
+        <div class="output-meter bg-gray-900 rounded relative overflow-hidden">
+          <div class="meter-fill w-full absolute bottom-0 transition-all duration-75" style="height: 0%"></div>
         </div>
       </div>
     </div>
@@ -2261,6 +2257,95 @@ function createMasterChannel() {
 }
 
 function setupMixerEventListeners() {
+  // === PROFESSIONAL FADER INTERACTION (Lexicon-style) ===
+  document.querySelectorAll('.fader-track').forEach(track => {
+    const trackIndex = parseInt(track.dataset.track);
+    const handle = track.querySelector('.fader-handle');
+    const volumeDisplay = track.parentElement.querySelector('.volume-display');
+    const hiddenInput = track.querySelector('.volume-fader');
+    const trackData = tracks[trackIndex];
+    
+    let isDragging = false;
+    let startY = 0;
+    let startValue = 0;
+
+    function startDrag(e) {
+      isDragging = true;
+      startY = e.clientY || (e.touches && e.touches[0].clientY);
+      startValue = trackData.faderPos || gainToPos(trackData.volume);
+      document.body.style.cursor = 'grabbing';
+      track.classList.add('dragging');
+      e.preventDefault();
+    }
+
+    function doDrag(e) {
+      if (!isDragging) return;
+      
+      const currentY = e.clientY || (e.touches && e.touches[0].clientY);
+      const deltaY = startY - currentY; // Inverted: up = higher value
+      const trackRect = track.getBoundingClientRect();
+      const sensitivity = 1.5; // Fine control like Lexicon hardware
+      const deltaValue = (deltaY / trackRect.height) * sensitivity;
+      
+      let newValue = Math.max(0, Math.min(1, startValue + deltaValue));
+      
+      // Snap to unity gain (0dB) for easier targeting
+      const unityPos = gainToPos(1.0);
+      if (Math.abs(newValue - unityPos) < 0.02) {
+        newValue = unityPos;
+      }
+      
+      // Update fader position
+      trackData.faderPos = newValue;
+      trackData.volume = posToGain(newValue);
+      
+      // Visual updates with smooth animation
+      const topPercent = (1 - newValue) * 100;
+      handle.style.top = `${topPercent}%`;
+      hiddenInput.value = newValue;
+      volumeDisplay.textContent = formatDb(trackData.volume);
+      
+      // Audio update
+      if (trackData.gainNode) {
+        trackData.gainNode.gain.setValueAtTime(trackData.volume, audioCtx.currentTime);
+      }
+      
+      e.preventDefault();
+    }
+
+    function stopDrag() {
+      if (!isDragging) return;
+      isDragging = false;
+      document.body.style.cursor = '';
+      track.classList.remove('dragging');
+    }
+
+    // Mouse events
+    track.addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+    
+    // Touch events for mobile
+    track.addEventListener('touchstart', startDrag, { passive: false });
+    document.addEventListener('touchmove', doDrag, { passive: false });
+    document.addEventListener('touchend', stopDrag);
+
+    // Double-click to reset to unity
+    track.addEventListener('dblclick', () => {
+      const unityPos = gainToPos(1.0);
+      trackData.faderPos = unityPos;
+      trackData.volume = 1.0;
+      handle.style.top = `${(1 - unityPos) * 100}%`;
+      hiddenInput.value = unityPos;
+      volumeDisplay.textContent = formatDb(1.0);
+      if (trackData.gainNode) {
+        trackData.gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
+      }
+    });
+  });
+
+  // === EXISTING CONTROLS ===
+  
   // Knob controls
   document.querySelectorAll('.knob-input').forEach(knob => {
     knob.addEventListener('input', (e) => {
@@ -2719,7 +2804,7 @@ function renderFxView() {
               <button id=\"fxChangePlugin\" class=\"px-2 py-1 text-xs bg-gray-700 rounded\">Change</button>
             </div>
           </div>
-          <div class=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4\">
+          <div id=\"pluginUI\" class=\"plugin-ui-container\">
             ${pluginParams.map(pm => `
               <label class=\"block text-xs text-gray-300\">
                 <span class=\"block mb-1\">${pm.name}</span>
@@ -2836,17 +2921,44 @@ function renderFxView() {
 
   // Plugin params for selected
   if (!showBrowser) {
-  const chain = ensureTrackInsertChain(trackIndex);
-  const instEntry = chain && chain.chain.find(c => c.slotIndex === fxSelected.slotIndex);
-    document.querySelectorAll('.fx-param').forEach(input => {
-      const id = input.dataset.param;
-      const val = instEntry?.instance?.api?.getParam ? instEntry.instance.api.getParam(id) : undefined;
-      if (typeof val !== 'undefined') input.value = val;
-      input.addEventListener('input', (e) => {
-        const v = parseFloat(e.target.value);
-        if (instEntry?.instance?.api?.setParam) instEntry.instance.api.setParam(id, v);
+    const chain = ensureTrackInsertChain(trackIndex);
+    const instEntry = chain && chain.chain.find(c => c.slotIndex === fxSelected.slotIndex);
+    
+    // Check if plugin has custom UI
+    const pluginDef = selectedId ? FX_PLUGINS[selectedId] : null;
+    const hasCustomUI = pluginDef && pluginDef.customUI && pluginDef.renderUI;
+    
+    if (hasCustomUI) {
+      // Use custom UI renderer
+      try {
+        pluginDef.renderUI('pluginUI', instEntry?.instance);
+      } catch (err) {
+        console.error('Error rendering custom UI:', err);
+        // Fall back to default sliders
+        setupDefaultSliders();
+      }
+    } else {
+      // Use default slider interface
+      setupDefaultSliders();
+    }
+    
+    function setupDefaultSliders() {
+      const pluginUIContainer = document.getElementById('pluginUI');
+      if (pluginUIContainer && !hasCustomUI) {
+        pluginUIContainer.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4';
+      }
+      
+      document.querySelectorAll('.fx-param').forEach(input => {
+        const id = input.dataset.param;
+        const val = instEntry?.instance?.api?.getParam ? instEntry.instance.api.getParam(id) : undefined;
+        if (typeof val !== 'undefined') input.value = val;
+        input.addEventListener('input', (e) => {
+          const v = parseFloat(e.target.value);
+          if (instEntry?.instance?.api?.setParam) instEntry.instance.api.setParam(id, v);
+        });
       });
-    });
+    }
+    
     const changeBtn = document.getElementById('fxChangePlugin');
     if (changeBtn) changeBtn.onclick = () => { track.inserts[fxSelected.slotIndex] = null; renderFxView(); };
   }

@@ -159,83 +159,422 @@
         return { input, output: out, nodes: [input, shaper, lp, wet, dry, out], api };
       }
     },
-    algoverb: {
-      id: 'algoverb',
-      name: 'Algorithmic Reverb',
-      description: 'Simple Schroeder-style reverb (comb + allpass)',
+    lexicon480L: {
+      id: 'lexicon480L',
+      name: 'Lexicon 480L',
+      description: 'Classic digital reverb processor with lush, dense tails',
       params: [
-        { id: 'room', name: 'Room', type: 'range', min: 0.1, max: 3.0, step: 0.01 },
-        { id: 'damp', name: 'Damp', type: 'range', min: 500, max: 10000, step: 10 },
-        { id: 'mix', name: 'Mix', type: 'range', min: 0, max: 1, step: 0.01 }
+        { id: 'size', name: 'Size', type: 'range', min: 0.1, max: 4.0, step: 0.01, unit: '' },
+        { id: 'decay', name: 'Decay', type: 'range', min: 0.1, max: 25.0, step: 0.1, unit: ' s' },
+        { id: 'diffusion', name: 'Diffusion', type: 'range', min: 0, max: 100, step: 1, unit: ' %' },
+        { id: 'damping', name: 'Damping', type: 'range', min: 0, max: 100, step: 1, unit: ' %' },
+        { id: 'predelay', name: 'Pre-delay', type: 'range', min: 0, max: 250, step: 1, unit: ' ms' },
+        { id: 'spread', name: 'Spread', type: 'range', min: 0, max: 100, step: 1, unit: ' %' },
+        { id: 'shape', name: 'Shape', type: 'range', min: -1, max: 1, step: 0.01, unit: '' },
+        { id: 'mix', name: 'Mix', type: 'range', min: 0, max: 100, step: 1, unit: ' %' }
       ],
+      customUI: true,
       create: (ctx) => {
         const input = ctx.createGain();
+        const predelayNode = ctx.createDelay(0.25);
         const dry = ctx.createGain();
         const wet = ctx.createGain();
-        const out = ctx.createGain();
-        const params = { room: 1.2, damp: 3000, mix: 0.3 };
-        dry.gain.value = 1.0; wet.gain.value = params.mix;
+        const output = ctx.createGain();
+        
+        // 480L-style parameters
+        let params = { 
+          size: 1.8, decay: 4.2, diffusion: 75, damping: 45, 
+          predelay: 35, spread: 85, shape: 0.3, mix: 35 
+        };
+        
+        // Initial setup
+        predelayNode.delayTime.value = params.predelay / 1000;
+        dry.gain.value = (100 - params.mix) / 100;
+        wet.gain.value = params.mix / 100;
 
-        // Build a tiny network of delays with feedback (very lightweight)
-        function comb(time, feedback){
-          const d = ctx.createDelay(1.5); d.delayTime.value = time;
-          const g = ctx.createGain(); g.gain.value = feedback;
-          const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = params.damp;
-          d.connect(lp).connect(g).connect(d);
-          return { input: d, output: d, tune(room){ d.delayTime.value = time * room; lp.frequency.value = params.damp; } };
+        // Create 480L-inspired tank structure with multiple delay networks
+        // Early reflections network (characteristic 480L early pattern)
+        const earlyTaps = [
+          { time: 0.0043, gain: 0.841, pan: -0.4 },
+          { time: 0.0215, gain: 0.504, pan: 0.6 },
+          { time: 0.0225, gain: 0.491, pan: -0.6 },
+          { time: 0.0268, gain: 0.379, pan: 0.8 },
+          { time: 0.0270, gain: 0.380, pan: -0.2 },
+          { time: 0.0298, gain: 0.346, pan: 0.4 },
+          { time: 0.0458, gain: 0.289, pan: -0.8 },
+          { time: 0.0485, gain: 0.272, pan: 0.2 }
+        ];
+
+        const earlySum = ctx.createGain();
+        const earlyDelays = earlyTaps.map(tap => {
+          const delay = ctx.createDelay(0.1);
+          const gain = ctx.createGain();
+          const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
+          
+          delay.delayTime.value = tap.time * params.size;
+          gain.gain.value = tap.gain * (params.diffusion / 100);
+          if (panner.pan) panner.pan.value = tap.pan * (params.spread / 100);
+          
+          predelayNode.connect(delay);
+          delay.connect(gain);
+          if (panner.pan) gain.connect(panner).connect(earlySum);
+          else gain.connect(earlySum);
+          
+          return { delay, gain, panner, baseTime: tap.time, baseGain: tap.gain, basePan: tap.pan };
+        });
+
+        // Fixed feedback implementation based on your guidance
+        const tankInput = ctx.createGain();
+        const tankSum = ctx.createGain();
+        
+        // Multiple delay lines with controlled feedback (FDN approach)
+        const delayTimes = [0.0297, 0.0371, 0.0411, 0.0437, 0.0527, 0.0617, 0.0707, 0.0797];
+        const delays = [];
+        const feedbacks = [];
+        const filters = [];
+        const modLfos = [];
+        const modDepths = [];
+        
+        delayTimes.forEach((baseTime, i) => {
+          const delay = ctx.createDelay(2.0);
+          const feedback = ctx.createGain();
+          const filter = ctx.createBiquadFilter();
+          const modLfo = ctx.createOscillator();
+          const modDepth = ctx.createGain();
+          
+          // Safe feedback settings - always less than 1.0
+          delay.delayTime.value = baseTime * params.size;
+          feedback.gain.value = Math.min(0.85, Math.pow(0.001, baseTime * params.size / params.decay));
+          
+          filter.type = 'lowpass';
+          filter.frequency.value = 20000 - (params.damping * 180);
+          
+          // Subtle modulation to prevent metallic artifacts
+          modLfo.type = 'sine';
+          modLfo.frequency.value = 0.1 + (i * 0.05); // Staggered LFO rates
+          modDepth.gain.value = 0.00005 * (params.diffusion / 100); // Very small modulation
+          
+          // Safe feedback routing: input -> delay -> filter -> feedback -> back to delay
+          tankInput.connect(delay);
+          delay.connect(filter);
+          filter.connect(feedback);
+          feedback.connect(delay); // Controlled feedback loop
+          filter.connect(tankSum); // Output from filter (not feedback loop)
+          
+          // Modulation connection
+          modLfo.connect(modDepth);
+          modDepth.connect(delay.delayTime);
+          modLfo.start();
+          
+          delays.push(delay);
+          feedbacks.push(feedback);
+          filters.push(filter);
+          modLfos.push(modLfo);
+          modDepths.push(modDepth);
+        });
+        
+        // Cross-feedback between delay lines for complexity (like real 480L)
+        delays.forEach((delay, i) => {
+          const nextIndex = (i + 1) % delays.length;
+          const crossFeed = ctx.createGain();
+          crossFeed.gain.value = 0.1 * (params.diffusion / 100); // Very low cross-feed
+          filters[i].connect(crossFeed);
+          crossFeed.connect(delays[nextIndex]);
+        });
+
+        // Series allpass filters for diffusion (480L characteristic)
+        const allpassTimes = [0.005, 0.0017, 0.0083, 0.0031];
+        let allpassChain = tankSum;
+        
+        const allpasses = allpassTimes.map(time => {
+          const delay = ctx.createDelay(0.1);
+          const feedback = ctx.createGain();
+          const feedforward = ctx.createGain();
+          const sum1 = ctx.createGain();
+          const sum2 = ctx.createGain();
+          
+          delay.delayTime.value = time * params.size;
+          feedback.gain.value = 0.7 * (params.diffusion / 100);
+          feedforward.gain.value = -0.7 * (params.diffusion / 100);
+          
+          // Allpass structure: input -> delay -> feedback -> input summing
+          allpassChain.connect(sum1);
+          allpassChain.connect(feedforward).connect(sum2);
+          sum1.connect(delay).connect(feedback).connect(sum1);
+          delay.connect(sum2);
+          
+          allpassChain = sum2;
+          return { delay, feedback, feedforward, sum1, sum2, baseTime: time };
+        });
+
+        // Shape control (frequency tilt characteristic of 480L)
+        const shapeFilter = ctx.createBiquadFilter();
+        shapeFilter.type = 'highshelf';
+        shapeFilter.frequency.value = 2000;
+        shapeFilter.gain.value = params.shape * 6; // -6 to +6 dB shelf
+
+        // Final connections
+        input.connect(dry).connect(output);
+        input.connect(predelayNode).connect(tankInput);
+        
+        earlySum.connect(shapeFilter);
+        allpassChain.connect(shapeFilter);
+        shapeFilter.connect(wet).connect(output);
+
+        // Parameter update functions
+        function updateSize() {
+          earlyDelays.forEach((tap, i) => {
+            tap.delay.delayTime.value = tap.baseTime * params.size;
+          });
+          delays.forEach((delay, i) => {
+            delay.delayTime.value = delayTimes[i] * params.size;
+          });
+          allpasses.forEach(ap => {
+            ap.delay.delayTime.value = ap.baseTime * params.size;
+          });
         }
-        function allpass(time, gain){
-          const d = ctx.createDelay(1.0); d.delayTime.value = time;
-          const g = ctx.createGain(); g.gain.value = gain;
-          const sum = ctx.createGain();
-          const diff = ctx.createGain(); diff.gain.value = -1;
-          // input -> sum -> delay -> g -> sum out; also input -> diff -> g -> to out
-          const apIn = ctx.createGain();
-          apIn.connect(sum);
-          apIn.connect(diff);
-          sum.connect(d).connect(g);
-          g.connect(sum);
-          g.connect(diff);
-          const apOut = ctx.createGain();
-          d.connect(apOut); // simplified allpass
-          return { input: apIn, output: apOut, tune(room){ d.delayTime.value = time * room; } };
+
+        function updateDecay() {
+          feedbacks.forEach((feedback, i) => {
+            // Ensure feedback gain never exceeds 0.9 to prevent runaway
+            const calculatedGain = Math.pow(0.001, delayTimes[i] * params.size / params.decay);
+            feedback.gain.value = Math.min(0.9, calculatedGain);
+          });
         }
 
-        const c1 = comb(0.0297, 0.805);
-        const c2 = comb(0.0371, 0.827);
-        const c3 = comb(0.0411, 0.783);
-        const c4 = comb(0.0437, 0.764);
-        const a1 = allpass(0.005, 0.7);
-        const a2 = allpass(0.0017, 0.7);
-
-        // wire
-        input.connect(dry).connect(out);
-        const sum = ctx.createGain();
-        input.connect(c1.input); c1.output.connect(sum);
-        input.connect(c2.input); c2.output.connect(sum);
-        input.connect(c3.input); c3.output.connect(sum);
-        input.connect(c4.input); c4.output.connect(sum);
-        sum.connect(a1.input);
-        a1.output.connect(a2.input);
-        a2.output.connect(wet).connect(out);
-
-        function retune(){
-          [c1,c2,c3,c4,a1,a2].forEach(n=>{ if (n.tune) n.tune(params.room); });
+        function updateDiffusion() {
+          earlyDelays.forEach(tap => {
+            tap.gain.gain.value = tap.baseGain * (params.diffusion / 100);
+          });
+          modDepths.forEach(modDepth => {
+            modDepth.gain.value = 0.00005 * (params.diffusion / 100);
+          });
+          allpasses.forEach(ap => {
+            ap.feedback.gain.value = Math.min(0.8, 0.7 * (params.diffusion / 100));
+            ap.feedforward.gain.value = Math.max(-0.8, -0.7 * (params.diffusion / 100));
+          });
         }
-        retune();
+
+        function updateDamping() {
+          filters.forEach(filter => {
+            filter.frequency.value = 20000 - (params.damping * 180);
+          });
+        }
+
+        function updateSpread() {
+          earlyDelays.forEach(tap => {
+            if (tap.panner.pan) {
+              tap.panner.pan.value = tap.basePan * (params.spread / 100);
+            }
+          });
+        }
 
         const api = {
-          setParam(id, v){
-            switch(id){
-              case 'room': params.room = v; retune(); break;
-              case 'damp': params.damp = v; retune(); break;
-              case 'mix': wet.gain.value = params.mix = v; break;
+          setParam(id, value) {
+            switch(id) {
+              case 'size': 
+                params.size = value; 
+                updateSize(); 
+                updateDecay(); 
+                break;
+              case 'decay': 
+                params.decay = value; 
+                updateDecay(); 
+                break;
+              case 'diffusion': 
+                params.diffusion = value; 
+                updateDiffusion(); 
+                break;
+              case 'damping': 
+                params.damping = value; 
+                updateDamping(); 
+                break;
+              case 'predelay': 
+                params.predelay = value; 
+                predelayNode.delayTime.value = value / 1000; 
+                break;
+              case 'spread': 
+                params.spread = value; 
+                updateSpread(); 
+                break;
+              case 'shape': 
+                params.shape = value; 
+                shapeFilter.gain.value = value * 6; 
+                break;
+              case 'mix': 
+                params.mix = value; 
+                dry.gain.value = (100 - value) / 100; 
+                wet.gain.value = value / 100; 
+                break;
             }
           },
-          getParam(id){ return params[id]; },
-          getParams(){ return { ...params }; }
+          getParam(id) { return params[id]; },
+          getParams() { return { ...params }; }
         };
-        return { input, output: out, nodes: [input, dry, wet, out], api };
+
+        return { 
+          input, 
+          output, 
+          nodes: [input, predelayNode, dry, wet, output, earlySum, tankInput, tankSum, shapeFilter], 
+          api 
+        };
+      },
+      
+      // Custom UI renderer for authentic Lexicon 480L look
+      renderUI: (containerId, instance) => {
+        const container = document.getElementById(containerId);
+        if (!container || !instance?.api) return;
+        
+        const params = instance.api.getParams();
+        
+        container.innerHTML = `
+          <div class="lexicon-480l-panel">
+            <!-- Main Program Display -->
+            <div class="lexicon-header">
+              <div>♥ 1 MEDIUM RAND HALL ........</div>
+              <div>♥ 1 RANDOM HALLS</div>
+            </div>
+
+            <!-- Lexicon Logo and Button Grid -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <div style="font-size: 24px; font-weight: bold; color: #333;">lexicon</div>
+              <div class="lexicon-button-grid" style="flex: 1; margin-left: 20px;">
+                <div class="lexicon-button">OPEN</div>
+                <div class="lexicon-button">1</div>
+                <div class="lexicon-button">2</div>
+                <div class="lexicon-button">3</div>
+                <div class="lexicon-button">4</div>
+                <div class="lexicon-button">5</div>
+                <div class="lexicon-button">A</div>
+                <div class="lexicon-button">B</div>
+                <div class="lexicon-button">6</div>
+                <div class="lexicon-button">7</div>
+                <div class="lexicon-button">8</div>
+                <div class="lexicon-button">9</div>
+                <div class="lexicon-button">0</div>
+              </div>
+            </div>
+
+            <!-- Function Buttons Row -->
+            <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+              <div class="lexicon-button" style="width: 60px;">MUTE</div>
+              <div class="lexicon-button" style="width: 60px;">AUX OUTS</div>
+              <div class="lexicon-button" style="width: 60px;">I/O METER</div>
+              <div class="lexicon-button" style="width: 60px;">DISP HOLD</div>
+              <div class="lexicon-button" style="width: 60px;">MIX DRY</div>
+              <div class="lexicon-button" style="width: 60px;">MIX WET></div>
+              <div class="lexicon-button" style="width: 60px;">WET SOLO</div>
+              <div class="lexicon-button" style="width: 60px;">POWER</div>
+            </div>
+
+            <!-- Parameter Display -->
+            <div class="lexicon-parameters">
+              <div class="lexicon-param-display">
+                <span>RTM</span>
+                <span>SHP</span>
+                <span>SPR</span>
+                <span>SIZ</span>
+                <span>HFC</span>
+                <span>P1L</span>
+              </div>
+              <div class="lexicon-param-display" style="margin-top: 4px;">
+                <span>${params.decay.toFixed(1)}</span>
+                <span>${params.shape.toFixed(1)}</span>
+                <span>${Math.round(params.spread)}</span>
+                <span>${params.size.toFixed(1)}</span>
+                <span>${(params.damping/10).toFixed(1)}K</span>
+                <span>0MS</span>
+              </div>
+            </div>
+
+            <!-- Vertical Faders -->
+            <div class="lexicon-faders">
+              ${[
+                { id: 'decay', name: 'DECAY', value: params.decay, min: 0.1, max: 25.0, step: 0.1 },
+                { id: 'shape', name: 'SHAPE', value: params.shape, min: -1, max: 1, step: 0.01 },
+                { id: 'spread', name: 'SPREAD', value: params.spread, min: 0, max: 100, step: 1 },
+                { id: 'size', name: 'SIZE', value: params.size, min: 0.1, max: 4.0, step: 0.01 },
+                { id: 'damping', name: 'HFC', value: params.damping, min: 0, max: 100, step: 1 },
+                { id: 'mix', name: 'MIX', value: params.mix, min: 0, max: 100, step: 1 }
+              ].map(param => {
+                const percentage = ((param.value - param.min) / (param.max - param.min)) * 100;
+                const knobPosition = 150 - (percentage / 100) * 130; // 150px total height, 130px travel
+                return `
+                  <div class="lexicon-fader-container">
+                    <div class="lexicon-fader" data-param="${param.id}" data-min="${param.min}" data-max="${param.max}" data-step="${param.step}">
+                      <div class="lexicon-fader-knob" style="top: ${knobPosition}px;"></div>
+                    </div>
+                    <div class="lexicon-fader-label">${param.name}</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <!-- Bottom Function Buttons -->
+            <div class="lexicon-function-buttons">
+              <div class="lexicon-function-button">< BANK ></div>
+              <div class="lexicon-function-button">< PROGRAM ></div>
+              <div class="lexicon-function-button">< PAGE ></div>
+            </div>
+          </div>
+        `;
+        
+        // Add interactive fader behavior
+        const faders = container.querySelectorAll('.lexicon-fader');
+        faders.forEach(fader => {
+          let isDragging = false;
+          let startY = 0;
+          let startValue = 0;
+          
+          const paramId = fader.dataset.param;
+          const min = parseFloat(fader.dataset.min);
+          const max = parseFloat(fader.dataset.max);
+          const step = parseFloat(fader.dataset.step);
+          const knob = fader.querySelector('.lexicon-fader-knob');
+          
+          knob.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            startValue = instance.api.getParam(paramId);
+            e.preventDefault();
+          });
+          
+          document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const deltaY = e.clientY - startY; // Normal direction for faders
+            const range = max - min;
+            const sensitivity = range / 130; // 130px travel distance
+            let newValue = startValue - (deltaY * sensitivity); // Invert for fader feel
+            
+            // Constrain to bounds and step
+            newValue = Math.max(min, Math.min(max, newValue));
+            newValue = Math.round(newValue / step) * step;
+            
+            instance.api.setParam(paramId, newValue);
+            
+            // Update fader visual
+            const percentage = ((newValue - min) / (max - min)) * 100;
+            const knobPosition = 150 - (percentage / 100) * 130;
+            knob.style.top = knobPosition + 'px';
+            
+            // Update parameter display
+            const updatedParams = instance.api.getParams();
+            const paramDisplays = container.querySelectorAll('.lexicon-param-display span');
+            if (paramDisplays.length >= 6) {
+              paramDisplays[4].textContent = updatedParams.decay.toFixed(1);
+              paramDisplays[5].textContent = updatedParams.shape.toFixed(1);
+              paramDisplays[6].textContent = Math.round(updatedParams.spread);
+              paramDisplays[7].textContent = updatedParams.size.toFixed(1);
+              paramDisplays[8].textContent = (updatedParams.damping/10).toFixed(1) + 'K';
+              paramDisplays[9].textContent = Math.round(updatedParams.mix) + '%';
+            }
+          });
+          
+          document.addEventListener('mouseup', () => {
+            isDragging = false;
+          });
+        });
       }
     },
     reverb: {

@@ -921,65 +921,445 @@ label.upload-btn input[type="file"] { display: none; }
   scrollbar-width: none;
 }
 
-/* Pro Tools-like Mixer Strip Enhancements */
-.mixer-strip { position: relative; display: flex; flex-direction: column; gap: 8px; }
-.mixer-strip .strip-color { position:absolute; left:0; top:0; bottom:0; width:3px; border-radius: 8px 0 0 8px; opacity:.6; }
-.mixer-strip .strip-header { display:flex; align-items:center; justify-content:space-between; gap:6px; }
-.mixer-strip .strip-title { font-weight:600; color:#fff; font-size: 0.9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.mixer-strip .strip-buttons { display:flex; gap:6px; }
-.mixer-strip .strip-btn { background:#374151; color:#e5e7eb; border:1px solid #4b5563; border-radius:4px; padding:2px 6px; font-size:11px; }
-.mixer-strip .strip-btn.active { background:#f59e0b; color:#111827; border-color:#fb923c; }
+/* ============================================
+   PROFESSIONAL MIXER FADER STYLING
+   Enhanced faders with Lexicon-style interaction
+   ============================================ */
 
-.io-section { background:#111827; border:1px solid #374151; border-radius:6px; padding:6px; display:flex; flex-direction:column; gap:6px; }
-.io-row { display:flex; align-items:center; gap:6px; }
-.io-label { width:30px; color:#9ca3af; font-size:12px; }
-.io-input, .automation-select { flex:1; background:#1f2937; color:#e5e7eb; border:1px solid #374151; border-radius:4px; padding:3px 6px; font-size:12px; }
-
-.inserts, .sends, .automation { background:#0f172a; border:1px solid #374151; border-radius:6px; padding:6px; }
-.section-label { color:#9ca3af; font-size:11px; margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em; }
-.insert-slot { width:100%; text-align:left; background:#1f2937; border:1px dashed #374151; color:#9ca3af; padding:4px 6px; border-radius:4px; font-size:12px; margin-bottom:4px; }
-.insert-slot:hover { border-style:solid; color:#e5e7eb; }
-.send { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
-.send-label { color:#9ca3af; font-size:12px; width:16px; text-align:center; }
-.send-knob { width:100%; }
-
-.fader-meter { display:flex; align-items:flex-end; justify-content:space-between; gap:8px; }
-.meter-block { display:flex; flex-direction:column; align-items:center; gap:4px; width:22px; }
-.clip-led { width:10px; height:10px; border-radius:50%; background:#111827; border:1px solid #374151; box-shadow: inset 0 0 4px rgba(0,0,0,.6); cursor:pointer; }
-.clip-led.active { background:#ef4444; box-shadow: 0 0 8px rgba(239,68,68,.8); border-color:#ef4444; }
-.output-meter .meter-fill { background: linear-gradient(to top, #16a34a 0%, #16a34a 60%, #f59e0b 85%, #ef4444 100%); box-shadow: 0 0 6px rgba(16,163,74,.25); transition: height 120ms ease-out; }
-.db-marks { position:absolute; inset:0; pointer-events:none; }
-
-/* Physical-style fader */
-.fader-track {
-  background: linear-gradient(180deg, rgba(31,41,55,1) 0%, rgba(17,24,39,1) 100%);
-  border-radius: 6px;
-  overflow: hidden;
+/* Mixer Strip Layout - Fader-Centric Design */
+.mixer-strip { 
+  position: relative; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 4px; 
+  width: 120px !important; /* Wider to accommodate big fader */
+  min-height: 600px;
+  padding: 8px !important;
 }
-.fader-track::before { /* central groove */
+
+.mixer-strip .strip-color { 
+  position: absolute; 
+  left: 0; 
+  top: 0; 
+  bottom: 0; 
+  width: 4px; 
+  border-radius: 8px 0 0 8px; 
+  opacity: 0.8; 
+}
+
+/* Compact Header */
+.mixer-strip .strip-header { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  gap: 4px; 
+  margin-bottom: 6px;
+}
+
+.mixer-strip .strip-title { 
+  font-weight: 700; 
+  color: #fff; 
+  font-size: 11px; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  white-space: nowrap; 
+  flex: 1;
+}
+
+.mixer-strip .strip-buttons { 
+  display: flex; 
+  gap: 2px; 
+}
+
+.mixer-strip .strip-btn { 
+  background: #374151; 
+  color: #e5e7eb; 
+  border: 1px solid #4b5563; 
+  border-radius: 3px; 
+  padding: 1px 4px; 
+  font-size: 9px;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mixer-strip .strip-btn.active { 
+  background: #f59e0b; 
+  color: #111827; 
+  border-color: #fb923c; 
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
+/* Compact Sections */
+.io-section, .inserts, .sends, .automation { 
+  background: #111827; 
+  border: 1px solid #374151; 
+  border-radius: 4px; 
+  padding: 4px; 
+}
+
+.io-section { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 3px; 
+}
+
+.io-row { 
+  display: flex; 
+  align-items: center; 
+  gap: 4px; 
+}
+
+.io-label { 
+  width: 20px; 
+  color: #9ca3af; 
+  font-size: 10px; 
+}
+
+.io-input, .automation-select { 
+  flex: 1; 
+  background: #1f2937; 
+  color: #e5e7eb; 
+  border: 1px solid #374151; 
+  border-radius: 3px; 
+  padding: 2px 4px; 
+  font-size: 10px; 
+}
+
+/* Compact Inserts */
+.section-label { 
+  color: #9ca3af; 
+  font-size: 9px; 
+  margin-bottom: 3px; 
+  text-transform: uppercase; 
+  letter-spacing: 0.04em; 
+}
+
+.insert-slot { 
+  width: 100%; 
+  text-align: left; 
+  background: #1f2937; 
+  border: 1px dashed #374151; 
+  color: #9ca3af; 
+  padding: 3px 4px; 
+  border-radius: 3px; 
+  font-size: 9px; 
+  margin-bottom: 2px; 
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.insert-slot:hover { 
+  border-style: solid; 
+  color: #e5e7eb; 
+}
+
+/* Compact Sends */
+.send { 
+  display: flex; 
+  align-items: center; 
+  gap: 4px; 
+  margin-bottom: 3px; 
+}
+
+.send-label { 
+  color: #9ca3af; 
+  font-size: 9px; 
+  width: 12px; 
+  text-align: center; 
+}
+
+.send-knob { 
+  width: 100%; 
+  height: 12px;
+}
+
+/* Compact Pan Knob */
+.knob-container { 
+  margin-bottom: 8px !important; 
+}
+
+.knob-container .text-xs { 
+  font-size: 9px !important; 
+  margin-bottom: 3px !important; 
+}
+
+.knob-wrapper { 
+  width: 32px !important; 
+  height: 32px !important; 
+}
+
+/* PROFESSIONAL MIXER FADER - The Star of the Show */
+.fader-container {
+  height: 280px !important; /* Much taller */
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  margin: 12px 0 !important;
+  flex: 1 !important; /* Take up remaining space */
+}
+
+.fader-track {
+  position: relative !important;
+  width: 32px !important; /* Wider fader */
+  height: 240px !important; /* Much taller */
+  background: linear-gradient(180deg, 
+    #2d3748 0%, 
+    #1a202c 25%, 
+    #0f1419 50%, 
+    #1a202c 75%, 
+    #2d3748 100%) !important;
+  border: 2px solid #4a5568 !important;
+  border-top: 2px solid #718096 !important;
+  border-left: 2px solid #718096 !important;
+  border-bottom: 2px solid #2d3748 !important;
+  border-right: 2px solid #2d3748 !important;
+  border-radius: 16px !important;
+  box-shadow: 
+    inset 0 4px 12px rgba(0, 0, 0, 0.6),
+    inset 0 -2px 8px rgba(255, 255, 255, 0.05),
+    0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  overflow: visible !important;
+}
+
+/* Fader Track Details */
+.fader-track::before {
   content: '';
   position: absolute;
   left: 50%;
-  top: 4px;
-  bottom: 4px;
-  width: 2px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
   transform: translateX(-50%);
-  background: linear-gradient(180deg, rgba(75,85,99,0.6) 0%, rgba(31,41,55,0.4) 100%);
+  background: linear-gradient(180deg, 
+    #4a5568 0%, 
+    #2d3748 50%, 
+    #1a202c 100%);
+  border-radius: 2px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Fader Scale Marks */
+.fader-track::after {
+  content: '';
+  position: absolute;
+  right: -8px;
+  top: 8px;
+  bottom: 8px;
+  width: 6px;
+  background-image: 
+    repeating-linear-gradient(0deg,
+      transparent 0px,
+      transparent 8px,
+      #4a5568 8px,
+      #4a5568 9px,
+      transparent 9px,
+      transparent 16px
+    );
   border-radius: 1px;
 }
+
+/* Professional Fader Handle */
 .fader-handle {
-  transition: top 140ms cubic-bezier(0.22, 1, 0.36, 1), background 160ms ease;
+  position: absolute !important;
+  width: 28px !important;
+  height: 32px !important;
+  left: 50% !important;
+  transform: translateX(-50%) translateY(-50%) !important;
+  background: linear-gradient(145deg, 
+    #e2e8f0 0%, 
+    #cbd5e0 25%, 
+    #a0aec0 50%, 
+    #718096 75%, 
+    #4a5568 100%) !important;
+  border: 2px solid #2d3748 !important;
+  border-top: 2px solid #f7fafc !important;
+  border-left: 2px solid #f7fafc !important;
+  border-bottom: 2px solid #1a202c !important;
+  border-right: 2px solid #1a202c !important;
+  border-radius: 4px !important;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(255, 255, 255, 0.6),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.3) !important;
+  cursor: pointer !important;
+  transition: all 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
 }
-.fader-handle::after { /* small notch */
+
+/* Fader Handle Details */
+.fader-handle::before {
   content: '';
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 60%;
-  height: 2px;
   transform: translate(-50%, -50%);
-  background: rgba(0,0,0,0.25);
+  width: 18px;
+  height: 4px;
+  background: linear-gradient(90deg, 
+    rgba(0, 0, 0, 0.3) 0%, 
+    rgba(255, 255, 255, 0.1) 50%, 
+    rgba(0, 0, 0, 0.3) 100%);
+  border-radius: 2px;
+  box-shadow: 
+    inset 0 1px 2px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.2);
+}
+
+.fader-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.4);
   border-radius: 1px;
+  margin-top: 6px;
+}
+
+/* Fader Interaction States */
+.volume-fader {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+}
+
+.fader-handle:hover {
+  background: linear-gradient(145deg, 
+    #f7fafc 0%, 
+    #e2e8f0 25%, 
+    #cbd5e0 50%, 
+    #a0aec0 75%, 
+    #718096 100%) !important;
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.5),
+    inset 0 2px 6px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.2) !important;
+}
+
+.volume-fader:active + .fader-handle {
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.6),
+    inset 0 3px 8px rgba(0, 0, 0, 0.4) !important;
+  transform: translateX(-50%) translateY(-50%) scale(0.98) !important;
+}
+
+/* Volume Display */
+.volume-display {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #f59e0b !important;
+  text-align: center !important;
+  margin-top: 8px !important;
+  text-shadow: 0 0 4px rgba(245, 158, 11, 0.6) !important;
+  font-family: 'Courier New', monospace !important;
+  min-width: 40px !important;
+}
+
+/* Compact Level Meter */
+.meter-block { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 3px; 
+  width: 16px; 
+}
+
+.clip-led { 
+  width: 8px; 
+  height: 8px; 
+  border-radius: 50%; 
+  background: #111827; 
+  border: 1px solid #374151; 
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.6); 
+  cursor: pointer; 
+}
+
+.clip-led.active { 
+  background: #ef4444; 
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.8); 
+  border-color: #ef4444; 
+}
+
+.output-meter { 
+  background: #111827; 
+  border: 1px solid #374151; 
+  border-radius: 3px; 
+  height: 120px !important; 
+  width: 14px !important; 
+  position: relative; 
+  overflow: hidden; 
+}
+
+.output-meter .meter-fill { 
+  background: linear-gradient(to top, 
+    #16a34a 0%, 
+    #16a34a 60%, 
+    #f59e0b 85%, 
+    #ef4444 100%); 
+  box-shadow: 0 0 6px rgba(16, 163, 74, 0.25); 
+  transition: height 120ms ease-out; 
+}
+
+/* Unity Gain Marker */
+.fader-track .unity-marker {
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  height: 2px;
+  background: #f59e0b;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.8);
+  z-index: 5;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .mixer-strip { 
+    width: 100px !important; 
+  }
+  
+  .fader-track { 
+    width: 28px !important; 
+    height: 200px !important; 
+  }
+  
+  .fader-handle { 
+    width: 24px !important; 
+    height: 28px !important; 
+  }
+  
+  .fader-container { 
+    height: 240px !important; 
+  }
+}
+
+@media (max-width: 768px) {
+  .mixer-strip { 
+    width: 80px !important; 
+  }
+  
+  .fader-track { 
+    width: 24px !important; 
+    height: 160px !important; 
+  }
+  
+  .fader-handle { 
+    width: 20px !important; 
+    height: 24px !important; 
+  }
+  
+  .fader-container { 
+    height: 200px !important; 
+  }
 }
 
 /* Settings Modal */
@@ -1100,4 +1480,402 @@ label.upload-btn input[type="file"] { display: none; }
   background: var(--accent);
   color: #222;
   border-color: var(--accent2);
+}
+
+/* ============================================
+   LEXICON 480L AUTHENTIC UI STYLING
+   Based on the actual hardware design
+   ============================================ */
+
+.lexicon-480l-panel {
+  background: linear-gradient(145deg, 
+    #f5f5dc 0%, 
+    #e8e8d0 25%, 
+    #ddd8c5 50%, 
+    #d0ccb8 75%, 
+    #c8c4b0 100%) !important;
+  border: 4px solid #b8b4a0 !important;
+  border-top: 4px solid #e0dcc8 !important;
+  border-left: 4px solid #e0dcc8 !important;
+  border-bottom: 4px solid #a8a498 !important;
+  border-right: 4px solid #a8a498 !important;
+  border-radius: 8px !important;
+  padding: 20px !important;
+  font-family: 'Courier New', 'SF Mono', Monaco, Inconsolata, 'Roboto Mono', monospace !important;
+  color: #333 !important;
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    inset 0 2px 4px rgba(255, 255, 255, 0.4),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2) !important;
+  max-width: 680px !important;
+  margin: 0 auto !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+
+.lexicon-480l-panel::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(145deg, #f0f0e8, #c0bcb0);
+  border-radius: 10px;
+  z-index: -1;
+}
+
+/* Header Section with Program Display */
+.lexicon-header {
+  background: #000 !important;
+  border: 3px solid #666 !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+  margin-bottom: 15px !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.lexicon-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      rgba(255, 0, 0, 0.05) 1px,
+      transparent 2px,
+      transparent 3px
+    );
+  pointer-events: none;
+}
+
+.lexicon-header > div:first-child {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #ff0000 !important;
+  text-shadow: 0 0 8px #ff0000 !important;
+  letter-spacing: 2px !important;
+  text-transform: uppercase !important;
+  margin-bottom: 8px !important;
+  font-family: monospace !important;
+}
+
+.lexicon-header > div:nth-child(2) {
+  font-size: 11px !important;
+  color: #ff6666 !important;
+  letter-spacing: 1px !important;
+  font-weight: 600 !important;
+}
+
+/* Program Selection Buttons */
+.lexicon-header::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 60px;
+  height: 20px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    #ff0000 20%, 
+    #ff0000 40%, 
+    transparent 60%,
+    #ff0000 80%,
+    transparent 100%);
+  opacity: 0.6;
+}
+
+/* Main LCD Parameter Display */
+.lexicon-display {
+  background: #000 !important;
+  border: 3px solid #666 !important;
+  border-radius: 6px !important;
+  padding: 12px !important;
+  margin-bottom: 20px !important;
+  position: relative !important;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8) !important;
+}
+
+.lexicon-display::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      rgba(255, 0, 0, 0.03) 1px,
+      transparent 2px,
+      transparent 4px
+    );
+  pointer-events: none;
+}
+
+.lexicon-display > div {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  font-family: monospace !important;
+}
+
+.lexicon-display .parameter-row {
+  display: flex !important;
+  gap: 20px !important;
+  color: #ff0000 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px !important;
+  text-shadow: 0 0 6px #ff0000 !important;
+}
+
+/* Button Grid Section */
+.lexicon-button-grid {
+  display: grid !important;
+  grid-template-columns: repeat(6, 1fr) !important;
+  gap: 8px !important;
+  margin-bottom: 20px !important;
+  padding: 15px !important;
+  background: linear-gradient(145deg, #e8e8d0, #d0ccb8) !important;
+  border: 2px solid #b8b4a0 !important;
+  border-radius: 6px !important;
+}
+
+.lexicon-button {
+  width: 45px !important;
+  height: 35px !important;
+  background: linear-gradient(145deg, #f8f8f0, #e0dcc8) !important;
+  border: 2px solid #c8c4b0 !important;
+  border-top: 2px solid #fff !important;
+  border-left: 2px solid #fff !important;
+  border-bottom: 2px solid #a8a498 !important;
+  border-right: 2px solid #a8a498 !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #333 !important;
+  cursor: pointer !important;
+  transition: all 0.1s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.lexicon-button:hover {
+  background: linear-gradient(145deg, #fff, #e8e8d0) !important;
+}
+
+.lexicon-button:active {
+  border-top: 2px solid #a8a498 !important;
+  border-left: 2px solid #a8a498 !important;
+  border-bottom: 2px solid #fff !important;
+  border-right: 2px solid #fff !important;
+  background: linear-gradient(145deg, #d0ccb8, #f8f8f0) !important;
+}
+
+/* Fader Section */
+.lexicon-faders {
+  display: grid !important;
+  grid-template-columns: repeat(6, 1fr) !important;
+  gap: 15px !important;
+  margin-bottom: 20px !important;
+  padding: 20px !important;
+  background: linear-gradient(145deg, #e8e8d0, #d0ccb8) !important;
+  border: 2px solid #b8b4a0 !important;
+  border-radius: 6px !important;
+}
+
+.lexicon-fader-container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  height: 200px !important;
+}
+
+.lexicon-fader {
+  width: 30px !important;
+  height: 150px !important;
+  background: linear-gradient(180deg, #333 0%, #666 50%, #333 100%) !important;
+  border: 2px solid #888 !important;
+  border-radius: 15px !important;
+  position: relative !important;
+  margin-bottom: 10px !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+.lexicon-fader::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: calc(100% - 4px);
+  background: linear-gradient(180deg, #999, #555);
+  border-radius: 1px;
+}
+
+.lexicon-fader-knob {
+  width: 26px !important;
+  height: 20px !important;
+  background: linear-gradient(145deg, #f8f8f0, #e0dcc8) !important;
+  border: 2px solid #c8c4b0 !important;
+  border-radius: 3px !important;
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.1s ease !important;
+}
+
+.lexicon-fader-knob:hover {
+  background: linear-gradient(145deg, #fff, #e8e8d0) !important;
+}
+
+.lexicon-fader-label {
+  font-size: 10px !important;
+  color: #333 !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  letter-spacing: 1px !important;
+  margin-top: 5px !important;
+}
+
+/* Parameter Display at Bottom */
+.lexicon-parameters {
+  background: #000 !important;
+  border: 3px solid #666 !important;
+  border-radius: 6px !important;
+  padding: 10px !important;
+  margin-bottom: 15px !important;
+  position: relative !important;
+}
+
+.lexicon-parameters::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      rgba(255, 0, 0, 0.03) 1px,
+      transparent 2px,
+      transparent 4px
+    );
+  pointer-events: none;
+}
+
+.lexicon-param-display {
+  display: flex !important;
+  justify-content: space-between !important;
+  color: #ff0000 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  font-family: monospace !important;
+  letter-spacing: 1px !important;
+  text-shadow: 0 0 4px #ff0000 !important;
+}
+
+/* Function Buttons at Bottom */
+.lexicon-function-buttons {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 10px !important;
+  margin-top: 15px !important;
+}
+
+.lexicon-function-button {
+  height: 35px !important;
+  background: linear-gradient(145deg, #f8f8f0, #e0dcc8) !important;
+  border: 2px solid #c8c4b0 !important;
+  border-top: 2px solid #fff !important;
+  border-left: 2px solid #fff !important;
+  border-bottom: 2px solid #a8a498 !important;
+  border-right: 2px solid #a8a498 !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #333 !important;
+  cursor: pointer !important;
+  transition: all 0.1s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.lexicon-function-button:hover {
+  background: linear-gradient(145deg, #fff, #e8e8d0) !important;
+}
+
+.lexicon-function-button:active {
+  border-top: 2px solid #a8a498 !important;
+  border-left: 2px solid #a8a498 !important;
+  border-bottom: 2px solid #fff !important;
+  border-right: 2px solid #fff !important;
+}
+
+/* Hide the old knob controls - replace with faders */
+.lexicon-controls {
+  display: none !important;
+}
+
+.lexicon-knob-container,
+.lexicon-knob,
+.knob-indicator {
+  display: none !important;
+}
+
+.lexicon-status {
+  display: none !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .lexicon-480l-panel {
+    max-width: 100% !important;
+    margin: 10px !important;
+    padding: 12px !important;
+  }
+  
+  .lexicon-faders {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+  
+  .lexicon-fader-container {
+    height: 150px !important;
+  }
+  
+  .lexicon-fader {
+    height: 100px !important;
+  }
+  
+  .lexicon-button-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
+/* Plugin UI Container */
+.plugin-ui-container {
+  min-height: 400px;
+  width: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+/* Ensure custom UI takes full width */
+.plugin-ui-container .lexicon-480l-panel {
+  max-width: 100% !important;
+  margin: 0 !important;
 }
