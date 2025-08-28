@@ -16,6 +16,228 @@
   }
 
   const FX_PLUGINS = {
+    delay: {
+      id: 'delay',
+      name: 'Stereo Delay',
+      description: 'Ping-pong style delay with feedback and tone',
+      params: [
+        { id: 'timeL', name: 'Time L', type: 'range', min: 0.02, max: 1.2, step: 0.01 },
+        { id: 'timeR', name: 'Time R', type: 'range', min: 0.02, max: 1.2, step: 0.01 },
+        { id: 'feedback', name: 'Feedback', type: 'range', min: 0, max: 0.95, step: 0.01 },
+        { id: 'wet', name: 'Wet', type: 'range', min: 0, max: 1, step: 0.01 },
+        { id: 'tone', name: 'Tone', type: 'range', min: 500, max: 8000, step: 10 }
+      ],
+      create: (ctx) => {
+        const input = ctx.createGain();
+        const splitter = ctx.createChannelSplitter(2);
+        const merger = ctx.createChannelMerger(2);
+        const dl = ctx.createDelay(2.0);
+        const dr = ctx.createDelay(2.0);
+        const fbL = ctx.createGain();
+        const fbR = ctx.createGain();
+        const wet = ctx.createGain();
+        const dry = ctx.createGain();
+        const lpL = ctx.createBiquadFilter(); lpL.type = 'lowpass';
+        const lpR = ctx.createBiquadFilter(); lpR.type = 'lowpass';
+        const params = { timeL: 0.3, timeR: 0.45, feedback: 0.35, wet: 0.3, tone: 4000 };
+        dl.delayTime.value = params.timeL; dr.delayTime.value = params.timeR;
+        fbL.gain.value = params.feedback; fbR.gain.value = params.feedback;
+        wet.gain.value = params.wet; dry.gain.value = 1.0;
+        lpL.frequency.value = params.tone; lpR.frequency.value = params.tone;
+
+        // routing
+        input.connect(dry);
+        input.connect(splitter);
+        splitter.connect(dl, 0);
+        splitter.connect(dr, 1);
+        dl.connect(lpL).connect(fbL).connect(dl); // feedback loop L
+        dr.connect(lpR).connect(fbR).connect(dr); // feedback loop R
+        dl.connect(merger, 0, 0);
+        dr.connect(merger, 0, 1);
+        const out = ctx.createGain();
+        dry.connect(out);
+        merger.connect(wet).connect(out);
+
+        const api = {
+          setParam(id, val){
+            switch(id){
+              case 'timeL': dl.delayTime.value = params.timeL = val; break;
+              case 'timeR': dr.delayTime.value = params.timeR = val; break;
+              case 'feedback': fbL.gain.value = fbR.gain.value = params.feedback = val; break;
+              case 'wet': wet.gain.value = params.wet = val; break;
+              case 'tone': lpL.frequency.value = lpR.frequency.value = params.tone = val; break;
+            }
+          },
+          getParam(id){ return params[id]; },
+          getParams(){ return { ...params }; }
+        };
+        return { input, output: out, nodes: [input, splitter, merger, dl, dr, fbL, fbR, wet, dry, lpL, lpR, out], api };
+      }
+    },
+    chorus: {
+      id: 'chorus',
+      name: 'Chorus',
+      description: 'Classic chorus using modulated delay',
+      params: [
+        { id: 'rate', name: 'Rate', type: 'range', min: 0.05, max: 5, step: 0.01 },
+        { id: 'depth', name: 'Depth', type: 'range', min: 0, max: 0.02, step: 0.0001 },
+        { id: 'mix', name: 'Mix', type: 'range', min: 0, max: 1, step: 0.01 }
+      ],
+      create: (ctx) => {
+        const input = ctx.createGain();
+        const delay = ctx.createDelay(0.05);
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        const wet = ctx.createGain();
+        const dry = ctx.createGain();
+        const out = ctx.createGain();
+        const params = { rate: 1.2, depth: 0.0045, mix: 0.4 };
+        lfo.type = 'sine';
+        lfo.frequency.value = params.rate;
+        lfoGain.gain.value = params.depth;
+        wet.gain.value = params.mix;
+        dry.gain.value = 1.0;
+        input.connect(dry).connect(out);
+        input.connect(delay).connect(wet).connect(out);
+        lfo.connect(lfoGain).connect(delay.delayTime);
+        lfo.start();
+
+        const api = {
+          setParam(id, v){
+            switch(id){
+              case 'rate': lfo.frequency.value = params.rate = v; break;
+              case 'depth': lfoGain.gain.value = params.depth = v; break;
+              case 'mix': wet.gain.value = params.mix = v; break;
+            }
+          },
+          getParam(id){ return params[id]; },
+          getParams(){ return { ...params }; }
+        };
+        return { input, output: out, nodes: [input, delay, lfo, lfoGain, wet, dry, out], api };
+      }
+    },
+    distortion: {
+      id: 'distortion',
+      name: 'Distortion',
+      description: 'Waveshaper with tone control',
+      params: [
+        { id: 'drive', name: 'Drive', type: 'range', min: 0, max: 1, step: 0.01 },
+        { id: 'tone', name: 'Tone', type: 'range', min: 500, max: 8000, step: 10 },
+        { id: 'mix', name: 'Mix', type: 'range', min: 0, max: 1, step: 0.01 }
+      ],
+      create: (ctx) => {
+        const input = ctx.createGain();
+        const shaper = ctx.createWaveShaper();
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
+        const wet = ctx.createGain(); const dry = ctx.createGain(); const out = ctx.createGain();
+        const params = { drive: 0.5, tone: 3500, mix: 0.35 };
+
+        function makeCurve(amount = 0.5){
+          const k = amount * 100; const n = 44100; const curve = new Float32Array(n);
+          for (let i=0;i<n;i++){ const x = (i / n) * 2 - 1; curve[i] = ((1 + k) * x) / (1 + k * Math.abs(x)); }
+          return curve;
+        }
+        shaper.curve = makeCurve(params.drive);
+        shaper.oversample = '4x';
+        lp.frequency.value = params.tone;
+        wet.gain.value = params.mix; dry.gain.value = 1.0;
+
+        input.connect(dry).connect(out);
+        input.connect(shaper).connect(lp).connect(wet).connect(out);
+
+        const api = {
+          setParam(id, v){
+            switch(id){
+              case 'drive': shaper.curve = makeCurve(params.drive = v); break;
+              case 'tone': lp.frequency.value = params.tone = v; break;
+              case 'mix': wet.gain.value = params.mix = v; break;
+            }
+          },
+          getParam(id){ return params[id]; },
+          getParams(){ return { ...params }; }
+        };
+        return { input, output: out, nodes: [input, shaper, lp, wet, dry, out], api };
+      }
+    },
+    algoverb: {
+      id: 'algoverb',
+      name: 'Algorithmic Reverb',
+      description: 'Simple Schroeder-style reverb (comb + allpass)',
+      params: [
+        { id: 'room', name: 'Room', type: 'range', min: 0.1, max: 3.0, step: 0.01 },
+        { id: 'damp', name: 'Damp', type: 'range', min: 500, max: 10000, step: 10 },
+        { id: 'mix', name: 'Mix', type: 'range', min: 0, max: 1, step: 0.01 }
+      ],
+      create: (ctx) => {
+        const input = ctx.createGain();
+        const dry = ctx.createGain();
+        const wet = ctx.createGain();
+        const out = ctx.createGain();
+        const params = { room: 1.2, damp: 3000, mix: 0.3 };
+        dry.gain.value = 1.0; wet.gain.value = params.mix;
+
+        // Build a tiny network of delays with feedback (very lightweight)
+        function comb(time, feedback){
+          const d = ctx.createDelay(1.5); d.delayTime.value = time;
+          const g = ctx.createGain(); g.gain.value = feedback;
+          const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = params.damp;
+          d.connect(lp).connect(g).connect(d);
+          return { input: d, output: d, tune(room){ d.delayTime.value = time * room; lp.frequency.value = params.damp; } };
+        }
+        function allpass(time, gain){
+          const d = ctx.createDelay(1.0); d.delayTime.value = time;
+          const g = ctx.createGain(); g.gain.value = gain;
+          const sum = ctx.createGain();
+          const diff = ctx.createGain(); diff.gain.value = -1;
+          // input -> sum -> delay -> g -> sum out; also input -> diff -> g -> to out
+          const apIn = ctx.createGain();
+          apIn.connect(sum);
+          apIn.connect(diff);
+          sum.connect(d).connect(g);
+          g.connect(sum);
+          g.connect(diff);
+          const apOut = ctx.createGain();
+          d.connect(apOut); // simplified allpass
+          return { input: apIn, output: apOut, tune(room){ d.delayTime.value = time * room; } };
+        }
+
+        const c1 = comb(0.0297, 0.805);
+        const c2 = comb(0.0371, 0.827);
+        const c3 = comb(0.0411, 0.783);
+        const c4 = comb(0.0437, 0.764);
+        const a1 = allpass(0.005, 0.7);
+        const a2 = allpass(0.0017, 0.7);
+
+        // wire
+        input.connect(dry).connect(out);
+        const sum = ctx.createGain();
+        input.connect(c1.input); c1.output.connect(sum);
+        input.connect(c2.input); c2.output.connect(sum);
+        input.connect(c3.input); c3.output.connect(sum);
+        input.connect(c4.input); c4.output.connect(sum);
+        sum.connect(a1.input);
+        a1.output.connect(a2.input);
+        a2.output.connect(wet).connect(out);
+
+        function retune(){
+          [c1,c2,c3,c4,a1,a2].forEach(n=>{ if (n.tune) n.tune(params.room); });
+        }
+        retune();
+
+        const api = {
+          setParam(id, v){
+            switch(id){
+              case 'room': params.room = v; retune(); break;
+              case 'damp': params.damp = v; retune(); break;
+              case 'mix': wet.gain.value = params.mix = v; break;
+            }
+          },
+          getParam(id){ return params[id]; },
+          getParams(){ return { ...params }; }
+        };
+        return { input, output: out, nodes: [input, dry, wet, out], api };
+      }
+    },
     reverb: {
       id: 'reverb',
       name: 'Reverb',

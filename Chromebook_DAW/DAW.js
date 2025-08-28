@@ -2593,16 +2593,34 @@ function ensureTrackInsertChain(trackIndex) {
   if (!audioCtx) return null;
   const track = tracks[trackIndex];
   if (!track) return null;
-  if (track.fxBypass) { trackInsertChains.set(trackIndex, { chain: [], inputNode: null, outputNode: null }); return null; }
-  // Disconnect existing chain, but try to reuse instances by slot
+
+  // If bypassed, clear chain and do not route through FX
+  if (track.fxBypass) {
+    // Disconnect any prior tail from the track gain
+    const prev = trackInsertChains.get(trackIndex);
+    if (prev && prev.outputNode) {
+      try { prev.outputNode.disconnect(); } catch {}
+    }
+    const cleared = { chain: [], inputNode: null, outputNode: null };
+    trackInsertChains.set(trackIndex, cleared);
+    return null;
+  }
+
+  // Snapshot params from existing chain so we can rebuild safely
   const existing = trackInsertChains.get(trackIndex);
+  const paramSnap = new Map(); // slotIndex -> { id, params }
   if (existing && existing.chain) {
-    existing.chain.forEach(p => {
-      try { p.instance.output && p.instance.output.disconnect && p.instance.output.disconnect(); } catch {}
-      try { p.instance.input && p.instance.input.disconnect && p.instance.input.disconnect(); } catch {}
+    existing.chain.forEach(({ id, instance, slotIndex }) => {
+      try {
+        const params = instance?.api?.getParams ? instance.api.getParams() : undefined;
+        if (params) paramSnap.set(slotIndex, { id, params });
+      } catch {}
+      // Ensure old tail isn't still connected downstream
+      try { (instance.output || instance)?.disconnect && (instance.output || instance).disconnect(); } catch {}
     });
   }
 
+  // Build fresh instances and wire them head->tail
   const chain = [];
   let head = null;
   let tail = null;
@@ -2611,23 +2629,35 @@ function ensureTrackInsertChain(trackIndex) {
     if (Array.isArray(track.insertEnabled) && track.insertEnabled[idx] === false) return;
     const def = window.FXPlugins && FXPlugins.get(id);
     if (!def) return;
-    // Reuse instance if same id at same slot
-    let inst = null;
-    if (existing) {
-      const prev = existing.chain.find(c => c.slotIndex === idx && c.id === id);
-      if (prev) inst = prev.instance;
+    const inst = def.create(audioCtx);
+    // Restore params if available
+    const snap = paramSnap.get(idx);
+    if (snap && snap.id === id && inst?.api?.setParam) {
+      Object.entries(snap.params).forEach(([pid, val]) => {
+        try { inst.api.setParam(pid, val); } catch {}
+      });
     }
-    if (!inst) inst = def.create(audioCtx);
     const nodeIn = inst.input || inst;
     const nodeOut = inst.output || inst;
     if (!head) head = nodeIn;
-    if (tail) { try { tail.connect(nodeIn); } catch{} }
+    if (tail) { try { tail.connect(nodeIn); } catch {} }
     tail = nodeOut;
     chain.push({ id, instance: inst, slotIndex: idx });
   });
 
   const built = { chain, inputNode: head, outputNode: tail };
   trackInsertChains.set(trackIndex, built);
+
+  // Always ensure the tail feeds the per-track gain node when present
+  try {
+    const trackGain = getTrackGainNode(trackIndex);
+    if (tail && trackGain) {
+      // Disconnect prior connection from the new tail (if any) then connect
+      try { tail.disconnect(); } catch {}
+      tail.connect(trackGain);
+    }
+  } catch {}
+
   return built;
 }
 
