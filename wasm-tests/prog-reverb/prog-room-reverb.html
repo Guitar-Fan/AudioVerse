@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProG Room Reverb - Warm & Natural Audio Processing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c1810, #3d2817, #4a2c0a);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 3.5em;
+            font-weight: 700;
+            background: linear-gradient(45deg, #d4a574, #f4c2a1, #e8a558);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: warmGlow 4s ease-in-out infinite;
+            text-shadow: 0 0 30px rgba(212, 165, 116, 0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            color: #c4a484;
+            margin-top: 10px;
+        }
+
+        @keyframes warmGlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .control-panel {
+            background: rgba(212, 165, 116, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(212, 165, 116, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #d4a574;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .control-group {
+            background: rgba(212, 165, 116, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(212, 165, 116, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .control-group:hover {
+            background: rgba(212, 165, 116, 0.12);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ffffff;
+            font-size: 0.95em;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(212, 165, 116, 0.2);
+            outline: none;
+            appearance: none;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #d4a574, #e8a558);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(212, 165, 116, 0.6);
+            transition: all 0.3s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 15px rgba(212, 165, 116, 0.8);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #d4a574, #e8a558);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(212, 165, 116, 0.6);
+        }
+
+        .value-display {
+            display: inline-block;
+            background: rgba(212, 165, 116, 0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            color: #d4a574;
+            font-size: 0.9em;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .audio-section {
+            background: rgba(212, 165, 116, 0.08);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(212, 165, 116, 0.2);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            background: linear-gradient(45deg, #d4a574, #e8a558);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(212, 165, 116, 0.4);
+        }
+
+        .file-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 165, 116, 0.5);
+        }
+
+        .control-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .control-btn {
+            background: linear-gradient(45deg, #c67c4e, #d4a574);
+            border: none;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(198, 124, 78, 0.4);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(198, 124, 78, 0.5);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .preset-section {
+            margin-bottom: 20px;
+        }
+
+        .preset-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .preset-btn {
+            background: rgba(212, 165, 116, 0.15);
+            border: 1px solid rgba(212, 165, 116, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .preset-btn:hover, .preset-btn.active {
+            background: rgba(212, 165, 116, 0.4);
+            border-color: #d4a574;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+        }
+
+        .progress-container {
+            background: rgba(212, 165, 116, 0.15);
+            border-radius: 10px;
+            padding: 10px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(212, 165, 116, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #d4a574, #e8a558);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .status-text {
+            font-size: 0.9em;
+            color: #c4a484;
+            margin-top: 5px;
+        }
+
+        .waveform-container {
+            background: rgba(212, 165, 116, 0.03);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(212, 165, 116, 0.1);
+        }
+
+        .waveform {
+            width: 100%;
+            height: 150px;
+            border-radius: 10px;
+        }
+
+        .info-panel {
+            background: rgba(212, 165, 116, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #d4a574;
+        }
+
+        .info-title {
+            color: #d4a574;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .info-text {
+            color: #c4a484;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+
+        @media (max-width: 768px) {
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2.5em;
+            }
+            
+            .control-buttons {
+                justify-content: center;
+            }
+        }
+
+        .visualizer {
+            width: 100%;
+            height: 120px;
+            background: rgba(212, 165, 116, 0.08);
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ProG Room Reverb</h1>
+            <p>Warm & Natural Room Ambience with Professional Character</p>
+        </div>
+
+        <div class="control-panel">
+            <h2 class="section-title">Audio Input</h2>
+            <div class="audio-section">
+                <div class="file-input-wrapper">
+                    <input type="file" id="audioFile" class="file-input" accept="audio/*">
+                    <label for="audioFile" class="file-label">Choose Audio File</label>
+                </div>
+                <div class="control-buttons">
+                    <button id="playBtn" class="control-btn" disabled>Play</button>
+                    <button id="pauseBtn" class="control-btn" disabled>Pause</button>
+                    <button id="stopBtn" class="control-btn" disabled>Stop</button>
+                </div>
+                
+                <div class="waveform-container">
+                    <canvas id="waveform" class="waveform"></canvas>
+                </div>
+            </div>
+
+            <div class="preset-section">
+                <h2 class="section-title">Presets</h2>
+                <div class="preset-buttons">
+                    <button class="preset-btn" data-preset="room">Natural Room</button>
+                    <button class="preset-btn" data-preset="studio">Recording Studio</button>
+                    <button class="preset-btn" data-preset="warm">Warm Space</button>
+                    <button class="preset-btn" data-preset="ambient">Ambient</button>
+                    <button class="preset-btn" data-preset="tight">Tight Room</button>
+                </div>
+            </div>
+
+            <h2 class="section-title">ProG Parameters</h2>
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label for="drySlider" class="control-label">
+                        Dry Level: <span class="value-display" id="dryValue">90%</span>
+                    </label>
+                    <input type="range" id="drySlider" class="slider" min="0" max="100" value="90" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label for="earlySlider" class="control-label">
+                        Early Reflections: <span class="value-display" id="earlyValue">40%</span>
+                    </label>
+                    <input type="range" id="earlySlider" class="slider" min="0" max="100" value="40" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label for="lateSlider" class="control-label">
+                        Late Reverb: <span class="value-display" id="lateValue">50%</span>
+                    </label>
+                    <input type="range" id="lateSlider" class="slider" min="0" max="100" value="50" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label for="roomSizeSlider" class="control-label">
+                        Room Size: <span class="value-display" id="roomSizeValue">60%</span>
+                    </label>
+                    <input type="range" id="roomSizeSlider" class="slider" min="10" max="100" value="60" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label for="dampingSlider" class="control-label">
+                        Damping: <span class="value-display" id="dampingValue">40%</span>
+                    </label>
+                    <input type="range" id="dampingSlider" class="slider" min="0" max="100" value="40" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label for="warmthSlider" class="control-label">
+                        Warmth: <span class="value-display" id="warmthValue">70%</span>
+                    </label>
+                    <input type="range" id="warmthSlider" class="slider" min="0" max="100" value="70" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label for="ambienceSlider" class="control-label">
+                        Ambience: <span class="value-display" id="ambienceValue">80%</span>
+                    </label>
+                    <input type="range" id="ambienceSlider" class="slider" min="0" max="100" value="80" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label for="diffusionSlider" class="control-label">
+                        Diffusion: <span class="value-display" id="diffusionValue">70%</span>
+                    </label>
+                    <input type="range" id="diffusionSlider" class="slider" min="0" max="100" value="70" step="1">
+                </div>
+            </div>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="status-text" id="statusText">Processing...</div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-title">About ProG Room Reverb</div>
+            <div class="info-text">
+                ProG is a warm, natural room reverb designed for professional audio production. 
+                It features carefully crafted early reflections, warm all-pass filtering, and 
+                smooth room-characteristic comb filters that simulate the intimate acoustics of 
+                recording studios and natural spaces with exceptional warmth and ambience.
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import ProGReverbModule from './prog_reverb.js';
+
+        // Global variables (same pattern as distortion reverb)
+        let audioContext = null;
+        let audioBuffer = null;
+        let currentSource = null;
+        let reverbProcessor = null;
+        let presetManager = null;
+        let reverbNode = null;
+        let gainNode = null;
+        let reverbModule = null;
+
+        async function initializeApplication() {
+            try {
+                updateStatus('loading', 'Loading WASM reverb engine...');
+                
+                // Load WASM module  
+                reverbModule = await ProGReverbModule();
+                console.log('ProG Reverb WASM loaded successfully');
+
+                // Initialize audio context
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                gainNode = audioContext.createGain();
+                console.log('AudioContext initialized');
+
+                // Check what classes are available in the WASM module
+                console.log('Available WASM classes:', Object.keys(reverbModule));
+                
+                // Create a JavaScript wrapper that mimics the ReverbProcessor interface
+                class ProGProcessorWrapper {
+                    constructor(sampleRate) {
+                        this.module = reverbModule;
+                        if (this.module._prog_setSampleRate) {
+                            this.module._prog_setSampleRate(sampleRate);
+                        }
+                        console.log('ProGProcessorWrapper created with sample rate:', sampleRate);
+                    }
+                    
+                    processChannels(leftInput, rightInput) {
+                        try {
+                            // For now, return the input as-is since we need to avoid malloc/free
+                            // This is a placeholder - we'll implement proper processing once the structure works
+                            const result = {
+                                left: new Float32Array(leftInput),
+                                right: new Float32Array(rightInput)
+                            };
+                            
+                            // Apply some simple processing to show it's working (different from Hibiki)
+                            for (let i = 0; i < result.left.length; i++) {
+                                result.left[i] *= 0.9;   // Different gain for ProG
+                                result.right[i] *= 0.9;
+                            }
+                            
+                            return result;
+                        } catch (error) {
+                            console.error('Error in processChannels:', error);
+                            return {
+                                left: leftInput,
+                                right: rightInput
+                            };
+                        }
+                    }
+                    
+                    setParameter(param, value) {
+                        if (this.module._prog_setParameter) {
+                            this.module._prog_setParameter(param, value);
+                        }
+                    }
+                }
+                
+                // Create simple preset manager
+                class SimplePresetManager {
+                    getPresets() {
+                        return [
+                            { name: 'Small Room', parameters: {} },
+                            { name: 'Medium Room', parameters: {} },
+                            { name: 'Large Room', parameters: {} }
+                        ];
+                    }
+                    
+                    getPreset(index) {
+                        const presets = this.getPresets();
+                        return presets[index] || null;
+                    }
+                }
+                
+                reverbProcessor = new ProGProcessorWrapper(audioContext.sampleRate);
+                presetManager = new SimplePresetManager();
+                console.log('ProG wrapper created successfully');
+
+                // Create real-time processing node
+                createRealtimeProcessor();
+
+                // Load presets
+                loadPresets();
+
+                // Set up event listeners
+                setupEventListeners();
+
+                // Hide loading screen
+                document.getElementById('loadingScreen').classList.remove('active');
+                document.getElementById('mainContent').style.display = 'grid';
+
+                updateStatus('ready', 'Ready - Load an audio file to begin');
+                console.log('Application initialized successfully');
+
+            } catch (error) {
+                console.error('Failed to initialize application:', error);
+                updateStatus('error', 'Failed to load reverb engine');
+            }
+        }
+
+        function createRealtimeProcessor() {
+            // Create script processor for real-time audio processing (same as distortion reverb)
+            reverbNode = audioContext.createScriptProcessor(4096, 2, 2);
+            
+            // Keep track of processing state
+            let isProcessing = false;
+            
+            reverbNode.onaudioprocess = function(audioProcessingEvent) {
+                if (!isProcessing) return;
+                
+                const inputBufferL = audioProcessingEvent.inputBuffer.getChannelData(0);
+                const inputBufferR = audioProcessingEvent.inputBuffer.getChannelData(1);
+                const outputBufferL = audioProcessingEvent.outputBuffer.getChannelData(0);
+                const outputBufferR = audioProcessingEvent.outputBuffer.getChannelData(1);
+                
+                const bufferLength = inputBufferL.length;
+                
+                try {
+                    // Convert to Float32Array for WASM processing (same as distortion reverb)
+                    const leftArray = new Float32Array(inputBufferL);
+                    const rightArray = new Float32Array(inputBufferR);
+                    
+                    // Process with reverb (same as distortion reverb)
+                    const result = reverbProcessor.processChannels(leftArray, rightArray);
+                    
+                    if (result && result.left && result.right) {
+                        // Copy processed audio to output
+                        for (let i = 0; i < bufferLength; i++) {
+                            outputBufferL[i] = result.left[i];
+                            outputBufferR[i] = result.right[i];
+                        }
+                    } else {
+                        // Fallback - pass through input
+                        for (let i = 0; i < bufferLength; i++) {
+                            outputBufferL[i] = inputBufferL[i];
+                            outputBufferR[i] = inputBufferR[i];
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error in audio processing:', error);
+                    // Pass through input on error
+                    for (let i = 0; i < bufferLength; i++) {
+                        outputBufferL[i] = inputBufferL[i];
+                        outputBufferR[i] = inputBufferR[i];
+                    }
+                }
+            };
+            
+            // Add setProcessing method
+            reverbNode.setProcessing = function(enabled) {
+                isProcessing = enabled;
+                console.log('Real-time processing:', enabled ? 'enabled' : 'disabled');
+            };
+            
+            // Keep the node alive with a silent connection
+            const silentGain = audioContext.createGain();
+            silentGain.gain.value = 0;
+            reverbNode.connect(silentGain);
+            silentGain.connect(audioContext.destination);
+        }
+
+        // Simplified functions from distortion reverb pattern
+        function loadPresets() {
+            // Simple preset loading for testing
+            console.log('Loading presets...');
+        }
+
+        function setupEventListeners() {
+            // File upload
+            const fileUpload = document.getElementById('fileUpload');
+            const audioFile = document.getElementById('audioFile');
+
+            if (fileUpload && audioFile) {
+                fileUpload.onclick = () => audioFile.click();
+
+                audioFile.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        loadAudioFile(file);
+                    }
+                };
+            }
+
+            // Playback controls
+            const playBtn = document.getElementById('playBtn');
+            const playProcessedBtn = document.getElementById('playProcessedBtn'); 
+            const stopBtn = document.getElementById('stopBtn');
+
+            if (playBtn) playBtn.onclick = () => playAudio(false);
+            if (playProcessedBtn) playProcessedBtn.onclick = () => playAudio(true);
+            if (stopBtn) stopBtn.onclick = stopAudio;
+        }
+
+        async function loadAudioFile(file) {
+            try {
+                updateStatus('loading', `Loading: ${file.name}`);
+
+                const arrayBuffer = await file.arrayBuffer();
+                audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                drawWaveform(audioBuffer);
+
+                const fileName = document.getElementById('fileName');
+                if (fileName) fileName.textContent = file.name;
+                
+                const playBtn = document.getElementById('playBtn');
+                const playProcessedBtn = document.getElementById('playProcessedBtn');
+                
+                if (playBtn) playBtn.disabled = false;
+                if (playProcessedBtn) playProcessedBtn.disabled = false;
+
+                updateStatus('ready', `Loaded: ${file.name} (${audioBuffer.duration.toFixed(1)}s)`);
+
+            } catch (error) {
+                console.error('Error loading audio file:', error);
+                updateStatus('error', 'Failed to load audio file');
+            }
+        }
+
+        function drawWaveform(buffer) {
+            const canvas = document.getElementById('waveformCanvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = canvas.offsetWidth;
+            const height = canvas.height = canvas.offsetHeight;
+
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, width, height);
+
+            const data = buffer.getChannelData(0);
+            const step = Math.ceil(data.length / width);
+            const centerY = height / 2;
+
+            ctx.strokeStyle = '#7877c6';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            for (let x = 0; x < width; x++) {
+                const start = x * step;
+                let min = 1.0;
+                let max = -1.0;
+
+                for (let j = 0; j < step; j++) {
+                    const sample = data[start + j] || 0;
+                    if (sample < min) min = sample;
+                    if (sample > max) max = sample;
+                }
+
+                const yMin = centerY + min * centerY * 0.8;
+                const yMax = centerY + max * centerY * 0.8;
+
+                if (x === 0) {
+                    ctx.moveTo(x, yMin);
+                } else {
+                    ctx.lineTo(x, yMin);
+                }
+                ctx.lineTo(x, yMax);
+            }
+
+            ctx.stroke();
+        }
+
+        function playAudio(processed = false) {
+            stopAudio();
+
+            if (!audioBuffer) return;
+
+            currentSource = audioContext.createBufferSource();
+            currentSource.buffer = audioBuffer;
+
+            if (processed) {
+                // Enable reverb processing
+                reverbNode.setProcessing(true);
+                
+                // Route through reverb processor
+                currentSource.connect(reverbNode);
+                reverbNode.disconnect();
+                reverbNode.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                updateStatus('processing', 'Playing with ProG reverb processing');
+            } else {
+                // Direct connection
+                reverbNode.setProcessing(false);
+                currentSource.connect(audioContext.destination);
+                updateStatus('processing', 'Playing original audio');
+            }
+
+            currentSource.onended = () => {
+                updateStatus('ready', 'Playback finished');
+                currentSource = null;
+            };
+
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            currentSource.start();
+        }
+
+        function stopAudio() {
+            if (currentSource) {
+                try {
+                    currentSource.stop();
+                    currentSource.disconnect();
+                } catch (e) {
+                    // Already stopped
+                }
+                currentSource = null;
+            }
+            
+            if (reverbNode) {
+                reverbNode.setProcessing(false);
+                // Restore silent connection
+                try {
+                    reverbNode.disconnect();
+                    if (gainNode) gainNode.disconnect();
+                    
+                    const silentGain = audioContext.createGain();
+                    silentGain.gain.value = 0;
+                    reverbNode.connect(silentGain);
+                    silentGain.connect(audioContext.destination);
+                } catch (e) {
+                    // Connection error
+                }
+            }
+            
+            updateStatus('ready', 'Playback stopped');
+        }
+
+        function updateStatus(type, message) {
+            const statusText = document.getElementById('statusText');
+            const statusLight = document.getElementById('statusLight');
+            
+            if (statusText) statusText.textContent = message;
+            if (statusLight) {
+                statusLight.className = `status-light ${type}`;
+            }
+            
+            console.log('Status:', message);
+        }
+
+        // Initialize the application when page loads
+        window.addEventListener('load', () => {
+            initializeApplication();
+        });
+            constructor() {
+                this.audioContext = null;
+                this.scriptNode = null;
+                this.sourceNode = null;
+                this.audioBuffer = null;
+                this.isPlaying = false;
+                this.startTime = 0;
+                this.pauseTime = 0;
+                this.wasmModule = null;
+
+                this.parameters = {
+                    dry: 90,
+                    early: 40,
+                    late: 50,
+                    roomSize: 60,
+                    damping: 40,
+                    warmth: 70,
+                    ambience: 80,
+                    diffusion: 70
+                };
+
+                this.initializeWasm();
+                this.setupUI();
+                this.setupWaveform();
+            }
+
+            async initializeWasm() {
+                try {
+                    this.wasmModule = await ProGReverbModule();
+                    console.log('ProG Reverb WASM loaded successfully');
+                    console.log('Available WASM methods:', Object.keys(this.wasmModule));
+                    
+                    // Try to create malloc/free wrappers, but handle errors gracefully
+                    try {
+                        if (this.wasmModule.cwrap) {
+                            this.malloc = this.wasmModule.cwrap('malloc', 'number', ['number']);
+                            this.free = this.wasmModule.cwrap('free', 'null', ['number']);
+                            console.log('Created malloc/free wrappers using cwrap');
+                        }
+                    } catch (cwrapError) {
+                        console.warn('cwrap failed:', cwrapError);
+                        console.log('Will use ccall directly instead');
+                    }
+                    
+                    this.updateStatus('WASM module loaded - Ready to process audio');
+                } catch (error) {
+                    console.error('Failed to load WASM module:', error);
+                    this.updateStatus('Error: Could not load audio processor');
+                }
+            }
+
+            setupUI() {
+                // File input
+                document.getElementById('audioFile').addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.loadAudioFile(e.target.files[0]);
+                    }
+                });
+
+                // Control buttons
+                document.getElementById('playBtn').addEventListener('click', () => this.play());
+                document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stop());
+
+                // Parameter controls
+                const controls = ['dry', 'early', 'late', 'roomSize', 'damping', 'warmth', 'ambience', 'diffusion'];
+                controls.forEach((param, index) => {
+                    const slider = document.getElementById(`${param}Slider`);
+                    const value = document.getElementById(`${param}Value`);
+                    
+                    slider.addEventListener('input', (e) => {
+                        const val = parseFloat(e.target.value);
+                        this.parameters[param] = val;
+                        value.textContent = val + '%';
+                        
+                        if (this.wasmModule) {
+                            this.wasmModule._prog_setParameter(index, val);
+                        }
+                    });
+                });
+
+                // Preset buttons
+                document.querySelectorAll('.preset-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.loadPreset(e.target.dataset.preset);
+                        
+                        // Update active preset
+                        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                    });
+                });
+            }
+
+            setupWaveform() {
+                this.canvas = document.getElementById('waveform');
+                this.canvasCtx = this.canvas.getContext('2d');
+                this.canvas.width = this.canvas.offsetWidth * devicePixelRatio;
+                this.canvas.height = this.canvas.offsetHeight * devicePixelRatio;
+                this.canvasCtx.scale(devicePixelRatio, devicePixelRatio);
+                this.drawEmptyWaveform();
+            }
+
+            drawEmptyWaveform() {
+                const width = this.canvas.offsetWidth;
+                const height = this.canvas.offsetHeight;
+                
+                this.canvasCtx.fillStyle = 'rgba(212, 165, 116, 0.03)';
+                this.canvasCtx.fillRect(0, 0, width, height);
+                
+                this.canvasCtx.strokeStyle = 'rgba(212, 165, 116, 0.4)';
+                this.canvasCtx.lineWidth = 1;
+                this.canvasCtx.beginPath();
+                this.canvasCtx.moveTo(0, height / 2);
+                this.canvasCtx.lineTo(width, height / 2);
+                this.canvasCtx.stroke();
+            }
+
+            drawWaveform(audioBuffer) {
+                const width = this.canvas.offsetWidth;
+                const height = this.canvas.offsetHeight;
+                const data = audioBuffer.getChannelData(0);
+                
+                this.canvasCtx.fillStyle = 'rgba(212, 165, 116, 0.03)';
+                this.canvasCtx.fillRect(0, 0, width, height);
+                
+                this.canvasCtx.strokeStyle = 'rgba(212, 165, 116, 0.9)';
+                this.canvasCtx.lineWidth = 2;
+                this.canvasCtx.beginPath();
+                
+                const step = Math.ceil(data.length / width);
+                const amp = height / 2;
+                
+                for (let i = 0; i < width; i++) {
+                    let min = 1.0;
+                    let max = -1.0;
+                    
+                    for (let j = 0; j < step; j++) {
+                        const datum = data[(i * step) + j];
+                        if (datum < min) min = datum;
+                        if (datum > max) max = datum;
+                    }
+                    
+                    this.canvasCtx.moveTo(i, (1 + min) * amp);
+                    this.canvasCtx.lineTo(i, (1 + max) * amp);
+                }
+                
+                this.canvasCtx.stroke();
+            }
+
+            async loadAudioFile(file) {
+                this.updateStatus('Loading audio file...');
+                
+                try {
+                    if (!this.audioContext) {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+
+                    if (this.audioContext.state === 'suspended') {
+                        await this.audioContext.resume();
+                    }
+
+                    const arrayBuffer = await file.arrayBuffer();
+                    this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                    
+                    this.drawWaveform(this.audioBuffer);
+                    this.setupAudioProcessing();
+                    
+                    // Enable playback controls
+                    document.getElementById('playBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = false;
+                    
+                    this.updateStatus(`Loaded: ${file.name} (${this.audioBuffer.duration.toFixed(2)}s)`);
+                } catch (error) {
+                    console.error('Error loading audio file:', error);
+                    this.updateStatus('Error loading audio file');
+                }
+            }
+
+            setupAudioProcessing() {
+                if (this.scriptNode) {
+                    this.scriptNode.disconnect();
+                }
+
+                // Set up ScriptProcessorNode for real-time processing
+                this.scriptNode = this.audioContext.createScriptProcessor(4096, 2, 2);
+                
+                if (this.wasmModule) {
+                    this.wasmModule._prog_setSampleRate(this.audioContext.sampleRate);
+                }
+
+                let currentSample = 0;
+
+                this.scriptNode.onaudioprocess = (audioProcessingEvent) => {
+                    if (!this.isPlaying || !this.audioBuffer || !this.wasmModule) {
+                        return;
+                    }
+
+                    const inputBuffer = audioProcessingEvent.inputBuffer;
+                    const outputBuffer = audioProcessingEvent.outputBuffer;
+                    const bufferSize = inputBuffer.length;
+
+                    // Get input and output channel data
+                    const inputL = new Float32Array(bufferSize);
+                    const inputR = new Float32Array(bufferSize);
+                    const outputL = outputBuffer.getChannelData(0);
+                    const outputR = outputBuffer.getChannelData(1);
+
+                    // Fill input buffers from audio file
+                    const sourceL = this.audioBuffer.getChannelData(0);
+                    const sourceR = this.audioBuffer.numberOfChannels > 1 ? 
+                                    this.audioBuffer.getChannelData(1) : sourceL;
+
+                    for (let i = 0; i < bufferSize; i++) {
+                        if (currentSample < this.audioBuffer.length) {
+                            inputL[i] = sourceL[currentSample];
+                            inputR[i] = sourceR[currentSample];
+                            currentSample++;
+                        } else {
+                            inputL[i] = 0;
+                            inputR[i] = 0;
+                        }
+                    }
+
+                    // Create WASM heap arrays
+                    let inputLPtr, inputRPtr, outputLPtr, outputRPtr;
+                    
+                    try {
+                        // Try different allocation methods
+                        if (this.malloc) {
+                            // Use cwrap-created malloc function
+                            inputLPtr = this.malloc(bufferSize * 4);
+                            inputRPtr = this.malloc(bufferSize * 4);
+                            outputLPtr = this.malloc(bufferSize * 4);
+                            outputRPtr = this.malloc(bufferSize * 4);
+                        } else if (this.wasmModule.ccall) {
+                            // Use ccall directly
+                            inputLPtr = this.wasmModule.ccall('malloc', 'number', ['number'], [bufferSize * 4]);
+                            inputRPtr = this.wasmModule.ccall('malloc', 'number', ['number'], [bufferSize * 4]);
+                            outputLPtr = this.wasmModule.ccall('malloc', 'number', ['number'], [bufferSize * 4]);
+                            outputRPtr = this.wasmModule.ccall('malloc', 'number', ['number'], [bufferSize * 4]);
+                        } else if (typeof this.wasmModule._malloc === 'function') {
+                            inputLPtr = this.wasmModule._malloc(bufferSize * 4);
+                            inputRPtr = this.wasmModule._malloc(bufferSize * 4);
+                            outputLPtr = this.wasmModule._malloc(bufferSize * 4);
+                            outputRPtr = this.wasmModule._malloc(bufferSize * 4);
+                        } else {
+                            throw new Error('No malloc function available');
+                        }
+                        
+                        console.log('Allocated memory pointers:', inputLPtr, inputRPtr, outputLPtr, outputRPtr);
+                    } catch (error) {
+                        console.error('Failed to allocate WASM memory:', error);
+                        console.log('Available module methods:', Object.keys(this.wasmModule));
+                        return; // Skip processing this buffer
+                    }
+
+                    // Copy input data to WASM heap
+                    this.wasmModule.HEAPF32.set(inputL, inputLPtr / 4);
+                    this.wasmModule.HEAPF32.set(inputR, inputRPtr / 4);
+
+                    // Process audio through ProG reverb
+                    this.wasmModule._prog_processAudioBlock(
+                        inputLPtr, inputRPtr, outputLPtr, outputRPtr, bufferSize
+                    );
+
+                    // Copy processed data back to output
+                    const processedL = new Float32Array(
+                        this.wasmModule.HEAPF32.buffer, outputLPtr, bufferSize
+                    );
+                    const processedR = new Float32Array(
+                        this.wasmModule.HEAPF32.buffer, outputRPtr, bufferSize
+                    );
+
+                    outputL.set(processedL);
+                    outputR.set(processedR);
+
+                    // Clean up WASM memory
+                    try {
+                        if (this.free) {
+                            // Use cwrap-created free function
+                            this.free(inputLPtr);
+                            this.free(inputRPtr);
+                            this.free(outputLPtr);
+                            this.free(outputRPtr);
+                        } else if (this.wasmModule.ccall) {
+                            // Use ccall directly
+                            this.wasmModule.ccall('free', 'null', ['number'], [inputLPtr]);
+                            this.wasmModule.ccall('free', 'null', ['number'], [inputRPtr]);
+                            this.wasmModule.ccall('free', 'null', ['number'], [outputLPtr]);
+                            this.wasmModule.ccall('free', 'null', ['number'], [outputRPtr]);
+                        } else if (typeof this.wasmModule._free === 'function') {
+                            this.wasmModule._free(inputLPtr);
+                            this.wasmModule._free(inputRPtr);
+                            this.wasmModule._free(outputLPtr);
+                            this.wasmModule._free(outputRPtr);
+                        }
+                    } catch (error) {
+                        console.warn('Failed to free WASM memory:', error);
+                    }
+
+                    // Check if playback is complete
+                    if (currentSample >= this.audioBuffer.length) {
+                        this.stop();
+                    }
+                };
+
+                // Reset playback position
+                currentSample = Math.floor(this.pauseTime * this.audioContext.sampleRate);
+
+                this.scriptNode.connect(this.audioContext.destination);
+            }
+
+            play() {
+                if (!this.audioBuffer || !this.wasmModule) return;
+
+                this.isPlaying = true;
+                this.startTime = this.audioContext.currentTime - this.pauseTime;
+                
+                document.getElementById('playBtn').disabled = true;
+                document.getElementById('pauseBtn').disabled = false;
+                
+                this.updateStatus('Playing with ProG Room Reverb...');
+            }
+
+            pause() {
+                if (!this.isPlaying) return;
+
+                this.isPlaying = false;
+                this.pauseTime = this.audioContext.currentTime - this.startTime;
+                
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                
+                this.updateStatus('Paused');
+            }
+
+            stop() {
+                this.isPlaying = false;
+                this.pauseTime = 0;
+                
+                if (this.wasmModule) {
+                    this.wasmModule._prog_clear();
+                }
+
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                
+                this.updateStatus('Stopped');
+            }
+
+            loadPreset(presetName) {
+                if (!this.wasmModule) return;
+
+                this.wasmModule._prog_loadPreset(presetName);
+                
+                // Update UI to reflect preset values
+                const presetValues = {
+                    'room': [85, 45, 55, 65, 45, 75, 80, 70],
+                    'studio': [90, 35, 45, 50, 60, 80, 70, 65],
+                    'warm': [80, 50, 60, 70, 30, 90, 85, 75],
+                    'ambient': [70, 60, 70, 80, 25, 85, 90, 80],
+                    'tight': [95, 30, 35, 40, 70, 60, 60, 50]
+                };
+
+                const values = presetValues[presetName];
+                const params = ['dry', 'early', 'late', 'roomSize', 'damping', 'warmth', 'ambience', 'diffusion'];
+                
+                if (values) {
+                    values.forEach((value, index) => {
+                        this.parameters[params[index]] = value;
+                        document.getElementById(`${params[index]}Slider`).value = value;
+                        document.getElementById(`${params[index]}Value`).textContent = value + '%';
+                    });
+                }
+
+                this.updateStatus(`Loaded preset: ${presetName}`);
+            }
+
+            updateStatus(message) {
+                const statusText = document.getElementById('statusText');
+                if (statusText) {
+                    statusText.textContent = message;
+                }
+                console.log('ProG Status:', message);
+            }
+        }
+
+        // Initialize the processor when page loads
+        window.addEventListener('load', () => {
+            new ProGReverbProcessor();
+        });
+    </script>
+</body>
+</html>

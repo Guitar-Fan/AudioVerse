@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dragonfly Hall Reverb - C++ WASM</title>
+      <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="white" opacity="0.1"/></svg>') repeat;
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateX(0px); }
+            100% { transform: translateX(100px); }
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 2;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 2;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .reverb-panel {
+            background: rgba(51, 65, 85, 0.4);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .control-panel {
+            background: rgba(51, 65, 85, 0.4);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #60a5fa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .file-upload {
+            border: 2px dashed #60a5fa;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            background: rgba(96, 165, 250, 0.05);
+        }
+
+        .file-upload:hover {
+            border-color: #3b82f6;
+            background: rgba(96, 165, 250, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .file-upload.dragover {
+            border-color: #1d4ed8;
+            background: rgba(96, 165, 250, 0.2);
+            transform: scale(1.02);
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #60a5fa;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .control-group {
+            background: rgba(71, 85, 105, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .control-group h3 {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        .slider-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .slider-label .name {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .slider-label .value {
+            color: #e2e8f0;
+            font-family: 'Monaco', monospace;
+            font-size: 0.85rem;
+            background: rgba(51, 65, 85, 0.8);
+            padding: 2px 8px;
+            border-radius: 4px;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #374151 0%, #4b5563 100%);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4);
+            border: 2px solid #1e293b;
+            transition: all 0.2s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(96, 165, 250, 0.6);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4);
+            border: 2px solid #1e293b;
+            transition: all 0.2s ease;
+        }
+
+        .preset-section {
+            margin-bottom: 25px;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .preset-btn {
+            background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+            color: #e2e8f0;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            padding: 12px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preset-btn:hover {
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(96, 165, 250, 0.3);
+        }
+
+        .preset-btn.active {
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            box-shadow: 0 0 25px rgba(96, 165, 250, 0.5);
+        }
+
+        .playback-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(5, 150, 105, 0.4);
+        }
+
+        .btn:disabled {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            box-shadow: 0 8px 20px rgba(220, 38, 38, 0.4);
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+        }
+
+        .btn-download:hover:not(:disabled) {
+            box-shadow: 0 8px 20px rgba(124, 58, 237, 0.4);
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: rgba(71, 85, 105, 0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .status-light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #6b7280;
+            transition: all 0.3s ease;
+        }
+
+        .status-light.ready {
+            background: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        .status-light.processing {
+            background: #f59e0b;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+            animation: pulse 1s infinite;
+        }
+
+        .status-light.error {
+            background: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .waveform-container {
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .waveform-canvas {
+            width: 100%;
+            height: 200px;
+            border-radius: 5px;
+            background: #0f172a;
+        }
+
+        .info-panel {
+            background: rgba(71, 85, 105, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .info-panel h3 {
+            color: #60a5fa;
+            margin-bottom: 15px;
+        }
+
+        .info-panel p {
+            color: #cbd5e1;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(96, 165, 250, 0.3);
+            border-top: 4px solid #60a5fa;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .playback-controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎵 Dragonfly Hall Reverb</h1>
+            <p>Professional C++ WASM reverb engine based on Dragonfly Hall algorithm</p>
+        </header>
+
+        <div class="loading" id="loadingScreen">
+            <div class="spinner"></div>
+            <p>Loading WASM reverb engine...</p>
+        </div>
+
+        <div class="main-content" id="mainContent" style="display: none;">
+            <div class="reverb-panel">
+                <h2 class="section-title">Audio Processing</h2>
+                
+                <div class="file-upload" id="fileUpload">
+                    <input type="file" id="audioFile" accept="audio/*">
+                    <div class="upload-icon">🎵</div>
+                    <h3>Drop audio file here</h3>
+                    <p>or click to select</p>
+                    <p id="fileName">No file selected</p>
+                </div>
+
+                <div class="waveform-container">
+                    <canvas class="waveform-canvas" id="waveformCanvas"></canvas>
+                </div>
+
+                <div class="playback-controls">
+                    <button class="btn" id="playBtn" disabled>▶️ Play Original</button>
+                    <button class="btn" id="playProcessedBtn" disabled>▶️ Play Processed</button>
+                    <button class="btn btn-stop" id="stopBtn" disabled>⏹️ Stop</button>
+                    <button class="btn btn-download" id="downloadBtn" disabled>⬇️ Download</button>
+                </div>
+
+                <div class="status">
+                    <div class="status-light" id="statusLight"></div>
+                    <p id="statusText">Ready - Load an audio file to begin</p>
+                </div>
+
+                <div class="info-panel">
+                    <h3>About This Reverb</h3>
+                    <p>This implementation is based on the acclaimed Dragonfly Hall reverb algorithm, featuring:</p>
+                    <p>• Early reflections modeling for natural spatial imaging</p>
+                    <p>• Late reverb tail with advanced diffusion algorithms</p>
+                    <p>• High-quality filtering and parameter interpolation</p>
+                    <p>• Real-time processing via optimized C++ WebAssembly</p>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h2 class="section-title">Reverb Parameters</h2>
+                
+                <div class="preset-section">
+                    <h3>Presets</h3>
+                    <div class="preset-grid" id="presetGrid">
+                        <!-- Presets will be populated here -->
+                    </div>
+                </div>
+
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <h3>Mix</h3>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span class="name">Dry Level</span>
+                                <span class="value" id="dryValue">100%</span>
+                            </div>
+                            <input type="range" class="slider" id="drySlider" min="0" max="100" value="100" step="1">
+                        </div>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span class="name">Early Reflections</span>
+                                <span class="value" id="earlyValue">25%</span>
+                            </div>
+                            <input type="range" class="slider" id="earlySlider" min="0" max="100" value="25" step="1">
+                        </div>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span class="name">Late Reverb</span>
+                                <span class="value" id="lateValue">40%</span>
+                            </div>
+                            <input type="range" class="slider" id="lateSlider" min="0" max="100" value="40" step="1">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <h3>Space</h3>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span class="name">Size</span>
+                                <span class="value" id="sizeValue">40%</span>
+                            </div>
+                            <input type="range" class="slider" id="sizeSlider" min="0" max="100" value="40" step="1">
+                        </div>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span class="name">Width</span>
+                                <span class="value" id="widthValue">100%</span>
+                            </div>
+                            <input type="range" class="slider" id="widthSlider" min="0" max="100" value="100" step="1">
+                        </div>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span class="name">Pre-delay</span>
+                                <span class="value" id="predelayValue">0ms</span>
+                            </div>
+                            <input type="range" class="slider" id="predelaySlider" min="0" max="100" value="0" step="1">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <h3>Character</h3>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span class="name">Diffusion</span>
+                                <span class="value" id="diffuseValue">70%</span>
+                            </div>
+                            <input type="range" class="slider" id="diffuseSlider" min="0" max="100" value="70" step="1">
+                        </div>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span class="name">Decay Time</span>
+                                <span class="value" id="decayValue">2.0s</span>
+                            </div>
+                            <input type="range" class="slider" id="decaySlider" min="0.1" max="10.0" value="2.0" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <h3>EQ</h3>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span class="name">Low Cut</span>
+                                <span class="value" id="lowcutValue">20Hz</span>
+                            </div>
+                            <input type="range" class="slider" id="lowcutSlider" min="20" max="1000" value="20" step="10">
+                        </div>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span class="name">High Cut</span>
+                                <span class="value" id="highcutValue">8000Hz</span>
+                            </div>
+                            <input type="range" class="slider" id="highcutSlider" min="1000" max="20000" value="8000" step="100">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="reverb.js"></script>
+    <script>
+        let reverbModule = null;
+        let reverbProcessor = null;
+        let presetManager = null;
+        let audioContext = null;
+        let audioBuffer = null;
+        let processedBuffer = null;
+        let currentSource = null;
+        let reverbNode = null;
+        let gainNode = null;
+        let isRealTimeMode = true;
+
+        // Initialize the application
+        async function init() {
+            try {
+                console.log('Loading WASM module...');
+                reverbModule = await ReverbModule();
+                console.log('WASM module loaded successfully');
+
+                // Initialize audio context
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('AudioContext initialized');
+
+                // Create reverb processor
+                reverbProcessor = new reverbModule.ReverbProcessor(audioContext.sampleRate);
+                presetManager = new reverbModule.PresetManager();
+                console.log('Reverb processor created');
+
+                // Create real-time processing node
+                createRealtimeProcessor();
+
+                // Load presets
+                loadPresets();
+
+                // Set up event listeners
+                setupEventListeners();
+
+                // Hide loading screen
+                document.getElementById('loadingScreen').classList.remove('active');
+                document.getElementById('mainContent').style.display = 'grid';
+
+                updateStatus('ready', 'Ready - Load an audio file to begin');
+                console.log('Application initialized successfully');
+
+            } catch (error) {
+                console.error('Failed to initialize application:', error);
+                updateStatus('error', 'Failed to load reverb engine');
+            }
+        }
+
+        function createRealtimeProcessor() {
+            // Create script processor for real-time audio processing
+            reverbNode = audioContext.createScriptProcessor(4096, 2, 2);
+            
+            // Keep track of processing state
+            let isProcessing = false;
+            
+            reverbNode.onaudioprocess = function(audioProcessingEvent) {
+                if (!isProcessing) return;
+                
+                const inputBufferL = audioProcessingEvent.inputBuffer.getChannelData(0);
+                const inputBufferR = audioProcessingEvent.inputBuffer.getChannelData(1);
+                const outputBufferL = audioProcessingEvent.outputBuffer.getChannelData(0);
+                const outputBufferR = audioProcessingEvent.outputBuffer.getChannelData(1);
+                
+                const bufferLength = inputBufferL.length;
+                
+                try {
+                    // Convert to Float32Array for WASM processing
+                    const leftArray = new Float32Array(inputBufferL);
+                    const rightArray = new Float32Array(inputBufferR);
+                    
+                    // Process with reverb
+                    const result = reverbProcessor.processChannels(leftArray, rightArray);
+                    
+                    if (result && result.left && result.right) {
+                        // Copy processed audio to output
+                        for (let i = 0; i < bufferLength; i++) {
+                            outputBufferL[i] = result.left[i];
+                            outputBufferR[i] = result.right[i];
+                        }
+                        
+                        // Debug: Log first few samples occasionally
+                        if (Math.random() < 0.001) { // Very occasional logging
+                            console.log('Processing working - Input:', leftArray[0], 'Output:', result.left[0]);
+                        }
+                    } else {
+                        // Fallback: pass through input
+                        for (let i = 0; i < bufferLength; i++) {
+                            outputBufferL[i] = inputBufferL[i];
+                            outputBufferR[i] = inputBufferR[i];
+                        }
+                    }
+                } catch (error) {
+                    // On error, pass through the original audio
+                    console.error('Real-time processing error:', error);
+                    for (let i = 0; i < bufferLength; i++) {
+                        outputBufferL[i] = inputBufferL[i];
+                        outputBufferR[i] = inputBufferR[i];
+                    }
+                }
+            };
+            
+            // Store processing state control
+            reverbNode.setProcessing = function(enabled) {
+                isProcessing = enabled;
+                console.log('Reverb processing:', enabled ? 'enabled' : 'disabled');
+            };
+            
+            // Create gain node for volume control
+            gainNode = audioContext.createGain();
+            gainNode.gain.value = 1.0;
+            
+            // Keep ScriptProcessorNode alive by connecting it
+            const silentGain = audioContext.createGain();
+            silentGain.gain.value = 0;
+            reverbNode.connect(silentGain);
+            silentGain.connect(audioContext.destination);
+            
+            console.log('Real-time processor created with processing disabled');
+        }
+
+        function loadPresets() {
+            const presets = presetManager.getPresets();
+            const presetGrid = document.getElementById('presetGrid');
+            
+            for (let i = 0; i < presets.length; i++) {
+                const preset = presets[i];
+                const button = document.createElement('button');
+                button.className = 'preset-btn';
+                button.textContent = preset.name;
+                button.onclick = () => loadPreset(i);
+                presetGrid.appendChild(button);
+            }
+        }
+
+        function loadPreset(index) {
+            const preset = presetManager.getPreset(index);
+            if (!preset) return;
+
+            const params = preset.parameters;
+            
+            // Update UI controls
+            document.getElementById('drySlider').value = params[reverbModule.PARAM_DRY];
+            document.getElementById('earlySlider').value = params[reverbModule.PARAM_EARLY];
+            document.getElementById('lateSlider').value = params[reverbModule.PARAM_LATE];
+            document.getElementById('sizeSlider').value = params[reverbModule.PARAM_SIZE];
+            document.getElementById('widthSlider').value = params[reverbModule.PARAM_WIDTH];
+            document.getElementById('predelaySlider').value = params[reverbModule.PARAM_PREDELAY];
+            document.getElementById('diffuseSlider').value = params[reverbModule.PARAM_DIFFUSE];
+            document.getElementById('lowcutSlider').value = params[reverbModule.PARAM_LOWCUT];
+            document.getElementById('highcutSlider').value = params[reverbModule.PARAM_HIGHCUT];
+            document.getElementById('decaySlider').value = params[reverbModule.PARAM_DECAY];
+
+            // Update parameter displays
+            updateAllParameters();
+
+            // Update active preset
+            document.querySelectorAll('.preset-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+
+            console.log(`Loaded preset: ${preset.name}`);
+        }
+
+        function setupEventListeners() {
+            // File upload
+            const fileUpload = document.getElementById('fileUpload');
+            const audioFile = document.getElementById('audioFile');
+
+            fileUpload.onclick = () => audioFile.click();
+
+            audioFile.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    loadAudioFile(file);
+                }
+            };
+
+            // Drag and drop
+            fileUpload.ondragover = (e) => {
+                e.preventDefault();
+                fileUpload.classList.add('dragover');
+            };
+
+            fileUpload.ondragleave = () => {
+                fileUpload.classList.remove('dragover');
+            };
+
+            fileUpload.ondrop = (e) => {
+                e.preventDefault();
+                fileUpload.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('audio/')) {
+                    loadAudioFile(file);
+                }
+            };
+
+            // Playback controls
+            document.getElementById('playBtn').onclick = () => playAudio(false);
+            document.getElementById('playProcessedBtn').onclick = () => playAudio(true);
+            document.getElementById('stopBtn').onclick = stopAudio;
+            document.getElementById('downloadBtn').onclick = downloadProcessedAudio;
+
+            // Parameter sliders
+            setupParameterSliders();
+        }
+
+        function setupParameterSliders() {
+            const sliders = [
+                { id: 'drySlider', param: 'PARAM_DRY', valueId: 'dryValue', unit: '%' },
+                { id: 'earlySlider', param: 'PARAM_EARLY', valueId: 'earlyValue', unit: '%' },
+                { id: 'lateSlider', param: 'PARAM_LATE', valueId: 'lateValue', unit: '%' },
+                { id: 'sizeSlider', param: 'PARAM_SIZE', valueId: 'sizeValue', unit: '%' },
+                { id: 'widthSlider', param: 'PARAM_WIDTH', valueId: 'widthValue', unit: '%' },
+                { id: 'predelaySlider', param: 'PARAM_PREDELAY', valueId: 'predelayValue', unit: 'ms' },
+                { id: 'diffuseSlider', param: 'PARAM_DIFFUSE', valueId: 'diffuseValue', unit: '%' },
+                { id: 'lowcutSlider', param: 'PARAM_LOWCUT', valueId: 'lowcutValue', unit: 'Hz' },
+                { id: 'highcutSlider', param: 'PARAM_HIGHCUT', valueId: 'highcutValue', unit: 'Hz' },
+                { id: 'decaySlider', param: 'PARAM_DECAY', valueId: 'decayValue', unit: 's' }
+            ];
+
+            sliders.forEach(({ id, param, valueId, unit }) => {
+                const slider = document.getElementById(id);
+                const valueDisplay = document.getElementById(valueId);
+
+                slider.oninput = () => {
+                    const value = parseFloat(slider.value);
+                    reverbProcessor.setParameter(reverbModule[param], value);
+                    
+                    let displayValue;
+                    if (unit === 'Hz' && value >= 1000) {
+                        displayValue = (value / 1000).toFixed(1) + 'kHz';
+                    } else {
+                        displayValue = value + unit;
+                    }
+                    valueDisplay.textContent = displayValue;
+
+                    // Clear active preset when parameter changes manually
+                    document.querySelectorAll('.preset-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+
+                    // Parameters are updated in real-time, no need to re-process
+                };
+            });
+        }
+
+        function updateAllParameters() {
+            // Update all sliders and their display values
+            const sliders = document.querySelectorAll('.slider');
+            sliders.forEach(slider => {
+                slider.dispatchEvent(new Event('input'));
+            });
+        }
+
+        async function loadAudioFile(file) {
+            try {
+                updateStatus('processing', 'Loading audio file...');
+
+                const arrayBuffer = await file.arrayBuffer();
+                audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                document.getElementById('fileName').textContent = file.name;
+                
+                // Draw waveform
+                drawWaveform(audioBuffer);
+
+                // Enable controls immediately for real-time processing
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('playProcessedBtn').disabled = false;
+                document.getElementById('downloadBtn').disabled = false;
+
+                updateStatus('ready', `Loaded: ${file.name} (${audioBuffer.duration.toFixed(1)}s) - Ready for real-time processing`);
+
+            } catch (error) {
+                console.error('Error loading audio file:', error);
+                updateStatus('error', 'Failed to load audio file');
+            }
+        }
+
+        function drawWaveform(buffer) {
+            const canvas = document.getElementById('waveformCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = canvas.offsetWidth;
+            const height = canvas.height = canvas.offsetHeight;
+
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, width, height);
+
+            const data = buffer.getChannelData(0);
+            const step = Math.ceil(data.length / width);
+            const centerY = height / 2;
+
+            ctx.strokeStyle = '#60a5fa';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            for (let x = 0; x < width; x++) {
+                const start = x * step;
+                let min = 1.0;
+                let max = -1.0;
+
+                for (let j = 0; j < step; j++) {
+                    const sample = data[start + j] || 0;
+                    if (sample < min) min = sample;
+                    if (sample > max) max = sample;
+                }
+
+                const yMin = centerY + min * centerY * 0.8;
+                const yMax = centerY + max * centerY * 0.8;
+
+                if (x === 0) {
+                    ctx.moveTo(x, yMin);
+                } else {
+                    ctx.lineTo(x, yMin);
+                }
+                ctx.lineTo(x, yMax);
+            }
+
+            ctx.stroke();
+
+            // Draw center line
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.stroke();
+        }
+
+        function playAudio(processed = false) {
+            stopAudio();
+
+            if (!audioBuffer) return;
+
+            currentSource = audioContext.createBufferSource();
+            currentSource.buffer = audioBuffer;
+
+            if (processed) {
+                // Enable reverb processing
+                reverbNode.setProcessing(true);
+                
+                // Route through reverb processor: Source -> Reverb -> Gain -> Output
+                currentSource.connect(reverbNode);
+                reverbNode.disconnect(); // Disconnect silent connection
+                reverbNode.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                console.log('Real-time reverb processing enabled');
+                updateStatus('processing', 'Playing with real-time reverb processing');
+            } else {
+                // Disable reverb processing and direct connection
+                reverbNode.setProcessing(false);
+                currentSource.connect(audioContext.destination);
+                updateStatus('processing', 'Playing original audio');
+            }
+
+            currentSource.onended = () => {
+                document.getElementById('stopBtn').disabled = true;
+                currentSource = null;
+                updateStatus('ready', 'Playback finished');
+                
+                // Disable processing and restore silent connection
+                reverbNode.setProcessing(false);
+                try {
+                    reverbNode.disconnect();
+                    gainNode.disconnect();
+                    
+                    // Restore silent connection to keep ScriptProcessorNode alive
+                    const silentGain = audioContext.createGain();
+                    silentGain.gain.value = 0;
+                    reverbNode.connect(silentGain);
+                    silentGain.connect(audioContext.destination);
+                } catch (e) {
+                    console.log('Cleanup connection error:', e);
+                }
+            };
+
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            currentSource.start();
+            document.getElementById('stopBtn').disabled = false;
+        }
+
+        function stopAudio() {
+            if (currentSource) {
+                try {
+                    currentSource.stop();
+                    currentSource.disconnect();
+                } catch (e) {
+                    // Source might already be stopped
+                }
+                currentSource = null;
+            }
+            
+            // Disable processing and restore silent connection
+            if (reverbNode) {
+                reverbNode.setProcessing(false);
+                
+                try {
+                    reverbNode.disconnect();
+                    if (gainNode) {
+                        gainNode.disconnect();
+                    }
+                    
+                    // Restore silent connection to keep ScriptProcessorNode alive
+                    const silentGain = audioContext.createGain();
+                    silentGain.gain.value = 0;
+                    reverbNode.connect(silentGain);
+                    silentGain.connect(audioContext.destination);
+                } catch (e) {
+                    console.log('Stop audio cleanup error:', e);
+                }
+            }
+            
+            document.getElementById('stopBtn').disabled = true;
+            updateStatus('ready', 'Playback stopped');
+        }
+
+        async function renderProcessedAudioForDownload() {
+            if (!audioBuffer || !reverbProcessor) return null;
+
+            try {
+                updateStatus('processing', 'Rendering processed audio for download...');
+
+                // Get audio data
+                const leftChannel = audioBuffer.getChannelData(0);
+                const rightChannel = audioBuffer.numberOfChannels > 1 ? 
+                    audioBuffer.getChannelData(1) : leftChannel;
+
+                // Create output buffer
+                const outputBuffer = audioContext.createBuffer(
+                    2, 
+                    audioBuffer.length, 
+                    audioBuffer.sampleRate
+                );
+
+                const outputLeft = outputBuffer.getChannelData(0);
+                const outputRight = outputBuffer.getChannelData(1);
+
+                // Process audio in chunks (max 4096 frames per chunk)
+                const maxChunkSize = 4096;
+                const totalFrames = audioBuffer.length;
+                
+                for (let offset = 0; offset < totalFrames; offset += maxChunkSize) {
+                    const chunkSize = Math.min(maxChunkSize, totalFrames - offset);
+                    
+                    // Extract chunk
+                    const leftChunk = new Float32Array(chunkSize);
+                    const rightChunk = new Float32Array(chunkSize);
+                    
+                    for (let i = 0; i < chunkSize; i++) {
+                        leftChunk[i] = leftChannel[offset + i];
+                        rightChunk[i] = rightChannel[offset + i];
+                    }
+
+                    // Process chunk with reverb
+                    const result = reverbProcessor.processChannels(leftChunk, rightChunk);
+                    
+                    if (!result || !result.left || !result.right) {
+                        throw new Error('Failed to process audio chunk');
+                    }
+
+                    // Copy processed chunk to output buffer
+                    for (let i = 0; i < chunkSize; i++) {
+                        outputLeft[offset + i] = result.left[i];
+                        outputRight[offset + i] = result.right[i];
+                    }
+                    
+                    // Update progress
+                    if (offset % (maxChunkSize * 10) === 0) {
+                        const progress = Math.round((offset / totalFrames) * 100);
+                        updateStatus('processing', `Rendering... ${progress}%`);
+                        await new Promise(resolve => setTimeout(resolve, 1));
+                    }
+                }
+
+                updateStatus('ready', 'Audio rendered successfully');
+                return outputBuffer;
+
+            } catch (error) {
+                console.error('Error rendering audio:', error);
+                updateStatus('error', 'Failed to render audio');
+                return null;
+            }
+        }
+
+        async function downloadProcessedAudio() {
+            try {
+                updateStatus('processing', 'Preparing download...');
+                
+                // Render the processed audio
+                const renderedBuffer = await renderProcessedAudioForDownload();
+                if (!renderedBuffer) {
+                    throw new Error('Failed to render audio');
+                }
+
+                // Convert to WAV
+                const wav = bufferToWav(renderedBuffer);
+                const blob = new Blob([wav], { type: 'audio/wav' });
+                
+                // Create download link
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'dragonfly_reverb_processed.wav';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                updateStatus('ready', 'Download started');
+            } catch (error) {
+                console.error('Error downloading audio:', error);
+                updateStatus('error', 'Failed to download audio');
+            }
+        }
+
+        function bufferToWav(buffer) {
+            const length = buffer.length;
+            const numberOfChannels = buffer.numberOfChannels;
+            const sampleRate = buffer.sampleRate;
+            const arrayBuffer = new ArrayBuffer(44 + length * numberOfChannels * 2);
+            const view = new DataView(arrayBuffer);
+
+            // WAV header
+            const writeString = (offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            };
+
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + length * numberOfChannels * 2, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numberOfChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * numberOfChannels * 2, true);
+            view.setUint16(32, numberOfChannels * 2, true);
+            view.setUint16(34, 16, true);
+            writeString(36, 'data');
+            view.setUint32(40, length * numberOfChannels * 2, true);
+
+            // Convert float samples to 16-bit PCM
+            let offset = 44;
+            for (let i = 0; i < length; i++) {
+                for (let channel = 0; channel < numberOfChannels; channel++) {
+                    const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
+                    view.setInt16(offset, sample * 0x7FFF, true);
+                    offset += 2;
+                }
+            }
+
+            return arrayBuffer;
+        }
+
+        function updateStatus(state, message) {
+            const statusLight = document.getElementById('statusLight');
+            const statusText = document.getElementById('statusText');
+
+            statusLight.className = `status-light ${state}`;
+            statusText.textContent = message;
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('loadingScreen').classList.add('active');
+            init();
+        });
+    </script>
+</body>
+</html>

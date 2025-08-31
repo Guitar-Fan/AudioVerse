@@ -10,3 +10,6 @@
 - Bug fixes for note drawing, playback cursor, and MIDI parsing.
 
 In video: Tried to play Megalovania from Undertale midi file, but its too complicated for my website or device, so website crashed. Played William Tell Overture to demonstrate my website's midi playing capabilities
+
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
