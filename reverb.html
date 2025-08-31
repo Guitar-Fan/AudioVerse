@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lexikan JSFX Web Reverb</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Lexikan JSFX Web Reverb</h1>
+            <p>An implementation of the "Lexikan (Tukan)" JSFX reverb effect, running entirely in your browser with the Web Audio API.</p>
+        </header>
+
+        <main>
+            <section class="card" id="file-loader">
+                <h2>1. Upload Audio File</h2>
+                <input type="file" id="audio-file-input" accept="audio/*">
+                <p id="file-name">No file selected.</p>
+            </section>
+
+            <section class="card" id="playback-controls">
+                <h2>2. Playback</h2>
+                <button id="play-button" disabled>Play Processed</button>
+                <button id="stop-button" disabled>Stop</button>
+                <button id="download-button" disabled>Download Processed WAV</button>
+                 <div class="status">
+                    <span id="status-light"></span>
+                    <p id="status-message">Ready. Please upload a file.</p>
+                </div>
+            </section>
+
+            <section class="card" id="params-container">
+                <h2>3. Reverb Parameters</h2>
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label for="preset-select">Presets</label>
+                        <select id="preset-select">
+                            <option value="-1">-- Manual --</option>
+                        </select>
+                    </div>
+                     <div class="control-group">
+                        <label for="algorithm-select">Algorithm</label>
+                        <select id="algorithm-select">
+                            <option value="0">Ambience</option>
+                            <option value="1">Small Room</option>
+                            <option value="2">Medium Room</option>
+                            <option value="3">Hall</option>
+                            <option value="4">Plate</option>
+                        </select>
+                    </div>
+                    <div class="control-group slider-group">
+                        <label for="mix-slider">Mix <span id="mix-value">50%</span></label>
+                        <input type="range" id="mix-slider" min="0" max="1" step="0.01" value="0.5">
+                    </div>
+                    <div class="control-group slider-group">
+                        <label for="length-slider">Length <span id="length-value">1.00s</span></label>
+                        <input type="range" id="length-slider" min="0" max="10" step="0.01" value="1.0">
+                    </div>
+                    <div class="control-group slider-group">
+                        <label for="predelay-slider">Pre-Delay <span id="predelay-value">0ms</span></label>
+                        <input type="range" id="predelay-slider" min="0" max="100" step="1" value="0">
+                    </div>
+                    <div class="control-group slider-group">
+                        <label for="lowdamp-slider">Low Damp <span id="lowdamp-value">240Hz</span></label>
+                        <input type="range" id="lowdamp-slider" min="0" max="1000" step="1" value="240">
+                    </div>
+                    <div class="control-group slider-group">
+                        <label for="highdamp-slider">High Damp <span id="highdamp-value">2400Hz</span></label>
+                        <input type="range" id="highdamp-slider" min="1000" max="10000" step="1" value="2400">
+                    </div>
+                    <div class="control-group slider-group">
+                        <label for="width-slider">Stereo Width <span id="width-value">37%</span></label>
+                        <input type="range" id="width-slider" min="0" max="100" step="1" value="37">
+                    </div>
+                     <div class="control-group">
+                        <label for="mode-select">Mode</label>
+                        <select id="mode-select">
+                            <option value="0">Mono</option>
+                            <option value="1" selected>Stereo</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>

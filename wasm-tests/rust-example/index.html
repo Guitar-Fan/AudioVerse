@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rust WASM Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005c99;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        #output {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            min-height: 100px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🦀 Rust WebAssembly Example</h1>
+    
+    <div class="container">
+        <h2>Basic Functions</h2>
+        <div>
+            <input type="text" id="greetName" placeholder="Enter your name" value="World">
+            <button onclick="testGreet()">Greet</button>
+        </div>
+        <div>
+            <input type="number" id="addA" placeholder="First number" value="5">
+            <input type="number" id="addB" placeholder="Second number" value="3">
+            <button onclick="testAdd()">Add Numbers</button>
+        </div>
+        <div>
+            <input type="number" id="fibN" placeholder="Fibonacci N" value="10">
+            <button onclick="testFibonacci()">Calculate Fibonacci</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>Calculator Class</h2>
+        <div>
+            <button onclick="resetCalculator()">Reset</button>
+            <input type="number" id="calcValue" placeholder="Value" step="0.1" value="10">
+            <button onclick="addToCalculator()">Add</button>
+            <button onclick="multiplyCalculator()">Multiply</button>
+            <button onclick="getCalculatorValue()">Get Value</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>Output</h2>
+        <div id="output">Ready to test Rust WASM functions...</div>
+    </div>
+
+    <script type="module">
+        import init, { 
+            greet, 
+            add, 
+            fibonacci, 
+            Calculator 
+        } from './pkg/rust_wasm_example.js';
+        
+        let calculator;
+        
+        async function run() {
+            await init();
+            calculator = new Calculator();
+            log('✅ Rust WASM module loaded successfully!');
+            window.rustWasm = { greet, add, fibonacci, calculator };
+        }
+        
+        function log(message) {
+            const output = document.getElementById('output');
+            output.innerHTML += message + '\\n';
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        window.testGreet = function() {
+            const name = document.getElementById('greetName').value;
+            log(`Calling greet("${name}"):`);
+            rustWasm.greet(name);
+        };
+        
+        window.testAdd = function() {
+            const a = parseInt(document.getElementById('addA').value);
+            const b = parseInt(document.getElementById('addB').value);
+            const result = rustWasm.add(a, b);
+            log(`add(${a}, ${b}) = ${result}`);
+        };
+        
+        window.testFibonacci = function() {
+            const n = parseInt(document.getElementById('fibN').value);
+            const start = performance.now();
+            const result = rustWasm.fibonacci(n);
+            const end = performance.now();
+            log(`fibonacci(${n}) = ${result} (took ${(end-start).toFixed(2)}ms)`);
+        };
+        
+        window.resetCalculator = function() {
+            rustWasm.calculator.reset();
+            log('Calculator reset to 0');
+        };
+        
+        window.addToCalculator = function() {
+            const value = parseFloat(document.getElementById('calcValue').value);
+            rustWasm.calculator.add(value);
+            log(`Added ${value} to calculator`);
+        };
+        
+        window.multiplyCalculator = function() {
+            const value = parseFloat(document.getElementById('calcValue').value);
+            rustWasm.calculator.multiply(value);
+            log(`Multiplied calculator by ${value}`);
+        };
+        
+        window.getCalculatorValue = function() {
+            const value = rustWasm.calculator.value;
+            log(`Calculator current value: ${value}`);
+        };
+        
+        window.log = log;
+        run();
+    </script>
+</body>
+</html>

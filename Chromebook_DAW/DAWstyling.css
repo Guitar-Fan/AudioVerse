@@ -1680,6 +1680,17 @@ label.upload-btn input[type="file"] { display: none; }
   background: linear-gradient(145deg, #d0ccb8, #f8f8f0) !important;
 }
 
+/* Active algorithm button state */
+.lexicon-button.active {
+  background: linear-gradient(145deg, #d0ccb8, #a8a498) !important;
+  border-top: 2px solid #a8a498 !important;
+  border-left: 2px solid #a8a498 !important;
+  border-bottom: 2px solid #fff !important;
+  border-right: 2px solid #fff !important;
+  color: #fff !important;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.5) !important;
+}
+
 /* Fader Section */
 .lexicon-faders {
   display: grid !important;
