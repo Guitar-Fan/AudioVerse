@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WASM Audio Test</title>
+</head>
+<body>
+    <h1>Testing Rust WASM Audio</h1>
+    <button id="testBtn">Test Audio</button>
+    <div id="output"></div>
+    
+    <script type="module">
+        import init, { AudioSynthesizer, WaveShape, FilterType } from './pkg/rust_audio_synth.js';
+        
+        async function test() {
+            try {
+                console.log('Initializing WASM...');
+                await init();
+                console.log('WASM initialized successfully');
+                
+                console.log('Creating AudioContext...');
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('AudioContext created:', audioContext);
+                
+                console.log('Creating AudioSynthesizer...');
+                const synth = new AudioSynthesizer(audioContext.sampleRate, 4);
+                console.log('AudioSynthesizer created:', synth);
+                
+                document.getElementById('output').innerHTML = '<p style="color: green;">✅ WASM Audio Engine loaded successfully!</p>';
+                
+                document.getElementById('testBtn').addEventListener('click', () => {
+                    console.log('Playing test note...');
+                    synth.note_on(60, 0.5); // Middle C
+                    setTimeout(() => {
+                        synth.note_off(60);
+                        console.log('Note off');
+                    }, 1000);
+                });
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('output').innerHTML = `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        test();
+    </script>
+</body>
+</html>

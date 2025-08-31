@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rust WASM Audio Synthesis Studio</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .studio-container {
+            display: grid;
+            grid-template-areas: 
+                "header header"
+                "controls visualizer"
+                "keyboard keyboard"
+                "plugins plugins";
+            grid-template-rows: auto 1fr auto auto;
+            grid-template-columns: 400px 1fr;
+            min-height: 100vh;
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .studio-header {
+            grid-area: header;
+            background: linear-gradient(135deg, #7c3aed 0%, #c084fc 100%);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .studio-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .studio-header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .control-panel {
+            grid-area: controls;
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            overflow-y: auto;
+            max-height: 70vh;
+        }
+
+        .visualizer-panel {
+            grid-area: visualizer;
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .keyboard-panel {
+            grid-area: keyboard;
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 1rem;
+            padding: 1rem;
+        }
+
+        .plugin-panel {
+            grid-area: plugins;
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #a78bfa;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .control-group h3 {
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 0.8rem;
+            color: #cbd5e1;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .control-label {
+            min-width: 80px;
+            font-size: 0.875rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .slider-container {
+            flex: 1;
+            position: relative;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #64748b 0%, #475569 100%);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7c3aed 0%, #c084fc 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(124, 58, 237, 0.4);
+            border: 2px solid #1e293b;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7c3aed 0%, #c084fc 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(124, 58, 237, 0.4);
+            border: 2px solid #1e293b;
+        }
+
+        .value-display {
+            min-width: 60px;
+            text-align: right;
+            font-family: 'Monaco', monospace;
+            font-size: 0.8rem;
+            color: #e2e8f0;
+            background: rgba(51, 65, 85, 0.8);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .preset-button {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            color: #e2e8f0;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+            text-align: center;
+        }
+
+        .preset-button:hover {
+            background: linear-gradient(135deg, #7c3aed 0%, #c084fc 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+        }
+
+        .preset-button.active {
+            background: linear-gradient(135deg, #7c3aed 0%, #c084fc 100%);
+            box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
+        }
+
+        .wave-shape-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+
+        .wave-shape-button {
+            background: rgba(51, 65, 85, 0.8);
+            color: #e2e8f0;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .wave-shape-button:hover {
+            background: rgba(124, 58, 237, 0.8);
+            transform: translateY(-1px);
+        }
+
+        .wave-shape-button.active {
+            background: linear-gradient(135deg, #7c3aed 0%, #c084fc 100%);
+            box-shadow: 0 0 15px rgba(124, 58, 237, 0.4);
+        }
+
+        .canvas-container {
+            position: relative;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .keyboard {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 120px;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .piano-key {
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.1s ease;
+        }
+
+        .white-key {
+            width: 40px;
+            height: 80px;
+            background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 1px solid #cbd5e1;
+            border-radius: 0 0 4px 4px;
+            margin-right: 2px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 8px;
+            font-size: 0.7rem;
+            color: #475569;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .white-key:hover {
+            background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
+        }
+
+        .white-key.active {
+            background: linear-gradient(180deg, #7c3aed 0%, #6d28d9 100%);
+            color: white;
+            transform: translateY(2px);
+        }
+
+        .black-key {
+            width: 24px;
+            height: 50px;
+            background: linear-gradient(180deg, #374151 0%, #1f2937 100%);
+            border: 1px solid #111827;
+            border-radius: 0 0 2px 2px;
+            position: absolute;
+            top: 0;
+            z-index: 2;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .black-key:hover {
+            background: linear-gradient(180deg, #4b5563 0%, #374151 100%);
+        }
+
+        .black-key.active {
+            background: linear-gradient(180deg, #7c3aed 0%, #6d28d9 100%);
+            transform: translateY(1px);
+        }
+
+        .status-bar {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            color: #94a3b8;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .voice-count {
+            color: #7c3aed;
+            font-weight: 600;
+        }
+
+        .master-controls {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .master-volume {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(124, 58, 237, 0.3);
+            border-top: 4px solid #7c3aed;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #e2e8f0;
+            font-size: 1.2rem;
+            text-align: center;
+        }
+
+        .error-message {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .studio-container {
+                grid-template-areas: 
+                    "header"
+                    "controls"
+                    "visualizer"
+                    "keyboard"
+                    "plugins";
+                grid-template-columns: 1fr;
+            }
+
+            .control-panel {
+                max-height: none;
+            }
+
+            .white-key {
+                width: 32px;
+                height: 60px;
+            }
+
+            .black-key {
+                width: 20px;
+                height: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">
+            Loading Rust WASM Audio Engine...<br>
+            <small>Initializing synthesis components</small>
+        </div>
+    </div>
+
+    <div class="studio-container" style="display: none;">
+        <header class="studio-header">
+            <h1>🎵 Rust WASM Audio Synthesis Studio</h1>
+            <p>Professional polyphonic synthesizer powered by Rust WebAssembly</p>
+        </header>
+
+        <div class="master-controls">
+            <div class="master-volume">
+                <label>Master</label>
+                <input type="range" id="masterVolume" class="slider" min="0" max="1" step="0.01" value="0.8">
+                <span id="masterVolumeDisplay" class="value-display">80%</span>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="section-title">Synthesis Controls</div>
+
+            <div class="control-group">
+                <h3>Presets</h3>
+                <div class="preset-grid" id="presetGrid">
+                    <!-- Presets will be populated here -->
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Waveform</h3>
+                <div class="wave-shape-grid">
+                    <button class="wave-shape-button active" data-wave="0">Sine</button>
+                    <button class="wave-shape-button" data-wave="1">Saw</button>
+                    <button class="wave-shape-button" data-wave="2">Square</button>
+                    <button class="wave-shape-button" data-wave="3">Triangle</button>
+                    <button class="wave-shape-button" data-wave="4">Noise</button>
+                    <button class="wave-shape-button" data-wave="5">Custom</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Envelope (ADSR)</h3>
+                <div class="control-row">
+                    <span class="control-label">Attack</span>
+                    <div class="slider-container">
+                        <input type="range" id="attackSlider" class="slider" min="0.001" max="2" step="0.001" value="0.1">
+                    </div>
+                    <span id="attackDisplay" class="value-display">0.10s</span>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Decay</span>
+                    <div class="slider-container">
+                        <input type="range" id="decaySlider" class="slider" min="0.01" max="2" step="0.01" value="0.2">
+                    </div>
+                    <span id="decayDisplay" class="value-display">0.20s</span>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Sustain</span>
+                    <div class="slider-container">
+                        <input type="range" id="sustainSlider" class="slider" min="0" max="1" step="0.01" value="0.7">
+                    </div>
+                    <span id="sustainDisplay" class="value-display">70%</span>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Release</span>
+                    <div class="slider-container">
+                        <input type="range" id="releaseSlider" class="slider" min="0.01" max="3" step="0.01" value="0.5">
+                    </div>
+                    <span id="releaseDisplay" class="value-display">0.50s</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Filter</h3>
+                <div class="control-row">
+                    <span class="control-label">Type</span>
+                    <select id="filterType" style="flex: 1; padding: 0.5rem; background: rgba(51, 65, 85, 0.8); color: #e2e8f0; border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 0.25rem;">
+                        <option value="0">Low Pass</option>
+                        <option value="1">High Pass</option>
+                        <option value="2">Band Pass</option>
+                        <option value="3">Notch</option>
+                    </select>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Cutoff</span>
+                    <div class="slider-container">
+                        <input type="range" id="cutoffSlider" class="slider" min="20" max="8000" step="1" value="1000">
+                    </div>
+                    <span id="cutoffDisplay" class="value-display">1000 Hz</span>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Resonance</span>
+                    <div class="slider-container">
+                        <input type="range" id="resonanceSlider" class="slider" min="0.1" max="10" step="0.1" value="1">
+                    </div>
+                    <span id="resonanceDisplay" class="value-display">1.0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="visualizer-panel">
+            <div class="section-title">Waveform Visualizer</div>
+            <div class="canvas-container">
+                <canvas id="waveformCanvas" width="600" height="200"></canvas>
+            </div>
+            
+            <div class="section-title">Spectrum Analyzer</div>
+            <div class="canvas-container">
+                <canvas id="spectrumCanvas" width="600" height="150"></canvas>
+            </div>
+        </div>
+
+        <div class="keyboard-panel">
+            <div class="section-title">Piano Keyboard</div>
+            <div class="keyboard" id="keyboard">
+                <!-- Piano keys will be generated here -->
+            </div>
+        </div>
+
+        <div class="plugin-panel">
+            <div class="section-title">Plugin System</div>
+            <p style="color: #94a3b8; margin-bottom: 1rem;">Advanced plugin architecture for extensible audio processing</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div style="background: rgba(51, 65, 85, 0.5); padding: 1rem; border-radius: 0.5rem;">
+                    <h4 style="color: #a78bfa; margin-bottom: 0.5rem;">Synthesis Engine</h4>
+                    <p style="font-size: 0.875rem; color: #cbd5e1;">Multi-voice polyphonic synthesis with advanced envelope and filter processing</p>
+                </div>
+                <div style="background: rgba(51, 65, 85, 0.5); padding: 1rem; border-radius: 0.5rem;">
+                    <h4 style="color: #a78bfa; margin-bottom: 0.5rem;">Real-time Processing</h4>
+                    <p style="font-size: 0.875rem; color: #cbd5e1;">WebAssembly-powered real-time audio processing with near-native performance</p>
+                </div>
+                <div style="background: rgba(51, 65, 85, 0.5); padding: 1rem; border-radius: 0.5rem;">
+                    <h4 style="color: #a78bfa; margin-bottom: 0.5rem;">Preset System</h4>
+                    <p style="font-size: 0.875rem; color: #cbd5e1;">Professional preset management with instant parameter recall</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <span>Active Voices: <span class="voice-count" id="voiceCount">0</span></span>
+            <span>Sample Rate: <span id="sampleRate">44100 Hz</span></span>
+            <span>Engine: Rust WASM</span>
+        </div>
+    </div>
+
+    <div id="errorContainer"></div>
+
+    <script type="module">
+        import init, { 
+            AudioSynthesizer, 
+            WaveShape, 
+            FilterType,
+            generate_waveform_data,
+            create_default_presets
+        } from './pkg/rust_audio_synth.js';
+
+        class AudioStudio {
+            constructor() {
+                this.audioContext = null;
+                this.synthesizer = null;
+                this.isPlaying = false;
+                this.activeNotes = new Set();
+                this.scriptProcessor = null;
+                this.waveformCanvas = null;
+                this.spectrumCanvas = null;
+                this.waveformCtx = null;
+                this.spectrumCtx = null;
+                this.presets = [];
+                this.currentPreset = null;
+                
+                this.keyMap = {
+                    'KeyA': 60, 'KeyW': 61, 'KeyS': 62, 'KeyE': 63, 'KeyD': 64,
+                    'KeyF': 65, 'KeyT': 66, 'KeyG': 67, 'KeyY': 68, 'KeyH': 69,
+                    'KeyU': 70, 'KeyJ': 71, 'KeyK': 72, 'KeyO': 73, 'KeyL': 74,
+                    'KeyP': 75, 'Semicolon': 76
+                };
+            }
+
+            async initialize() {
+                try {
+                    // Initialize WASM module
+                    await init();
+                    
+                    // Initialize audio context
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    if (this.audioContext.state === 'suspended') {
+                        await this.audioContext.resume();
+                    }
+                    
+                    // Initialize synthesizer
+                    this.synthesizer = new AudioSynthesizer(this.audioContext.sampleRate, 16);
+                    
+                    // Set up audio processing
+                    this.setupAudioProcessing();
+                    
+                    // Initialize UI
+                    this.setupUI();
+                    this.setupKeyboard();
+                    this.setupEventListeners();
+                    this.loadPresets();
+                    
+                    // Hide loading screen
+                    document.getElementById('loadingScreen').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('loadingScreen').style.display = 'none';
+                        document.querySelector('.studio-container').style.display = 'grid';
+                    }, 500);
+                    
+                    console.log('Audio Studio initialized successfully');
+                    this.updateDisplay();
+                    
+                } catch (error) {
+                    this.showError('Failed to initialize audio studio: ' + error.message);
+                    console.error(error);
+                }
+            }
+
+            setupAudioProcessing() {
+                // Create script processor for real-time audio
+                this.scriptProcessor = this.audioContext.createScriptProcessor(4096, 0, 2);
+                
+                this.scriptProcessor.onaudioprocess = (event) => {
+                    const outputBufferL = event.outputBuffer.getChannelData(0);
+                    const outputBufferR = event.outputBuffer.getChannelData(1);
+                    const bufferLength = outputBufferL.length;
+                    
+                    // Generate audio from Rust synthesizer
+                    const audioData = this.synthesizer.generate_buffer(bufferLength);
+                    
+                    // Fill stereo output buffers
+                    for (let i = 0; i < bufferLength; i++) {
+                        const sample = audioData[i] || 0;
+                        outputBufferL[i] = sample;
+                        outputBufferR[i] = sample;
+                    }
+                    
+                    // Update visualizations
+                    this.updateVisualizations(audioData);
+                };
+                
+                this.scriptProcessor.connect(this.audioContext.destination);
+            }
+
+            setupUI() {
+                // Initialize canvases
+                this.waveformCanvas = document.getElementById('waveformCanvas');
+                this.spectrumCanvas = document.getElementById('spectrumCanvas');
+                this.waveformCtx = this.waveformCanvas.getContext('2d');
+                this.spectrumCtx = this.spectrumCanvas.getContext('2d');
+                
+                // Set up sample rate display
+                document.getElementById('sampleRate').textContent = this.audioContext.sampleRate + ' Hz';
+            }
+
+            setupKeyboard() {
+                const keyboard = document.getElementById('keyboard');
+                const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                const startNote = 48; // C3
+                const numOctaves = 3;
+                
+                for (let octave = 0; octave < numOctaves; octave++) {
+                    for (let note = 0; note < 12; note++) {
+                        const noteNumber = startNote + octave * 12 + note;
+                        const noteName = notes[note];
+                        const isBlack = noteName.includes('#');
+                        
+                        const key = document.createElement('div');
+                        key.className = isBlack ? 'piano-key black-key' : 'piano-key white-key';
+                        key.dataset.note = noteNumber;
+                        
+                        if (!isBlack) {
+                            key.textContent = noteName + (3 + octave);
+                            keyboard.appendChild(key);
+                        }
+                        
+                        key.addEventListener('mousedown', (e) => {
+                            e.preventDefault();
+                            this.noteOn(noteNumber, 0.8);
+                        });
+                        
+                        key.addEventListener('mouseup', (e) => {
+                            e.preventDefault();
+                            this.noteOff(noteNumber);
+                        });
+                        
+                        key.addEventListener('mouseleave', () => {
+                            this.noteOff(noteNumber);
+                        });
+                        
+                        if (isBlack) {
+                            const lastWhiteKey = keyboard.lastElementChild;
+                            if (lastWhiteKey) {
+                                lastWhiteKey.style.position = 'relative';
+                                key.style.left = '-12px';
+                                keyboard.appendChild(key);
+                            }
+                        }
+                    }
+                }
+            }
+
+            setupEventListeners() {
+                // Master volume control
+                const masterVolume = document.getElementById('masterVolume');
+                masterVolume.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    this.synthesizer.set_master_volume(value);
+                    document.getElementById('masterVolumeDisplay').textContent = Math.round(value * 100) + '%';
+                });
+
+                // Wave shape buttons
+                document.querySelectorAll('.wave-shape-button').forEach(button => {
+                    button.addEventListener('click', () => {
+                        document.querySelectorAll('.wave-shape-button').forEach(b => b.classList.remove('active'));
+                        button.classList.add('active');
+                        const waveType = parseInt(button.dataset.wave);
+                        this.synthesizer.set_global_wave_shape(waveType);
+                    });
+                });
+
+                // Envelope controls
+                this.setupSliderControl('attackSlider', 'attackDisplay', (val) => {
+                    this.updateEnvelope();
+                    return val.toFixed(3) + 's';
+                });
+                
+                this.setupSliderControl('decaySlider', 'decayDisplay', (val) => {
+                    this.updateEnvelope();
+                    return val.toFixed(2) + 's';
+                });
+                
+                this.setupSliderControl('sustainSlider', 'sustainDisplay', (val) => {
+                    this.updateEnvelope();
+                    return Math.round(val * 100) + '%';
+                });
+                
+                this.setupSliderControl('releaseSlider', 'releaseDisplay', (val) => {
+                    this.updateEnvelope();
+                    return val.toFixed(2) + 's';
+                });
+
+                // Filter controls
+                document.getElementById('filterType').addEventListener('change', (e) => {
+                    this.updateFilter();
+                });
+                
+                this.setupSliderControl('cutoffSlider', 'cutoffDisplay', (val) => {
+                    this.updateFilter();
+                    return Math.round(val) + ' Hz';
+                });
+                
+                this.setupSliderControl('resonanceSlider', 'resonanceDisplay', (val) => {
+                    this.updateFilter();
+                    return val.toFixed(1);
+                });
+
+                // Keyboard events
+                document.addEventListener('keydown', (e) => {
+                    if (e.repeat) return;
+                    const noteNumber = this.keyMap[e.code];
+                    if (noteNumber !== undefined) {
+                        this.noteOn(noteNumber, 0.8);
+                        e.preventDefault();
+                    }
+                });
+
+                document.addEventListener('keyup', (e) => {
+                    const noteNumber = this.keyMap[e.code];
+                    if (noteNumber !== undefined) {
+                        this.noteOff(noteNumber);
+                        e.preventDefault();
+                    }
+                });
+
+                // Prevent context menu on right click
+                document.addEventListener('contextmenu', (e) => e.preventDefault());
+            }
+
+            setupSliderControl(sliderId, displayId, formatter) {
+                const slider = document.getElementById(sliderId);
+                const display = document.getElementById(displayId);
+                
+                slider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    display.textContent = formatter(value);
+                });
+            }
+
+            updateEnvelope() {
+                const attack = parseFloat(document.getElementById('attackSlider').value);
+                const decay = parseFloat(document.getElementById('decaySlider').value);
+                const sustain = parseFloat(document.getElementById('sustainSlider').value);
+                const release = parseFloat(document.getElementById('releaseSlider').value);
+                
+                this.synthesizer.set_global_envelope(attack, decay, sustain, release);
+            }
+
+            updateFilter() {
+                const filterType = parseInt(document.getElementById('filterType').value);
+                const cutoff = parseFloat(document.getElementById('cutoffSlider').value);
+                const resonance = parseFloat(document.getElementById('resonanceSlider').value);
+                
+                this.synthesizer.set_global_filter(cutoff, resonance, filterType);
+            }
+
+            loadPresets() {
+                try {
+                    this.presets = create_default_presets();
+                    console.log('Loaded presets:', this.presets);
+                    const presetGrid = document.getElementById('presetGrid');
+                    
+                    this.presets.forEach((preset, index) => {
+                        console.log(`Preset ${index}:`, preset);
+                        const button = document.createElement('button');
+                        button.className = 'preset-button';
+                        button.textContent = preset.name || `Preset ${index + 1}`;
+                        button.addEventListener('click', () => {
+                            this.loadPreset(preset);
+                            document.querySelectorAll('.preset-button').forEach(b => b.classList.remove('active'));
+                            button.classList.add('active');
+                        });
+                        presetGrid.appendChild(button);
+                    });
+                } catch (error) {
+                    console.error('Error loading presets:', error);
+                    // Create fallback presets
+                    const fallbackPresets = [
+                        { name: 'Classic Lead', wave_shape: 1, attack: 0.1, decay: 0.2, sustain: 0.7, release: 0.5, filter_cutoff: 1000, filter_resonance: 1, filter_type: 0 },
+                        { name: 'Warm Pad', wave_shape: 0, attack: 0.8, decay: 0.3, sustain: 0.9, release: 1.2, filter_cutoff: 800, filter_resonance: 0.5, filter_type: 0 },
+                        { name: 'Bass', wave_shape: 2, attack: 0.01, decay: 0.1, sustain: 0.8, release: 0.3, filter_cutoff: 400, filter_resonance: 2, filter_type: 0 },
+                        { name: 'Pluck', wave_shape: 1, attack: 0.01, decay: 0.05, sustain: 0.0, release: 0.2, filter_cutoff: 2000, filter_resonance: 1, filter_type: 0 }
+                    ];
+                    this.createPresetButtons(fallbackPresets);
+                }
+            }
+
+            createPresetButtons(presets) {
+                const presetGrid = document.getElementById('presetGrid');
+                presets.forEach((preset, index) => {
+                    const button = document.createElement('button');
+                    button.className = 'preset-button';
+                    button.textContent = preset.name;
+                    button.addEventListener('click', () => {
+                        this.loadPreset(preset);
+                        document.querySelectorAll('.preset-button').forEach(b => b.classList.remove('active'));
+                        button.classList.add('active');
+                    });
+                    presetGrid.appendChild(button);
+                });
+            }
+
+            loadPreset(preset) {
+                try {
+                    console.log('Loading preset:', preset);
+                    
+                    // Apply preset parameters directly to synthesizer
+                    this.synthesizer.set_global_wave_shape(preset.wave_shape || 0);
+                    this.synthesizer.set_global_envelope(
+                        preset.attack || 0.1,
+                        preset.decay || 0.2,
+                        preset.sustain || 0.7,
+                        preset.release || 0.5
+                    );
+                    this.synthesizer.set_global_filter(
+                        preset.filter_cutoff || 1000,
+                        preset.filter_resonance || 1,
+                        preset.filter_type || 0
+                    );
+                    
+                    // Update UI controls
+                    document.getElementById('attackSlider').value = preset.attack || 0.1;
+                    document.getElementById('decaySlider').value = preset.decay || 0.2;
+                    document.getElementById('sustainSlider').value = preset.sustain || 0.7;
+                    document.getElementById('releaseSlider').value = preset.release || 0.5;
+                    document.getElementById('cutoffSlider').value = preset.filter_cutoff || 1000;
+                    document.getElementById('resonanceSlider').value = preset.filter_resonance || 1;
+                    document.getElementById('filterType').value = preset.filter_type || 0;
+                    
+                    // Update wave shape
+                    document.querySelectorAll('.wave-shape-button').forEach(b => b.classList.remove('active'));
+                    const waveButton = document.querySelector(`[data-wave="${preset.wave_shape || 0}"]`);
+                    if (waveButton) waveButton.classList.add('active');
+                    
+                    // Update displays
+                    document.getElementById('attackDisplay').textContent = (preset.attack || 0.1).toFixed(3) + 's';
+                    document.getElementById('decayDisplay').textContent = (preset.decay || 0.2).toFixed(2) + 's';
+                    document.getElementById('sustainDisplay').textContent = Math.round((preset.sustain || 0.7) * 100) + '%';
+                    document.getElementById('releaseDisplay').textContent = (preset.release || 0.5).toFixed(2) + 's';
+                    document.getElementById('cutoffDisplay').textContent = Math.round(preset.filter_cutoff || 1000) + ' Hz';
+                    document.getElementById('resonanceDisplay').textContent = (preset.filter_resonance || 1).toFixed(1);
+                    
+                    console.log('Preset loaded successfully:', preset.name);
+                } catch (error) {
+                    console.error('Error loading preset:', error);
+                }
+            }
+
+            noteOn(noteNumber, velocity) {
+                if (this.activeNotes.has(noteNumber)) return;
+                
+                this.activeNotes.add(noteNumber);
+                this.synthesizer.note_on(noteNumber, velocity);
+                
+                // Visual feedback
+                const key = document.querySelector(`[data-note="${noteNumber}"]`);
+                if (key) key.classList.add('active');
+                
+                this.updateDisplay();
+            }
+
+            noteOff(noteNumber) {
+                if (!this.activeNotes.has(noteNumber)) return;
+                
+                this.activeNotes.delete(noteNumber);
+                this.synthesizer.note_off(noteNumber);
+                
+                // Visual feedback
+                const key = document.querySelector(`[data-note="${noteNumber}"]`);
+                if (key) key.classList.remove('active');
+                
+                this.updateDisplay();
+            }
+
+            updateVisualizations(audioData) {
+                // Update waveform visualization
+                this.drawWaveform(audioData);
+                
+                // Update spectrum visualization (simplified)
+                this.drawSpectrum(audioData);
+            }
+
+            drawWaveform(audioData) {
+                const canvas = this.waveformCanvas;
+                const ctx = this.waveformCtx;
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(0, 0, width, height);
+                
+                if (!audioData || audioData.length === 0) return;
+                
+                const step = Math.floor(audioData.length / width);
+                const centerY = height / 2;
+                
+                ctx.strokeStyle = '#7c3aed';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                for (let x = 0; x < width; x++) {
+                    const sampleIndex = x * step;
+                    const sample = audioData[sampleIndex] || 0;
+                    const y = centerY + sample * centerY * 0.8;
+                    
+                    if (x === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                
+                ctx.stroke();
+                
+                // Draw center line
+                ctx.strokeStyle = '#334155';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, centerY);
+                ctx.lineTo(width, centerY);
+                ctx.stroke();
+            }
+
+            drawSpectrum(audioData) {
+                const canvas = this.spectrumCanvas;
+                const ctx = this.spectrumCtx;
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(0, 0, width, height);
+                
+                if (!audioData || audioData.length === 0) return;
+                
+                // Simple magnitude calculation for visualization
+                const fftSize = 256;
+                const step = Math.floor(audioData.length / fftSize);
+                const magnitudes = [];
+                
+                for (let i = 0; i < fftSize / 2; i++) {
+                    let magnitude = 0;
+                    const startIdx = i * step;
+                    const endIdx = Math.min(startIdx + step, audioData.length);
+                    
+                    for (let j = startIdx; j < endIdx; j++) {
+                        magnitude += Math.abs(audioData[j]);
+                    }
+                    
+                    magnitude = magnitude / (endIdx - startIdx);
+                    magnitudes.push(magnitude);
+                }
+                
+                const barWidth = width / magnitudes.length;
+                
+                ctx.fillStyle = '#7c3aed';
+                
+                magnitudes.forEach((magnitude, index) => {
+                    const barHeight = magnitude * height * 2;
+                    const x = index * barWidth;
+                    const y = height - barHeight;
+                    
+                    ctx.fillRect(x, y, barWidth - 1, barHeight);
+                });
+            }
+
+            updateDisplay() {
+                const voiceCount = this.synthesizer.get_active_voice_count();
+                document.getElementById('voiceCount').textContent = voiceCount;
+            }
+
+            showError(message) {
+                const errorContainer = document.getElementById('errorContainer');
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = message;
+                errorContainer.appendChild(errorDiv);
+                
+                setTimeout(() => {
+                    errorDiv.remove();
+                }, 5000);
+            }
+        }
+
+        // Initialize the audio studio
+        const studio = new AudioStudio();
+        studio.initialize();
+
+        // Expose to global scope for debugging
+        window.audioStudio = studio;
+    </script>
+</body>
+</html>
