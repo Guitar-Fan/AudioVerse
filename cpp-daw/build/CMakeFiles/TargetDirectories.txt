@@ -1,0 +1,12 @@
+/workspaces/LocalWebpageIdeas/cpp-daw/build/CMakeFiles/install/local.dir
+/workspaces/LocalWebpageIdeas/cpp-daw/build/CMakeFiles/install.dir
+/workspaces/LocalWebpageIdeas/cpp-daw/build/CMakeFiles/list_install_components.dir
+/workspaces/LocalWebpageIdeas/cpp-daw/build/CMakeFiles/rebuild_cache.dir
+/workspaces/LocalWebpageIdeas/cpp-daw/build/CMakeFiles/edit_cache.dir
+/workspaces/LocalWebpageIdeas/cpp-daw/build/CMakeFiles/clean-all.dir
+/workspaces/LocalWebpageIdeas/cpp-daw/build/CMakeFiles/format.dir
+/workspaces/LocalWebpageIdeas/cpp-daw/build/CMakeFiles/dawtest.dir
+/workspaces/LocalWebpageIdeas/cpp-daw/build/CMakeFiles/cppdaw.dir
+/workspaces/LocalWebpageIdeas/cpp-daw/build/CMakeFiles/install/strip.dir
+/workspaces/LocalWebpageIdeas/cpp-daw/build/CMakeFiles/dawplugins.dir
+/workspaces/LocalWebpageIdeas/cpp-daw/build/CMakeFiles/dawcore.dir

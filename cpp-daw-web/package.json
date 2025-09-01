@@ -1,0 +1,29 @@
+{
+  "name": "cpp-daw-web-interface",
+  "version": "1.0.0",
+  "description": "Web interface for C++ DAW with WebSocket bridge",
+  "main": "websocket-bridge.js",
+  "scripts": {
+    "start": "node websocket-bridge.js",
+    "dev": "nodemon websocket-bridge.js",
+    "serve": "python3 -m http.server 8000"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "daw",
+    "audio",
+    "websocket",
+    "cpp",
+    "music"
+  ],
+  "author": "Guitar-Fan",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

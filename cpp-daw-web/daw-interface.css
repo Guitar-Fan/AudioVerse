@@ -1,0 +1,598 @@
+/* C++ DAW Web Interface Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #1a1a1a;
+    color: #e0e0e0;
+    overflow: hidden;
+}
+
+.daw-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Header Styles */
+.daw-header {
+    background: linear-gradient(135deg, #2d2d2d, #1f1f1f);
+    border-bottom: 2px solid #333;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+}
+
+.header-left h1 {
+    color: #4CAF50;
+    font-size: 1.5em;
+    margin-bottom: 4px;
+}
+
+.header-left h1 i {
+    margin-right: 8px;
+    color: #66BB6A;
+}
+
+.connection-status {
+    display: flex;
+    align-items: center;
+    font-size: 0.85em;
+    color: #888;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.offline {
+    background: #f44336;
+}
+
+.status-indicator.online {
+    background: #4CAF50;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Transport Controls */
+.transport-controls {
+    display: flex;
+    gap: 8px;
+    margin-right: 20px;
+}
+
+.transport-btn {
+    width: 48px;
+    height: 48px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #404040, #2d2d2d);
+    color: #e0e0e0;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.transport-btn:hover {
+    background: linear-gradient(135deg, #4a4a4a, #373737);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.transport-btn:active {
+    transform: translateY(0);
+}
+
+.transport-btn.play-btn:hover {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+}
+
+.transport-btn.record-btn:hover {
+    background: linear-gradient(135deg, #f44336, #d32f2f);
+}
+
+.time-display {
+    background: #000;
+    color: #00ff00;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 1.1em;
+    border: 1px solid #333;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.separator {
+    color: #666;
+    margin: 0 8px;
+}
+
+/* Header Right Controls */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.tempo-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tempo-control label {
+    color: #ccc;
+    font-size: 0.9em;
+}
+
+.tempo-control input {
+    width: 60px;
+    padding: 6px;
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #e0e0e0;
+    text-align: center;
+}
+
+.master-volume {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.volume-slider {
+    width: 80px;
+    height: 6px;
+    background: #333;
+    outline: none;
+    border-radius: 3px;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #4CAF50;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* Main Content */
+.daw-main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+/* Sidebars */
+.left-sidebar,
+.right-sidebar {
+    width: 250px;
+    background: #252525;
+    border-right: 1px solid #333;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.right-sidebar {
+    border-left: 1px solid #333;
+    border-right: none;
+}
+
+.sidebar-section {
+    margin-bottom: 25px;
+}
+
+.sidebar-section h3 {
+    color: #4CAF50;
+    margin-bottom: 12px;
+    font-size: 1.1em;
+    border-bottom: 1px solid #333;
+    padding-bottom: 6px;
+}
+
+.add-btn {
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 15px;
+}
+
+.add-btn:hover {
+    background: linear-gradient(135deg, #45a049, #4CAF50);
+    transform: translateY(-1px);
+}
+
+.fx-library {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.fx-item {
+    padding: 12px;
+    background: #333;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #444;
+}
+
+.fx-item:hover {
+    background: #3a3a3a;
+    border-color: #4CAF50;
+    transform: translateX(2px);
+}
+
+.fx-item i {
+    margin-right: 8px;
+    color: #66BB6A;
+}
+
+/* Track Area */
+.track-area {
+    flex: 1;
+    background: #1e1e1e;
+    display: flex;
+    flex-direction: column;
+}
+
+.track-header {
+    background: #2a2a2a;
+    border-bottom: 1px solid #333;
+    padding: 10px;
+    display: flex;
+}
+
+.track-controls {
+    width: 200px;
+    background: #333;
+    border-radius: 6px;
+    padding: 8px;
+    margin-right: 10px;
+}
+
+.track-info {
+    display: grid;
+    grid-template-columns: 1fr 60px 60px 80px;
+    gap: 10px;
+    font-size: 0.9em;
+    color: #ccc;
+    font-weight: 500;
+}
+
+.timeline-ruler {
+    flex: 1;
+    background: #1a1a1a;
+    border-radius: 6px;
+    position: relative;
+    height: 40px;
+    overflow: hidden;
+}
+
+.tracks-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.track-row {
+    display: flex;
+    margin-bottom: 10px;
+    height: 80px;
+    background: #2d2d2d;
+    border-radius: 8px;
+    border: 1px solid #404040;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.track-row:hover {
+    border-color: #4CAF50;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+}
+
+.track-row.selected {
+    border-color: #4CAF50;
+    background: #2f3d2f;
+}
+
+.track-control-panel {
+    width: 200px;
+    background: #333;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.track-name {
+    color: #e0e0e0;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.track-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.track-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    background: #404040;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 0.8em;
+    transition: all 0.2s ease;
+}
+
+.track-btn:hover {
+    background: #4a4a4a;
+}
+
+.track-btn.mute {
+    background: #666;
+}
+
+.track-btn.mute.active {
+    background: #f44336;
+    color: white;
+}
+
+.track-btn.solo.active {
+    background: #ff9800;
+    color: white;
+}
+
+.track-btn.record.active {
+    background: #f44336;
+    color: white;
+    animation: recordBlink 1s infinite;
+}
+
+@keyframes recordBlink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.5; }
+}
+
+.track-slider {
+    flex: 1;
+    height: 4px;
+    background: #444;
+    border-radius: 2px;
+    outline: none;
+}
+
+.track-timeline {
+    flex: 1;
+    background: #222;
+    position: relative;
+    border-left: 1px solid #444;
+}
+
+/* Right Sidebar Content */
+.track-details,
+.fx-parameters,
+.system-info {
+    background: #2a2a2a;
+    border-radius: 6px;
+    padding: 15px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid #333;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* Footer */
+.daw-footer {
+    background: #1a1a1a;
+    border-top: 1px solid #333;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85em;
+    color: #888;
+}
+
+.footer-btn {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1em;
+    cursor: pointer;
+    padding: 6px;
+    margin-left: 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.footer-btn:hover {
+    color: #4CAF50;
+    background: #2a2a2a;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.modal-content {
+    background: #2d2d2d;
+    margin: 10% auto;
+    width: 400px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+}
+
+.close {
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.close:hover {
+    color: #ccc;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    color: #ccc;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.modal-footer {
+    background: #333;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-primary,
+.btn-secondary {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #45a049, #4CAF50);
+}
+
+.btn-secondary {
+    background: #555;
+    color: #ccc;
+}
+
+.btn-secondary:hover {
+    background: #666;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .left-sidebar,
+    .right-sidebar {
+        width: 200px;
+    }
+    
+    .track-control-panel {
+        width: 150px;
+    }
+    
+    .track-info {
+        grid-template-columns: 1fr 40px 40px 60px;
+        font-size: 0.8em;
+    }
+}
+
+/* Scrollbar Styles */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}

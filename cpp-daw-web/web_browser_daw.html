@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++ DAW - Web Interface</title>
+    <link rel="stylesheet" href="daw-interface.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+</head>
+<body>
+    <div class="daw-container">
+        <!-- Header -->
+        <header class="daw-header">
+            <div class="header-left">
+                <h1><i class="fas fa-music"></i> C++ DAW</h1>
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-indicator offline"></span>
+                    <span>Disconnected</span>
+                </div>
+            </div>
+            
+            <div class="header-center">
+                <!-- Transport Controls -->
+                <div class="transport-controls">
+                    <button id="rewindBtn" class="transport-btn" title="Rewind">
+                        <i class="fas fa-backward"></i>
+                    </button>
+                    <button id="playBtn" class="transport-btn play-btn" title="Play">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button id="stopBtn" class="transport-btn" title="Stop">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                    <button id="recordBtn" class="transport-btn record-btn" title="Record">
+                        <i class="fas fa-circle"></i>
+                    </button>
+                </div>
+                
+                <!-- Time Display -->
+                <div class="time-display">
+                    <span id="currentTime">00:00:000</span>
+                    <span class="separator">/</span>
+                    <span id="totalTime">00:00:000</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <!-- Tempo Control -->
+                <div class="tempo-control">
+                    <label>BPM</label>
+                    <input type="number" id="tempoInput" value="120" min="60" max="200" step="1">
+                </div>
+                
+                <!-- Master Volume -->
+                <div class="master-volume">
+                    <label><i class="fas fa-volume-up"></i></label>
+                    <input type="range" id="masterVolume" min="0" max="100" value="75" class="volume-slider">
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="daw-main">
+            <!-- Left Sidebar -->
+            <aside class="left-sidebar">
+                <div class="sidebar-section">
+                    <h3>Tracks</h3>
+                    <button id="addTrackBtn" class="add-btn">
+                        <i class="fas fa-plus"></i> Add Track
+                    </button>
+                    <div id="trackList" class="track-list"></div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>Effects</h3>
+                    <div class="fx-library">
+                        <div class="fx-item" data-fx="delay">
+                            <i class="fas fa-echo"></i> Delay
+                        </div>
+                        <div class="fx-item" data-fx="chorus">
+                            <i class="fas fa-wave-square"></i> Chorus
+                        </div>
+                        <div class="fx-item" data-fx="reverb">
+                            <i class="fas fa-home"></i> Reverb
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Track Area -->
+            <section class="track-area">
+                <div class="track-header">
+                    <div class="track-controls">
+                        <div class="track-info">
+                            <span>Track</span>
+                            <span>Volume</span>
+                            <span>Pan</span>
+                            <span>Effects</span>
+                        </div>
+                    </div>
+                    <div class="timeline-ruler" id="timelineRuler"></div>
+                </div>
+                
+                <div id="tracksContainer" class="tracks-container">
+                    <!-- Tracks will be dynamically added here -->
+                </div>
+            </section>
+
+            <!-- Right Sidebar -->
+            <aside class="right-sidebar">
+                <div class="sidebar-section">
+                    <h3>Selected Track</h3>
+                    <div id="selectedTrackInfo" class="track-details">
+                        <p>No track selected</p>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>Effect Parameters</h3>
+                    <div id="fxParameters" class="fx-parameters">
+                        <p>No effect selected</p>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>System Status</h3>
+                    <div class="system-info">
+                        <div class="info-row">
+                            <span>Sample Rate:</span>
+                            <span id="sampleRate">44100 Hz</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Buffer Size:</span>
+                            <span id="bufferSize">512 samples</span>
+                        </div>
+                        <div class="info-row">
+                            <span>CPU Usage:</span>
+                            <span id="cpuUsage">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Footer -->
+        <footer class="daw-footer">
+            <div class="footer-left">
+                <span>C++ DAW v1.0.0 - Native Audio Engine</span>
+            </div>
+            <div class="footer-right">
+                <button id="settingsBtn" class="footer-btn" title="Settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button id="helpBtn" class="footer-btn" title="Help">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modals -->
+    <div id="trackModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Track Properties</h3>
+                <span class="close" id="closeTrackModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="trackName">Track Name:</label>
+                    <input type="text" id="trackName" placeholder="Enter track name">
+                </div>
+                <div class="form-group">
+                    <label for="trackColor">Color:</label>
+                    <select id="trackColor">
+                        <option value="blue">Blue</option>
+                        <option value="red">Red</option>
+                        <option value="green">Green</option>
+                        <option value="purple">Purple</option>
+                        <option value="orange">Orange</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelTrack" class="btn-secondary">Cancel</button>
+                <button id="createTrack" class="btn-primary">Create Track</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Audio Settings</h3>
+                <span class="close" id="closeSettingsModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="audioDevice">Audio Device:</label>
+                    <select id="audioDevice">
+                        <option value="default">Default</option>
+                        <option value="hw:0">Hardware Device 0</option>
+                        <option value="pulse">PulseAudio</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="sampleRateSelect">Sample Rate:</label>
+                    <select id="sampleRateSelect">
+                        <option value="44100">44.1 kHz</option>
+                        <option value="48000">48 kHz</option>
+                        <option value="96000">96 kHz</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bufferSizeSelect">Buffer Size:</label>
+                    <select id="bufferSizeSelect">
+                        <option value="256">256 samples</option>
+                        <option value="512">512 samples</option>
+                        <option value="1024">1024 samples</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelSettings" class="btn-secondary">Cancel</button>
+                <button id="applySettings" class="btn-primary">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="daw-interface.js"></script>
+</body>
+</html>
