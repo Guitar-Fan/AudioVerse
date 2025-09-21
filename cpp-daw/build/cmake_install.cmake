@@ -1,4 +1,4 @@
-# Install script for directory: /workspaces/LocalWebpageIdeas/cpp-daw
+# Install script for directory: /workspaces/AudioVerse/cpp-daw
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -44,7 +44,7 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/cppdaw"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "/workspaces/LocalWebpageIdeas/cpp-daw/build/cppdaw")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "/workspaces/AudioVerse/cpp-daw/build/cppdaw")
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/cppdaw" AND
      NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/cppdaw")
     if(CMAKE_INSTALL_DO_STRIP)
@@ -55,13 +55,13 @@ endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/cppdaw" TYPE FILE FILES
-    "/workspaces/LocalWebpageIdeas/cpp-daw/include/DAWEngine.hpp"
-    "/workspaces/LocalWebpageIdeas/cpp-daw/include/Track.hpp"
-    "/workspaces/LocalWebpageIdeas/cpp-daw/include/Clip.hpp"
-    "/workspaces/LocalWebpageIdeas/cpp-daw/include/AudioBuffer.hpp"
-    "/workspaces/LocalWebpageIdeas/cpp-daw/include/FXPlugin.hpp"
-    "/workspaces/LocalWebpageIdeas/cpp-daw/include/Transport.hpp"
-    "/workspaces/LocalWebpageIdeas/cpp-daw/plugins/BasicFX.hpp"
+    "/workspaces/AudioVerse/cpp-daw/include/DAWEngine.hpp"
+    "/workspaces/AudioVerse/cpp-daw/include/Track.hpp"
+    "/workspaces/AudioVerse/cpp-daw/include/Clip.hpp"
+    "/workspaces/AudioVerse/cpp-daw/include/AudioBuffer.hpp"
+    "/workspaces/AudioVerse/cpp-daw/include/FXPlugin.hpp"
+    "/workspaces/AudioVerse/cpp-daw/include/Transport.hpp"
+    "/workspaces/AudioVerse/cpp-daw/plugins/BasicFX.hpp"
     )
 endif()
 
@@ -73,5 +73,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/workspaces/LocalWebpageIdeas/cpp-daw/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/workspaces/AudioVerse/cpp-daw/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

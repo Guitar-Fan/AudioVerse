@@ -1,4 +1,4 @@
-# LocalWebpageIdeas - Web Audio Workstation Collection
+# AudioVerse - Web Audio Workstation Collection
 
 A collection of browser-based digital audio workstation tools and synthesizers, featuring advanced WebAssembly-powered audio synthesis.
 
@@ -13,8 +13,6 @@ Our flagship polyphonic synthesizer built with Rust + WebAssembly:
 - Real-time Control: Responsive parameter adjustment and visualization
 - Preset System: Professional presets with instant recall
 - Modern UI: Sleek interface with spectrum analysis and waveform display
-
-Superior replacement for DrawAudio.html with professional-grade synthesis capabilities.
 
 ## 🎛️ Core DAW Tools
 
@@ -38,19 +36,25 @@ Modern wavetable synthesizer for sound design and synthesis. Create and export c
 Reverb Tool (`reverb.html`):  
 Dedicated reverb effect processor for spatial audio enhancement.
 
+Reverb Collection (`reverb-collection.html`):
+Collection of reverb effects and spatial audio tools.
+
 WebAudio DAW Tools (`WebAudioDAWTools.html`):  
 Collection of Web Audio API utilities and tools for development.
 
-## 🧪 WebAssembly Examples & Demos
+## 🧪 WebAssembly Reverb Engines
 
-C++ WASM Math Demo (`wasm-tests/cpp-example/cpp-wasm-math-demo.html`):  
-Educational example showing C++ mathematical operations compiled to WebAssembly.
+C++ Reverb Engine (`wasm-tests/cpp-reverb/`):  
+High-performance reverb effects compiled from C++ to WebAssembly for professional audio processing.
 
-Rust WASM Basic Demo (`wasm-tests/rust-example/rust-wasm-basic-demo.html`):  
-Basic Rust WebAssembly integration demonstration.
+Hibiki Reverb (`wasm-tests/hibiki-reverb/`):  
+Advanced reverb algorithms with WebAssembly acceleration.
 
-Emscripten C++ Demo (`emscripten-cpp-demo.html`):  
-Legacy Emscripten-generated C++ to WebAssembly example.
+Progressive Reverb (`wasm-tests/prog-reverb/`):  
+Modern reverb processing with customizable parameters.
+
+Rust Audio Synth (`wasm-tests/rust-audio-synth/`):  
+Complete audio synthesis framework built in Rust with WebAssembly compilation.
 
 ## 🚀 Quick Start
 
@@ -68,12 +72,7 @@ Legacy Emscripten-generated C++ to WebAssembly example.
 All tools are designed to work locally on Chromebooks and modern web browsers using only HTML, CSS, JavaScript, and WebAssembly (no server required).
 
 ---
-Updated August 31, 2025 - Project cleaned and optimized
+Updated September 21, 2025 - Repository cleaned and renamed to AudioVerse
 
-Sound API Explorer (WebAudioAPIDemo/SoundAPI.html):  
-Experiment with Web Audio API nodes and effects. Build and test audio chains visually.
-
-Still working on coding more standard DAW features.
-
-Used Github Copilot. If you want to demo it, go to the demo link. But feel free to download the files you want to run from my repo (make sure to download the related .js and .css files along with the HTML files to ensure the webpage works properly).
+Used Github Copilot for development. Feel free to download the files you want to run from the repo (make sure to download the related .js and .css files along with the HTML files to ensure the webpage works properly).
 

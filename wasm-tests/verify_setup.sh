@@ -84,13 +84,13 @@ fi
 echo ""
 
 echo "📋 Example Projects:"
-check_file "Rust WASM example" "/workspaces/LocalWebpageIdeas/wasm-tests/rust-example/Cargo.toml"
-check_file "C++ WASM example" "/workspaces/LocalWebpageIdeas/wasm-tests/cpp-example/math_processor.cpp"
-check_file "WASM server" "/workspaces/LocalWebpageIdeas/wasm-tests/wasm_server.py"
+check_file "Rust WASM example" "/workspaces/AudioVerse/wasm-tests/rust-example/Cargo.toml"
+check_file "C++ WASM example" "/workspaces/AudioVerse/wasm-tests/cpp-example/math_processor.cpp"
+check_file "WASM server" "/workspaces/AudioVerse/wasm-tests/wasm_server.py"
 
 echo "🏗️ Build Test:"
 echo "📦 Testing Rust WASM build..."
-cd /workspaces/LocalWebpageIdeas/wasm-tests/rust-example
+cd /workspaces/AudioVerse/wasm-tests/rust-example
 if wasm-pack build --target web --quiet; then
     echo -e "${GREEN}✓ Rust WASM build successful${NC}"
 else
@@ -99,7 +99,7 @@ fi
 
 echo ""
 echo "⚡ Testing C++ WASM build..."
-cd /workspaces/LocalWebpageIdeas/wasm-tests/cpp-example
+cd /workspaces/AudioVerse/wasm-tests/cpp-example
 if emcc math_processor.cpp -o test_build.js -s WASM=1 --bind -O2 2>/dev/null; then
     echo -e "${GREEN}✓ C++ WASM build successful${NC}"
     rm -f test_build.js test_build.wasm 2>/dev/null
@@ -122,7 +122,7 @@ echo ""
 echo -e "${GREEN}✅ Your codespace is fully configured for WebAssembly development!${NC}"
 echo ""
 echo "🚀 Next Steps:"
-echo "   1. Start the development server: cd /workspaces/LocalWebpageIdeas/wasm-tests && python3 wasm_server.py"
+echo "   1. Start the development server: cd /workspaces/AudioVerse/wasm-tests && python3 wasm_server.py"
 echo "   2. Open http://localhost:8090 in your browser"
 echo "   3. Try the Rust and C++ WebAssembly examples"
 echo "   4. Start building your own WASM projects!"

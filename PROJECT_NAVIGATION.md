@@ -1,4 +1,4 @@
-# LocalWebpageIdeas - Project Navigation
+# AudioVerse - Project Navigation
 
 This is a cleaned and organized collection of web audio projects with proper naming conventions.
 

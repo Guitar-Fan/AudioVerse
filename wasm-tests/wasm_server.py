@@ -20,7 +20,7 @@ class WASMHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
     
-    os.chdir('/workspaces/LocalWebpageIdeas/wasm-tests')
+    os.chdir('/workspaces/AudioVerse/wasm-tests')
     
     with socketserver.TCPServer(("", port), WASMHTTPRequestHandler) as httpd:
         print(f"🌐 WASM Development Server running at http://localhost:{port}")
