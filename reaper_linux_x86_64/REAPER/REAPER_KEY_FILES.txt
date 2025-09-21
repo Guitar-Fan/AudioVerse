@@ -1,0 +1,37 @@
+# REAPER DAW Linux Distribution: Key Files Overview
+
+This document provides short technical descriptions of the most important files and folders in the `reaper_linux_x86_64/REAPER` directory that are essential for running the REAPER DAW.
+
+---
+
+## Top-Level Files
+
+- reaper: The main REAPER DAW executable (binary). Launches the DAW and manages all core functionality.
+- libSwell.so: Shared library for GUI abstraction, enabling cross-platform UI (especially for Linux).
+- libSwell.colortheme: Color theme data for the GUI, used by libSwell.
+- EULA.txt: End User License Agreement for REAPER.
+- whatsnew.txt: Changelog with version history and new features.
+
+## Key Folders
+
+- Docs/: Documentation, including the REAPER Quick Start PDF.
+- InstallData/: Contains data files required for installation and configuration (details depend on contents).
+- Plugins/: Core and optional plugins, extensions, and libraries for REAPER. Includes:
+  - elastique3.so: Time-stretching and pitch-shifting engine (binary plugin).
+  - jsfx.so: JSFX audio effects engine (binary plugin).
+  - reaper_.so: Various core plugins for audio, MIDI, video, and other features (e.g., reaper_midi.so, reaper_video.so, reaper_flac.so, etc.).
+  - reaper_python.py: Python API bindings for scripting REAPER.
+  - default_layouts.txt: Default UI layout definitions for the DAW.
+  - FX/: Preset and effect data for built-in and user FX.
+  - Reavura.otf: Font used in the REAPER UI.
+  - reaper_host_x86_64: Host binary for running plugins in a separate process.
+- Resources/: UI resources (icons, cursors, images, fonts) used by the DAW.
+
+---
+
+## Notes
+- Most core functionality is in the `reaper` binary and the `.so` plugin files.
+- The Python API (`reaper_python.py`) allows advanced scripting and automation.
+- The `Resources/` and `Plugins/` folders are essential for full DAW operation and user experience.
+
+For more details, see the official REAPER documentation and the `Docs/` folder.
