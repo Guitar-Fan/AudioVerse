@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Web Browser DAW</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="A Chromebook-friendly advanced DAW web app for audio editing and recording.">
+  <meta name="description" content="AudioVerse: advanced DAW web app for audio editing and recording.">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="DAWstyling.css">
 </head>
@@ -149,9 +149,56 @@
       </button>
     </div>
 
-    <div id="workspace" class="flex-1 overflow-auto bg-gray-900">
-      <div id="timeline" class="sticky top-0 z-10"></div>
-      <div id="tracks"></div>
+    <div id="workspace" class="flex-1 overflow-auto bg-gray-900 flex flex-col">
+      <div class="workspace-main flex-1 overflow-auto">
+        <div id="timeline" class="sticky top-0 z-10"></div>
+        <div id="tracks"></div>
+      </div>
+      
+      <!-- Plugin Strip (Ableton Style) -->
+      <div id="pluginStrip" class="plugin-strip bg-gray-800 border-t border-gray-600 h-48 min-h-48 resize-y overflow-hidden">
+        <!-- Plugin Strip Header -->
+        <div class="plugin-strip-header bg-gray-900 p-2 border-b border-gray-700 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="text-sm font-semibold text-gray-300">
+              Track <span id="currentTrackName">1</span> - Plugins
+            </span>
+            <button id="addPluginBtn" class="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white text-xs rounded font-semibold transition-colors">
+              + Add Plugin
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="togglePluginStrip" class="p-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors" title="Toggle Plugin Strip">
+              <svg width="14" height="14" viewBox="0 0 16 16">
+                <path d="M2 6L8 12L14 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Plugin Strip Content -->
+        <div class="plugin-strip-content flex-1 overflow-auto p-2">
+          <!-- Plugin Chain -->
+          <div class="plugin-chain flex gap-2 h-full">
+            <!-- Empty State -->
+            <div id="pluginEmptyState" class="flex-1 flex items-center justify-center text-gray-500 text-sm">
+              <div class="text-center">
+                <svg width="48" height="48" viewBox="0 0 16 16" class="mx-auto mb-2 opacity-50">
+                  <rect x="2" y="2" width="12" height="12" rx="2" fill="currentColor"/>
+                  <circle cx="6" cy="6" r="1.5" fill="#111"/>
+                  <rect x="8.5" y="5.25" width="4" height="1.5" rx="0.75" fill="#111"/>
+                  <circle cx="6" cy="10" r="1.5" fill="#111"/>
+                  <rect x="8.5" y="9.25" width="4" height="1.5" rx="0.75" fill="#111"/>
+                </svg>
+                <p>No plugins loaded</p>
+                <p class="text-xs mt-1">Click "Add Plugin" to get started</p>
+              </div>
+            </div>
+            
+            <!-- Plugin Slots will be dynamically inserted here -->
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
