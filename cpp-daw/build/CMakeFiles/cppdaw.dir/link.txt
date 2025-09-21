@@ -1,1 +1,0 @@
-/usr/bin/c++  -g -O0 -Wall -Wextra   CMakeFiles/cppdaw.dir/src/main.cpp.o  -o cppdaw  libdawcore.a libdawplugins.a -lasound -lpthread -lpulse-simple -lpulse 

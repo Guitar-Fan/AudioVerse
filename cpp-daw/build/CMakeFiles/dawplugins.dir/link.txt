@@ -1,2 +1,0 @@
-/usr/bin/ar qc libdawplugins.a  CMakeFiles/dawplugins.dir/plugins/BasicFX.cpp.o
-/usr/bin/ranlib libdawplugins.a

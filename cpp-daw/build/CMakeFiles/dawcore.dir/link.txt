@@ -1,2 +1,0 @@
-/usr/bin/ar qc libdawcore.a  CMakeFiles/dawcore.dir/src/DAWEngine.cpp.o CMakeFiles/dawcore.dir/src/Track.cpp.o CMakeFiles/dawcore.dir/src/Clip.cpp.o CMakeFiles/dawcore.dir/src/AudioBuffer.cpp.o
-/usr/bin/ranlib libdawcore.a
