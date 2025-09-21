@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++ DAW Debug Test</title>
+</head>
+<body>
+    <h1>C++ DAW Debug Test</h1>
+    <div id="status">Loading...</div>
+    <button id="testBtn" onclick="testEngine()">Test C++ Engine</button>
+    
+    <script src="advanced_cpp_daw.js"></script>
+    <script>
+        console.log('Debug page loaded');
+        
+        let cppEngine = null;
+        
+        async function initEngine() {
+            const statusDiv = document.getElementById('status');
+            try {
+                console.log('Testing CPPDAWModule availability...');
+                console.log('typeof CPPDAWModule:', typeof CPPDAWModule);
+                
+                if (typeof CPPDAWModule === 'undefined') {
+                    throw new Error('CPPDAWModule not defined');
+                }
+                
+                statusDiv.innerHTML = 'Loading WASM module...';
+                cppEngine = await CPPDAWModule();
+                
+                console.log('WASM module loaded:', cppEngine);
+                console.log('Available functions:', Object.keys(cppEngine).filter(k => k.startsWith('_')));
+                
+                if (typeof cppEngine._initializeDAW === 'function') {
+                    cppEngine._initializeDAW();
+                    statusDiv.innerHTML = 'C++ Engine initialized successfully!';
+                    statusDiv.style.color = 'green';
+                } else {
+                    statusDiv.innerHTML = 'WASM loaded but _initializeDAW not found';
+                    statusDiv.style.color = 'orange';
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                statusDiv.innerHTML = 'Error: ' + error.message;
+                statusDiv.style.color = 'red';
+            }
+        }
+        
+        function testEngine() {
+            if (cppEngine && typeof cppEngine._addTrack === 'function') {
+                const trackId = cppEngine._addTrack();
+                console.log('Created track with ID:', trackId);
+                document.getElementById('status').innerHTML += '<br>Created track: ' + trackId;
+            } else {
+                console.log('Engine not ready or _addTrack not available');
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', initEngine);
+    </script>
+</body>
+</html>
