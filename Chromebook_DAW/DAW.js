@@ -24,6 +24,10 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let liveRecordingBuffer = [];
 let liveRecordingStart = 0;
+let recordingWorklet = null;
+let recordingStream = null;
+let recordingInputNode = null;
+let recordingGainNode = null;
 let playheadTime = 0;
 let playRequestId = null;
 let playing = false;
@@ -45,6 +49,8 @@ let analyserNode = null;
 let filterNodes = new Map(); // Per-track filters
 let trackGainNodes = new Map(); // Per-track gain nodes
 let trackInsertChains = new Map(); // Per-track insert plugin chains { chain: [{id, instance, slotIndex}], inputNode, outputNode }
+// Expose to global scope for FXPlugins access
+window.trackInsertChains = trackInsertChains;
 let fxPendingSelect = null; // { trackIndex, slotIndex }
 let fxSelected = null; // { trackIndex, slotIndex }
 let clipboard = null; // For copy/paste operations
@@ -505,6 +511,7 @@ function selectTrack(trackIndex) {
     track.selected = idx === trackIndex;
   });
   selectedTrackIndex = trackIndex;
+  updatePluginStrip();
   render();
 }
 
@@ -534,67 +541,215 @@ function setTrackVolume(trackIndex, volume) {
 recordBtn.onclick = async () => {
   if (isRecording) return;
   
-  // Find armed tracks or use selected track
-  let armedTracks = tracks.filter(t => t.armed);
-  if (armedTracks.length === 0) {
-    // Auto-arm selected track if no tracks are armed
-    tracks[selectedTrackIndex].armed = true;
-    render();
-  }
-  
-  initAudioContext();
-  let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-  recordedChunks = [];
-  liveRecordingBuffer = [];
-  liveRecordingStart = playheadTime;
-  let inputNode = audioCtx.createMediaStreamSource(stream);
-
-  // Create processing chain: input -> analyser -> gain -> destination
-  let recordGain = audioCtx.createGain();
-  recordGain.gain.value = 0.8;
-  
-  inputNode.connect(analyserNode);
-  analyserNode.connect(recordGain);
-  recordGain.connect(audioCtx.destination);
-
-  // Live preview processing - FIX THIS PART
-  let processor = audioCtx.createScriptProcessor(4096, 1, 1);
-  inputNode.connect(processor);
-  processor.connect(audioCtx.destination); // Connect to hear the input
-  
-  processor.onaudioprocess = (e) => {
-    if (!isRecording) return;
-    
-    let input = e.inputBuffer.getChannelData(0);
-    // Convert Float32Array to regular array and add to buffer
-    liveRecordingBuffer = liveRecordingBuffer.concat(Array.from(input));
-    
-    // Limit buffer size to prevent memory issues
-    if (liveRecordingBuffer.length > audioCtx.sampleRate * 300) {
-      processor.disconnect();
-      inputNode.disconnect();
+  try {
+    // Find armed tracks or use selected track
+    let armedTracks = tracks.filter(t => t.armed);
+    if (armedTracks.length === 0) {
+      // Auto-arm selected track if no tracks are armed
+      tracks[selectedTrackIndex].armed = true;
+      render();
     }
     
-    // Trigger re-render to show recording preview
-    render();
-  };
+    initAudioContext();
+    
+    // Get audio stream with optimal settings for consistent recording
+    recordingStream = await navigator.mediaDevices.getUserMedia({ 
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        sampleRate: audioCtx.sampleRate,
+        channelCount: 1
+      } 
+    });
+    
+    // Create MediaRecorder with higher quality settings
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+      ? 'audio/webm;codecs=opus' 
+      : 'audio/webm';
+    
+    mediaRecorder = new MediaRecorder(recordingStream, { 
+      mimeType: mimeType,
+      audioBitsPerSecond: 128000 // Higher quality
+    });
+    
+    recordedChunks = [];
+    liveRecordingBuffer = [];
+    liveRecordingStart = playheadTime;
+    
+    // Create audio processing chain
+    recordingInputNode = audioCtx.createMediaStreamSource(recordingStream);
+    recordingGainNode = audioCtx.createGain();
+    recordingGainNode.gain.value = 0.8;
+    
+    // Use modern AudioWorklet for live monitoring (fallback to ScriptProcessor if not available)
+    try {
+      // Try to use AudioWorklet for better performance
+      await audioCtx.audioWorklet.addModule('data:text/javascript;base64,' + btoa(`
+        class RecordingProcessor extends AudioWorkletProcessor {
+          constructor() {
+            super();
+            this.isRecording = false;
+            this.bufferChunks = [];
+            this.port.onmessage = (e) => {
+              if (e.data.type === 'start') {
+                this.isRecording = true;
+                this.bufferChunks = [];
+              } else if (e.data.type === 'stop') {
+                this.isRecording = false;
+                this.port.postMessage({ type: 'buffer', data: this.bufferChunks });
+                this.bufferChunks = [];
+              }
+            };
+          }
+          
+          process(inputs, outputs, parameters) {
+            const input = inputs[0];
+            const output = outputs[0];
+            
+            if (input.length > 0 && this.isRecording) {
+              const inputChannel = input[0];
+              
+              // Store for live preview
+              this.bufferChunks.push(new Float32Array(inputChannel));
+              
+              // Pass through for monitoring
+              if (output.length > 0) {
+                output[0].set(inputChannel);
+              }
+              
+              // Send updates periodically for UI
+              if (this.bufferChunks.length % 100 === 0) {
+                this.port.postMessage({ type: 'update', length: this.bufferChunks.length });
+              }
+            }
+            
+            return true;
+          }
+        }
+        
+        registerProcessor('recording-processor', RecordingProcessor);
+      `));
+      
+      recordingWorklet = new AudioWorkletNode(audioCtx, 'recording-processor');
+      
+      recordingWorklet.port.onmessage = (e) => {
+        if (e.data.type === 'buffer') {
+          // Convert worklet buffer chunks to single array
+          const totalLength = e.data.data.reduce((sum, chunk) => sum + chunk.length, 0);
+          liveRecordingBuffer = new Float32Array(totalLength);
+          let offset = 0;
+          for (const chunk of e.data.data) {
+            liveRecordingBuffer.set(chunk, offset);
+            offset += chunk.length;
+          }
+        } else if (e.data.type === 'update') {
+          // Trigger UI update periodically
+          render();
+        }
+      };
+      
+      // Connect audio chain with worklet
+      recordingInputNode.connect(recordingWorklet);
+      recordingWorklet.connect(recordingGainNode);
+      recordingGainNode.connect(audioCtx.destination);
+      
+    } catch (workletError) {
+      console.warn('AudioWorklet not available, using ScriptProcessor fallback:', workletError);
+      
+      // Fallback to ScriptProcessor with optimizations
+      recordingWorklet = audioCtx.createScriptProcessor(2048, 1, 1); // Smaller buffer for less latency
+      
+      recordingWorklet.onaudioprocess = (e) => {
+        if (!isRecording) return;
+        
+        const inputData = e.inputBuffer.getChannelData(0);
+        const outputData = e.outputBuffer.getChannelData(0);
+        
+        // Copy input to output for monitoring
+        outputData.set(inputData);
+        
+        // Efficiently append to buffer using typed arrays
+        const currentLength = liveRecordingBuffer.length;
+        const newBuffer = new Float32Array(currentLength + inputData.length);
+        newBuffer.set(liveRecordingBuffer);
+        newBuffer.set(inputData, currentLength);
+        liveRecordingBuffer = newBuffer;
+        
+        // Limit buffer size to prevent memory issues (5 minutes max)
+        if (liveRecordingBuffer.length > audioCtx.sampleRate * 300) {
+          console.warn('Recording buffer limit reached, stopping recording');
+          stopRecording();
+        }
+      };
+      
+      // Connect audio chain with script processor
+      recordingInputNode.connect(recordingWorklet);
+      recordingWorklet.connect(recordingGainNode);
+      recordingGainNode.connect(audioCtx.destination);
+    }
+    
+    // Connect to analyser for visual feedback
+    recordingInputNode.connect(analyserNode);
+    
+    // MediaRecorder event handlers
+    mediaRecorder.ondataavailable = e => { 
+      if (e.data.size > 0) recordedChunks.push(e.data); 
+    };
+    
+    mediaRecorder.onstop = async () => {
+      await processRecordedAudio();
+    };
+    
+    mediaRecorder.onerror = (e) => {
+      console.error('MediaRecorder error:', e);
+      stopRecording();
+    };
 
-  mediaRecorder.ondataavailable = e => { recordedChunks.push(e.data); };
-  mediaRecorder.onstop = async () => {
-    processor.disconnect();
-    inputNode.disconnect();
-    recordGain.disconnect();
+    // Start recording
+    mediaRecorder.start(100); // Collect data every 100ms for smoother recording
+    isRecording = true;
+    recordBtn.disabled = true;
+    stopBtn.disabled = false;
+    
+    // Start worklet recording if available
+    if (recordingWorklet.port) {
+      recordingWorklet.port.postMessage({ type: 'start' });
+    }
+    
+    if (metronomeEnabled) startMetronome();
+    
+    console.log('Recording started successfully');
+    
+  } catch (error) {
+    console.error('Failed to start recording:', error);
+    stopRecording();
+    alert('Failed to start recording. Please check your microphone permissions.');
+  }
+};
+
+async function processRecordedAudio() {
+  try {
+    // Stop worklet recording
+    if (recordingWorklet && recordingWorklet.port) {
+      recordingWorklet.port.postMessage({ type: 'stop' });
+    }
+    
+    // Clean up audio connections
+    cleanupRecordingNodes();
     
     if (recordedChunks.length === 0) { 
+      console.warn('No audio data recorded');
       isRecording = false; 
       recordBtn.disabled = false; 
       stopBtn.disabled = true; 
       return; 
     }
     
-    const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+    // Process recorded audio
+    const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
     const arrayBuffer = await blob.arrayBuffer();
+    
     audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
       let targetTracks = tracks.filter(t => t.armed);
       if (targetTracks.length === 0) targetTracks = [tracks[selectedTrackIndex]];
@@ -607,24 +762,56 @@ recordBtn.onclick = async () => {
       liveRecordingBuffer = [];
       saveState();
       render();
+      console.log('Recording processed and added to track(s)');
+    }, (error) => {
+      console.error('Failed to decode recorded audio:', error);
+      alert('Failed to process recorded audio');
     });
+    
+  } catch (error) {
+    console.error('Error processing recorded audio:', error);
+  } finally {
     isRecording = false;
     recordBtn.disabled = false;
     stopBtn.disabled = true;
-  };
+  }
+}
 
-  mediaRecorder.start();
-  isRecording = true;
-  recordBtn.disabled = true;
-  stopBtn.disabled = false;
-  if (metronomeEnabled) startMetronome();
+function cleanupRecordingNodes() {
+  // Disconnect and clean up all recording-related nodes
+  if (recordingInputNode) {
+    recordingInputNode.disconnect();
+    recordingInputNode = null;
+  }
+  if (recordingWorklet) {
+    recordingWorklet.disconnect();
+    recordingWorklet = null;
+  }
+  if (recordingGainNode) {
+    recordingGainNode.disconnect();
+    recordingGainNode = null;
+  }
+  if (recordingStream) {
+    recordingStream.getTracks().forEach(track => track.stop());
+    recordingStream = null;
+  }
+}
+
+function stopRecording() {
+  if (isRecording && mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+  } else {
+    // Force cleanup if MediaRecorder didn't stop properly
+    cleanupRecordingNodes();
+    isRecording = false;
+    recordBtn.disabled = false;
+    stopBtn.disabled = true;
+  }
 };
 
 // Add this handler to allow stopping recording via stopBtn
 stopBtn.onclick = () => {
-  if (isRecording && mediaRecorder && mediaRecorder.state === "recording") {
-    mediaRecorder.stop();
-  }
+  stopRecording();
   stopAll();
 };
 
@@ -1270,7 +1457,7 @@ function drawWaveform(canvas, audioBufferOrBuffer, offset, duration, isRawBuffer
   
   let channel;
   let sampleRate = 44100;
-  if (isRawBuffer && Array.isArray(audioBufferOrBuffer)) {
+  if (isRawBuffer && (Array.isArray(audioBufferOrBuffer) || audioBufferOrBuffer instanceof Float32Array)) {
     channel = audioBufferOrBuffer;
     sampleRate = audioCtx ? audioCtx.sampleRate : 44100;
   } else if (audioBufferOrBuffer && audioBufferOrBuffer.getChannelData) {
@@ -1979,7 +2166,12 @@ function init() {
   for (let i = 0; i < DEFAULT_TRACKS; i++) {
     tracks.push(createTrack());
   }
-  if (tracks.length > 0) tracks[0].selected = true;
+  if (tracks.length > 0) {
+    tracks[0].selected = true;
+    // Add a test plugin to the first track for demonstration
+    tracks[0].inserts[0] = 'delay';
+    tracks[0].inserts[1] = 'convolutionReverb';
+  }
   initAudioContext();
   loadSettings();
   
@@ -1991,6 +2183,9 @@ function init() {
   pauseBtn.onclick = () => {
     pauseAll();
   };
+  
+  // Initialize plugin strip
+  initializePluginStrip();
   
   saveState();
   render();
@@ -3482,3 +3677,362 @@ function showMixerView() {
   
   renderMixer();
 }
+
+// --- Plugin Strip (Ableton Style) ---
+let pluginStripCollapsed = false;
+let activePluginBrowser = null;
+
+function initializePluginStrip() {
+  const header = document.querySelector('.plugin-strip-header');
+  const strip = document.querySelector('.plugin-strip');
+  const collapseBtn = document.getElementById('togglePluginStrip');
+  const addBtn = document.getElementById('addPluginBtn');
+  
+  // Collapse/expand functionality
+  if (collapseBtn) {
+    collapseBtn.addEventListener('click', () => {
+      pluginStripCollapsed = !pluginStripCollapsed;
+      strip.classList.toggle('collapsed', pluginStripCollapsed);
+      // Update the SVG rotation instead of text
+      const svg = collapseBtn.querySelector('svg');
+      if (svg) {
+        svg.style.transform = pluginStripCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+        svg.style.transition = 'transform 0.2s ease';
+      }
+    });
+  }
+  
+  // Add plugin functionality
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      showPluginBrowser();
+    });
+  }
+  
+  // Update plugin strip when track selection changes
+  updatePluginStrip();
+}
+
+function updatePluginStrip() {
+  const trackNameEl = document.getElementById('currentTrackName');
+  const contentEl = document.querySelector('.plugin-strip-content');
+  
+  if (!trackNameEl || !contentEl) return;
+  
+  const selectedTrack = tracks[selectedTrackIndex];
+  if (!selectedTrack) {
+    trackNameEl.textContent = 'No Track Selected';
+    contentEl.innerHTML = '<div class="plugin-strip-empty">No track selected</div>';
+    return;
+  }
+  
+  trackNameEl.textContent = selectedTrack.label || `${selectedTrackIndex + 1}`;
+  
+  // Render plugin chain
+  const pluginChain = document.createElement('div');
+  pluginChain.className = 'plugin-chain';
+  
+  // Render existing plugins
+  selectedTrack.inserts.forEach((pluginId, slotIndex) => {
+    const pluginSlot = createPluginSlot(pluginId, slotIndex, selectedTrackIndex);
+    pluginChain.appendChild(pluginSlot);
+  });
+  
+  // Add empty slot for adding new plugins
+  const addSlot = document.createElement('div');
+  addSlot.className = 'plugin-add-slot';
+  addSlot.innerHTML = '<span>+ Add Plugin</span>';
+  addSlot.addEventListener('click', () => {
+    showPluginBrowser(selectedTrackIndex, selectedTrack.inserts.length);
+  });
+  pluginChain.appendChild(addSlot);
+  
+  contentEl.innerHTML = '';
+  contentEl.appendChild(pluginChain);
+}
+
+function createPluginSlot(pluginId, slotIndex, trackIndex) {
+  const slot = document.createElement('div');
+  slot.className = 'plugin-slot';
+  slot.dataset.expanded = 'false'; // Track expansion state
+  
+  if (pluginId) {
+    const plugin = window.FXPlugins ? FXPlugins.get(pluginId) : null;
+    const pluginName = plugin ? plugin.name : pluginId;
+    const track = tracks[trackIndex];
+    const isEnabled = track.insertEnabled[slotIndex] !== false;
+    const isBypassed = !isEnabled;
+    
+    slot.innerHTML = `
+      <div class="plugin-slot-header">
+        <span class="plugin-slot-name" title="${pluginName}">${pluginName}</span>
+        <div class="plugin-slot-controls">
+          <button class="plugin-slot-btn expand" 
+                  title="Expand/Collapse" data-track="${trackIndex}" data-slot="${slotIndex}">▼</button>
+          <button class="plugin-slot-btn bypass ${isBypassed ? 'active' : ''}" 
+                  title="Bypass" data-track="${trackIndex}" data-slot="${slotIndex}">B</button>
+          <button class="plugin-slot-btn remove" 
+                  title="Remove" data-track="${trackIndex}" data-slot="${slotIndex}">×</button>
+        </div>
+      </div>
+      <div class="plugin-slot-content collapsed">
+        ${renderPluginParameters(pluginId, trackIndex, slotIndex)}
+      </div>
+    `;
+    
+    // Add event listeners
+    const expandBtn = slot.querySelector('.expand');
+    const bypassBtn = slot.querySelector('.bypass');
+    const removeBtn = slot.querySelector('.remove');
+    const content = slot.querySelector('.plugin-slot-content');
+    
+    if (expandBtn) {
+      expandBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isExpanded = slot.dataset.expanded === 'true';
+        slot.dataset.expanded = (!isExpanded).toString();
+        content.classList.toggle('collapsed', isExpanded);
+        expandBtn.textContent = isExpanded ? '▼' : '▲';
+        
+        // If expanding, open the full plugin UI
+        if (!isExpanded) {
+          expandPluginUI(pluginId, trackIndex, slotIndex);
+        }
+      });
+    }
+    
+    if (bypassBtn) {
+      bypassBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePluginBypass(trackIndex, slotIndex);
+      });
+    }
+    
+    if (removeBtn) {
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removePlugin(trackIndex, slotIndex);
+      });
+    }
+    
+    // Click on slot content to expand
+    slot.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('plugin-slot-btn')) {
+        expandBtn.click();
+      }
+    });
+  } else {
+    // Empty slot
+    slot.innerHTML = `
+      <div class="plugin-slot-header">
+        <span class="plugin-slot-name">Empty</span>
+      </div>
+      <div class="plugin-slot-content">
+        <div style="text-align: center; color: #777; padding: 20px;">
+          Click to add plugin
+        </div>
+      </div>
+    `;
+    
+    slot.addEventListener('click', () => {
+      showPluginBrowser(trackIndex, slotIndex);
+    });
+  }
+  
+  return slot;
+}
+
+function renderPluginParameters(pluginId, trackIndex, slotIndex) {
+  if (!window.FXPlugins) return '<div>No plugin system available</div>';
+  
+  const plugin = FXPlugins.get(pluginId);
+  if (!plugin) return '<div>Plugin not found</div>';
+  
+  const params = FXPlugins.getParams(pluginId);
+  if (!params || params.length === 0) {
+    return '<div style="text-align: center; color: #777; padding: 20px;">No parameters</div>';
+  }
+  
+  let html = '';
+  params.forEach((param, paramIndex) => {
+    const value = FXPlugins.getParamValue(trackIndex, slotIndex, param.id) || param.min || 0;
+    const displayValue = typeof value === 'number' ? value.toFixed(2) : value;
+    
+    html += `
+      <div class="plugin-param-control">
+        <span class="plugin-param-name">${param.name}</span>
+        <input type="range" 
+               class="plugin-param-slider" 
+               min="${param.min || 0}" 
+               max="${param.max || 1}" 
+               step="${param.step || 0.01}" 
+               value="${value}"
+               data-plugin="${pluginId}"
+               data-param="${param.id}"
+               data-track="${trackIndex}"
+               data-slot="${slotIndex}">
+        <span class="plugin-param-value">${displayValue}</span>
+      </div>
+    `;
+  });
+  
+  return html;
+}
+
+function showPluginBrowser(trackIndex = null, slotIndex = null) {
+  if (activePluginBrowser) {
+    closePluginBrowser();
+    return;
+  }
+  
+  // Use selected track if no track specified
+  if (trackIndex === null) trackIndex = selectedTrackIndex;
+  if (slotIndex === null) {
+    // Find first empty slot or add new one
+    const track = tracks[trackIndex];
+    slotIndex = track.inserts.findIndex(slot => slot === null);
+    if (slotIndex === -1) {
+      slotIndex = track.inserts.length;
+      track.inserts.push(null);
+      track.insertEnabled.push(true);
+    }
+  }
+  
+  const overlay = document.createElement('div');
+  overlay.className = 'plugin-browser-overlay';
+  
+  const browser = document.createElement('div');
+  browser.className = 'plugin-browser';
+  
+  browser.innerHTML = `
+    <div class="plugin-browser-header">
+      <span class="plugin-browser-title">Add Plugin</span>
+      <button class="plugin-browser-close">×</button>
+    </div>
+    <div class="plugin-browser-content">
+      ${renderPluginBrowserContent()}
+    </div>
+  `;
+  
+  overlay.appendChild(browser);
+  document.body.appendChild(overlay);
+  
+  activePluginBrowser = { overlay, browser, trackIndex, slotIndex };
+  
+  // Add event listeners
+  const closeBtn = browser.querySelector('.plugin-browser-close');
+  closeBtn.addEventListener('click', closePluginBrowser);
+  
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closePluginBrowser();
+  });
+  
+  // Add click listeners to plugin items
+  browser.querySelectorAll('.plugin-browser-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const pluginId = item.dataset.pluginId;
+      addPluginToTrack(trackIndex, slotIndex, pluginId);
+      closePluginBrowser();
+    });
+  });
+}
+
+function renderPluginBrowserContent() {
+  if (!window.FXPlugins) {
+    return '<div style="padding: 20px; text-align: center; color: #777;">No plugins available</div>';
+  }
+  
+  const plugins = FXPlugins.list();
+  if (!plugins || plugins.length === 0) {
+    return '<div style="padding: 20px; text-align: center; color: #777;">No plugins found</div>';
+  }
+  
+  return plugins.map(plugin => `
+    <div class="plugin-browser-item" data-plugin-id="${plugin.id}">
+      <div class="plugin-browser-item-name">${plugin.name}</div>
+      <div class="plugin-browser-item-desc">${plugin.description || 'Audio Effect'}</div>
+    </div>
+  `).join('');
+}
+
+function closePluginBrowser() {
+  if (activePluginBrowser) {
+    document.body.removeChild(activePluginBrowser.overlay);
+    activePluginBrowser = null;
+  }
+}
+
+function addPluginToTrack(trackIndex, slotIndex, pluginId) {
+  const track = tracks[trackIndex];
+  
+  // Ensure inserts array is long enough
+  while (track.inserts.length <= slotIndex) {
+    track.inserts.push(null);
+    track.insertEnabled.push(true);
+  }
+  
+  track.inserts[slotIndex] = pluginId;
+  track.insertEnabled[slotIndex] = true;
+  
+  // Rebuild the insert chain to create the plugin instance
+  buildInsertChain(trackIndex);
+  
+  updatePluginStrip();
+  render(); // Update main DAW view
+}
+
+function removePlugin(trackIndex, slotIndex) {
+  const track = tracks[trackIndex];
+  track.inserts[slotIndex] = null;
+  track.insertEnabled[slotIndex] = true;
+  
+  // Rebuild the insert chain to remove the plugin instance
+  buildInsertChain(trackIndex);
+  
+  updatePluginStrip();
+  render();
+}
+
+function togglePluginBypass(trackIndex, slotIndex) {
+  const track = tracks[trackIndex];
+  track.insertEnabled[slotIndex] = !track.insertEnabled[slotIndex];
+  
+  // Rebuild the insert chain to apply bypass
+  buildInsertChain(trackIndex);
+  
+  updatePluginStrip();
+  render();
+}
+
+function expandPluginUI(pluginId, trackIndex, slotIndex) {
+  // Check if there's an existing FX overlay
+  if (document.getElementById('fxOverlay')) {
+    // Use existing FX system to show full plugin UI
+    if (window.fxSelected) {
+      window.fxSelected = { trackIndex, slotIndex };
+      showFXView();
+    }
+  }
+}
+
+// Add parameter change handling
+document.addEventListener('input', (e) => {
+  if (e.target.classList.contains('plugin-param-slider')) {
+    const pluginId = e.target.dataset.plugin;
+    const paramId = e.target.dataset.param;
+    const trackIndex = parseInt(e.target.dataset.track);
+    const slotIndex = parseInt(e.target.dataset.slot);
+    const value = parseFloat(e.target.value);
+    
+    // Update parameter value
+    if (window.FXPlugins && FXPlugins.setParam) {
+      FXPlugins.setParam(trackIndex, slotIndex, paramId, value);
+    }
+    
+    // Update display value
+    const valueDisplay = e.target.nextElementSibling;
+    if (valueDisplay) {
+      valueDisplay.textContent = value.toFixed(2);
+    }
+  }
+});
