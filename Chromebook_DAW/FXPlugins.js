@@ -713,6 +713,803 @@
         };
         return { input, output: comp, nodes: [input, comp], api };
       }
+    },
+    convolutionReverb: {
+      id: 'convolutionReverb',
+      name: 'Convolution Reverb',
+      description: 'Convolution reverb with impulse response loading and advanced controls',
+      params: [
+        { id: 'mix', name: 'Mix', type: 'range', min: 0, max: 100, step: 1, unit: '%' },
+        { id: 'predelay', name: 'Pre-Delay', type: 'range', min: 0, max: 500, step: 1, unit: ' ms' },
+        { id: 'highpass', name: 'High-Pass', type: 'range', min: 20, max: 1000, step: 1, unit: ' Hz' },
+        { id: 'lowpass', name: 'Low-Pass', type: 'range', min: 1000, max: 22000, step: 100, unit: ' Hz' }
+      ],
+      customUI: true,
+      create: (ctx) => {
+        const input = ctx.createGain();
+        const output = ctx.createGain();
+        
+        // Audio graph nodes
+        const wetGain = ctx.createGain();
+        const dryGain = ctx.createGain();
+        const convolverNode = ctx.createConvolver();
+        const preDelayNode = ctx.createDelay(1.0);
+        const lowPassFilter = ctx.createBiquadFilter();
+        const highPassFilter = ctx.createBiquadFilter();
+        
+        // Setup filters
+        lowPassFilter.type = 'lowpass';
+        highPassFilter.type = 'highpass';
+        
+        // Initial parameters
+        const params = {
+          mix: 35,
+          predelay: 0,
+          highpass: 20,
+          lowpass: 20000
+        };
+        
+        // Store impulse response data for persistence
+        let currentIR = null;
+        let irName = 'No IR loaded';
+        
+        // Connect the audio graph
+        // DRY PATH: input -> dryGain -> output
+        input.connect(dryGain);
+        dryGain.connect(output);
+        
+        // WET PATH: input -> preDelay -> convolver -> highPass -> lowPass -> wetGain -> output
+        input.connect(preDelayNode);
+        preDelayNode.connect(convolverNode);
+        convolverNode.connect(highPassFilter);
+        highPassFilter.connect(lowPassFilter);
+        lowPassFilter.connect(wetGain);
+        wetGain.connect(output);
+        
+        // Create initial silent buffer
+        const silentBuffer = ctx.createBuffer(2, 1, ctx.sampleRate);
+        convolverNode.buffer = silentBuffer;
+        
+        // Set initial values
+        updateMix(params.mix);
+        preDelayNode.delayTime.value = params.predelay / 1000;
+        highPassFilter.frequency.value = params.highpass;
+        highPassFilter.Q.value = 1;
+        lowPassFilter.frequency.value = params.lowpass;
+        lowPassFilter.Q.value = 1;
+        
+        function updateMix(mixValue) {
+          const mix = mixValue / 100;
+          const dryVal = Math.cos(mix * 0.5 * Math.PI);
+          const wetVal = Math.sin(mix * 0.5 * Math.PI);
+          dryGain.gain.setTargetAtTime(dryVal, ctx.currentTime, 0.01);
+          wetGain.gain.setTargetAtTime(wetVal, ctx.currentTime, 0.01);
+        }
+
+        const api = {
+          setParam(id, value) {
+            params[id] = value;
+            switch(id) {
+              case 'mix':
+                updateMix(value);
+                break;
+              case 'predelay':
+                preDelayNode.delayTime.setTargetAtTime(value / 1000, ctx.currentTime, 0.01);
+                break;
+              case 'highpass':
+                highPassFilter.frequency.setTargetAtTime(value, ctx.currentTime, 0.01);
+                break;
+              case 'lowpass':
+                lowPassFilter.frequency.setTargetAtTime(value, ctx.currentTime, 0.01);
+                break;
+            }
+          },
+          getParam(id) { return params[id]; },
+          getParams() { return { ...params }; },
+          loadImpulseResponse(audioBuffer, fileName = 'IR') {
+            convolverNode.buffer = audioBuffer;
+            currentIR = audioBuffer;
+            irName = fileName;
+          },
+          getCurrentIR() { return currentIR; },
+          getIRName() { return irName; },
+          // Method to restore IR after UI rebuild
+          restoreIR() {
+            if (currentIR) {
+              convolverNode.buffer = currentIR;
+            }
+          }
+        };
+        
+        return { 
+          input, 
+          output, 
+          nodes: [input, output, wetGain, dryGain, convolverNode, preDelayNode, lowPassFilter, highPassFilter], 
+          api 
+        };
+      },
+      
+      // Custom UI for file loading and knob controls
+      renderUI: (containerId, instance) => {
+        const container = document.getElementById(containerId);
+        if (!container || !instance?.api) return;
+        
+        const params = instance.api.getParams();
+        const currentIRName = instance.api.getIRName();
+        const hasIR = instance.api.getCurrentIR() !== null;
+        
+        container.innerHTML = `
+          <div class="convolution-reverb-panel" style="
+            background: linear-gradient(135deg, #3a3f4b, #2c313a);
+            border-radius: 8px;
+            padding: 20px;
+            color: #abb2bf;
+            font-family: 'Roboto Mono', monospace;
+          ">
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: 20px; border-bottom: 1px solid #4a505e; padding-bottom: 15px;">
+              <h3 style="margin: 0; color: #61afef; font-size: 1.2em;">Convolution Reverb Processor</h3>
+              <p style="margin-top: 5px; font-size: 0.8em; opacity: 0.7;">Load an Impulse Response (.wav) to begin</p>
+            </div>
+
+            <!-- IR Loading and Visualizer Section -->
+            <div style="margin-bottom: 20px;">
+              <!-- File Loading -->
+              <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                <input type="file" id="ir-file-input-${containerId}" accept=".wav, .wave, audio/wav" style="display: none;">
+                <label for="ir-file-input-${containerId}" style="
+                  background-color: #e5c07b;
+                  color: #282c34;
+                  padding: 8px 15px;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-weight: bold;
+                  transition: background-color 0.2s;
+                ">Load IR</label>
+                <span id="ir-name-${containerId}" style="font-size: 0.9em; opacity: 0.8; color: ${hasIR ? '#98c379' : '#abb2bf'};">${currentIRName}</span>
+              </div>
+              
+              <!-- IR Visualizer -->
+              <div style="
+                background: #21252b;
+                border: 1px solid #4a505e;
+                border-radius: 4px;
+                padding: 10px;
+                margin-bottom: 10px;
+              ">
+                <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 8px;">
+                  <span style="font-size: 0.8em; color: #98c379; font-weight: bold;">IMPULSE RESPONSE</span>
+                  <span id="ir-info-${containerId}" style="font-size: 0.7em; color: #666;">${hasIR ? 'Loaded' : 'No IR'}</span>
+                </div>
+                <canvas id="ir-visualizer-${containerId}" width="400" height="80" style="
+                  width: 100%;
+                  height: 80px;
+                  background: #1a1e24;
+                  border-radius: 3px;
+                  display: block;
+                "></canvas>
+              </div>
+            </div>
+
+            <!-- Controls Section -->
+            <div style="display: flex; justify-content: space-around; align-items: flex-start; flex-wrap: wrap; gap: 15px; padding: 20px; background-color: #2c313a; border-radius: 6px;">
+              ${[
+                { id: 'mix', name: 'Mix (%)', value: params.mix, min: 0, max: 100, step: 1 },
+                { id: 'predelay', name: 'Pre-Delay (ms)', value: params.predelay, min: 0, max: 500, step: 1 },
+                { id: 'highpass', name: 'High-Pass (Hz)', value: params.highpass, min: 20, max: 1000, step: 1 },
+                { id: 'lowpass', name: 'Low-Pass (Hz)', value: params.lowpass, min: 1000, max: 22000, step: 100 }
+              ].map(param => `
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; flex-basis: 100px;">
+                  <div class="conv-knob" data-param="${param.id}" data-min="${param.min}" data-max="${param.max}" data-step="${param.step}" style="
+                    width: 80px;
+                    height: 80px;
+                    border-radius: 50%;
+                    position: relative;
+                    cursor: pointer;
+                    background: radial-gradient(circle at 30% 30%, #5a6274, #2c313a);
+                    border: 2px solid #4a505e;
+                  ">
+                    <canvas width="80" height="80" style="border-radius: 50%;"></canvas>
+                  </div>
+                  <input type="text" class="conv-knob-value" data-param="${param.id}" value="${param.value}" style="
+                    width: 60px;
+                    text-align: center;
+                    background-color: #21252b;
+                    border: 1px solid #4a505e;
+                    color: #98c379;
+                    border-radius: 3px;
+                    font-size: 0.8em;
+                    padding: 3px;
+                  ">
+                  <label style="font-size: 0.9em; font-weight: bold; text-align: center;">${param.name}</label>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+        
+        // IR Visualizer function
+        function drawIRVisualizer() {
+          const canvas = container.querySelector(`#ir-visualizer-${containerId}`);
+          const ctx = canvas.getContext('2d');
+          const irInfoSpan = container.querySelector(`#ir-info-${containerId}`);
+          
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          const currentIR = instance.api.getCurrentIR();
+          if (!currentIR) {
+            // Draw empty state
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.fillStyle = '#666';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('No impulse response loaded', canvas.width / 2, canvas.height / 2 - 5);
+            irInfoSpan.textContent = 'No IR';
+            return;
+          }
+          
+          // Draw IR waveform
+          const channelData = currentIR.getChannelData(0); // Use left channel
+          const samples = channelData.length;
+          const sampleRate = currentIR.sampleRate;
+          const duration = samples / sampleRate;
+          
+          // Update info
+          irInfoSpan.textContent = `${duration.toFixed(2)}s, ${sampleRate}Hz`;
+          
+          // Draw waveform
+          ctx.strokeStyle = '#61afef';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          
+          const step = Math.max(1, Math.floor(samples / canvas.width));
+          let x = 0;
+          
+          for (let i = 0; i < samples; i += step) {
+            const amplitude = channelData[i];
+            const y = (canvas.height / 2) + (amplitude * canvas.height / 3); // Scale amplitude
+            
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+            
+            x = (i / samples) * canvas.width;
+          }
+          
+          ctx.stroke();
+          
+          // Draw decay envelope visualization
+          ctx.strokeStyle = '#98c379';
+          ctx.lineWidth = 0.5;
+          ctx.globalAlpha = 0.6;
+          ctx.beginPath();
+          
+          for (let x = 0; x < canvas.width; x++) {
+            const progress = x / canvas.width;
+            const sampleIndex = Math.floor(progress * samples);
+            if (sampleIndex >= samples) break;
+            
+            // Find peak in local window for envelope
+            let peak = 0;
+            const windowSize = Math.max(1, Math.floor(step / 4));
+            for (let j = Math.max(0, sampleIndex - windowSize); j < Math.min(samples, sampleIndex + windowSize); j++) {
+              peak = Math.max(peak, Math.abs(channelData[j]));
+            }
+            
+            const envelopeY = (canvas.height / 2) - (peak * canvas.height / 3);
+            if (x === 0) {
+              ctx.moveTo(x, envelopeY);
+            } else {
+              ctx.lineTo(x, envelopeY);
+            }
+          }
+          
+          ctx.stroke();
+          ctx.globalAlpha = 1.0;
+        }
+        
+        // Add file loading functionality
+        const irInput = container.querySelector(`#ir-file-input-${containerId}`);
+        const irNameSpan = container.querySelector(`#ir-name-${containerId}`);
+        
+        irInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          irNameSpan.textContent = file.name;
+          irNameSpan.style.color = '#ffd58f';
+          
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const audioContext = instance.input.context;
+            audioContext.decodeAudioData(e.target.result, (buffer) => {
+              instance.api.loadImpulseResponse(buffer, file.name);
+              irNameSpan.style.color = '#98c379';
+              drawIRVisualizer(); // Update visualizer immediately
+            }, (err) => {
+              irNameSpan.textContent = 'Error loading IR';
+              irNameSpan.style.color = '#e06c75';
+              console.error('Error decoding IR file:', err);
+            });
+          };
+          reader.readAsArrayBuffer(file);
+        });
+        
+        // Restore IR if it exists and draw initial visualizer
+        instance.api.restoreIR();
+        drawIRVisualizer();
+        
+        // Add knob functionality
+        const knobs = container.querySelectorAll('.conv-knob');
+        const valueInputs = container.querySelectorAll('.conv-knob-value');
+        
+        knobs.forEach(knob => {
+          const canvas = knob.querySelector('canvas');
+          const ctx = canvas.getContext('2d');
+          const paramId = knob.dataset.param;
+          const min = parseFloat(knob.dataset.min);
+          const max = parseFloat(knob.dataset.max);
+          const step = parseFloat(knob.dataset.step);
+          
+          function drawKnob(value) {
+            const angle = -125 + ((value - min) / (max - min)) * 250;
+            
+            ctx.clearRect(0, 0, 80, 80);
+            
+            // Background arc
+            ctx.beginPath();
+            ctx.arc(40, 40, 32, (-125 - 5) * Math.PI / 180, (-125 + 250 + 5) * Math.PI / 180);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#444';
+            ctx.stroke();
+            
+            // Foreground arc
+            ctx.beginPath();
+            ctx.arc(40, 40, 32, -125 * Math.PI / 180, angle * Math.PI / 180);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#98c379';
+            ctx.stroke();
+            
+            // Indicator line
+            ctx.save();
+            ctx.translate(40, 40);
+            ctx.rotate(angle * Math.PI / 180);
+            ctx.beginPath();
+            ctx.moveTo(0, -26);
+            ctx.lineTo(0, -35);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#FFF';
+            ctx.stroke();
+            ctx.restore();
+          }
+          
+          function updateValue(val) {
+            val = Math.round(val / step) * step;
+            val = Math.max(min, Math.min(max, val));
+            val = Number.isInteger(step) ? parseInt(val) : parseFloat(val.toFixed(2));
+            
+            instance.api.setParam(paramId, val);
+            drawKnob(val);
+            
+            const input = container.querySelector(`.conv-knob-value[data-param="${paramId}"]`);
+            if (input) input.value = val;
+          }
+          
+          // Initial draw
+          drawKnob(instance.api.getParam(paramId));
+          
+          // Mouse interaction
+          let isDragging = false;
+          let startY, startVal;
+          
+          knob.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            startVal = instance.api.getParam(paramId);
+            e.preventDefault();
+          });
+          
+          document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const deltaY = startY - e.clientY;
+            const range = max - min;
+            const newVal = startVal + (deltaY / 150) * range;
+            updateValue(newVal);
+          });
+          
+          document.addEventListener('mouseup', () => {
+            isDragging = false;
+          });
+        });
+        
+        // Add text input functionality
+        valueInputs.forEach(input => {
+          input.addEventListener('change', () => {
+            const paramId = input.dataset.param;
+            const value = parseFloat(input.value);
+            if (!isNaN(value)) {
+              instance.api.setParam(paramId, value);
+              const knob = container.querySelector(`.conv-knob[data-param="${paramId}"]`);
+              if (knob) {
+                const canvas = knob.querySelector('canvas');
+                const ctx = canvas.getContext('2d');
+                const min = parseFloat(knob.dataset.min);
+                const max = parseFloat(knob.dataset.max);
+                
+                // Redraw knob
+                const angle = -125 + ((value - min) / (max - min)) * 250;
+                ctx.clearRect(0, 0, 80, 80);
+                
+                ctx.beginPath();
+                ctx.arc(40, 40, 32, (-125 - 5) * Math.PI / 180, (-125 + 250 + 5) * Math.PI / 180);
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = '#444';
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(40, 40, 32, -125 * Math.PI / 180, angle * Math.PI / 180);
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = '#98c379';
+                ctx.stroke();
+                
+                ctx.save();
+                ctx.translate(40, 40);
+                ctx.rotate(angle * Math.PI / 180);
+                ctx.beginPath();
+                ctx.moveTo(0, -26);
+                ctx.lineTo(0, -35);
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#FFF';
+                ctx.stroke();
+                ctx.restore();
+              }
+            }
+          });
+        });
+      }
+    },
+    algorithmicReverb: {
+      id: 'algorithmicReverb',
+      name: 'Algorithmic Reverb',
+      description: 'Algorithmic reverb with plate, hall, and room algorithms',
+      params: [
+        { id: 'type', name: 'Type', type: 'select', options: [
+          { value: 'plate', label: 'Plate' },
+          { value: 'hall', label: 'Hall' },
+          { value: 'room', label: 'Room' }
+        ]},
+        { id: 'mix', name: 'Mix', type: 'range', min: 0, max: 100, step: 1, unit: '%' },
+        { id: 'decay', name: 'Decay', type: 'range', min: 0.1, max: 10, step: 0.1, unit: ' s' },
+        { id: 'predelay', name: 'Pre-Delay', type: 'range', min: 0, max: 200, step: 1, unit: ' ms' },
+        { id: 'damping', name: 'Damping', type: 'range', min: 500, max: 15000, step: 100, unit: ' Hz' }
+      ],
+      customUI: true,
+      create: (ctx) => {
+        const input = ctx.createGain();
+        const output = ctx.createGain();
+        const wetGain = ctx.createGain();
+        const dryGain = ctx.createGain();
+        const convolver = ctx.createConvolver();
+        
+        // Connect audio graph
+        input.connect(dryGain);
+        dryGain.connect(output);
+        input.connect(convolver);
+        convolver.connect(wetGain);
+        wetGain.connect(output);
+        
+        const params = {
+          type: 'plate',
+          mix: 35,
+          decay: 3.0,
+          predelay: 20,
+          damping: 5000
+        };
+        
+        function updateReverbGains() {
+          const mix = params.mix / 100;
+          const dryVal = Math.cos(mix * 0.5 * Math.PI);
+          const wetVal = Math.sin(mix * 0.5 * Math.PI);
+          dryGain.gain.setTargetAtTime(dryVal, ctx.currentTime, 0.01);
+          wetGain.gain.setTargetAtTime(wetVal, ctx.currentTime, 0.01);
+        }
+        
+        function generateAndApplyImpulseResponse() {
+          const sampleRate = ctx.sampleRate;
+          const duration = Math.max(0.1, params.decay);
+          const preDelay = Math.max(0, params.predelay / 1000);
+          const damping = params.damping;
+          
+          const length = Math.floor(sampleRate * duration);
+          const preDelaySamples = Math.floor(sampleRate * preDelay);
+          const impulse = ctx.createBuffer(2, length + preDelaySamples, sampleRate);
+          
+          const left = impulse.getChannelData(0);
+          const right = impulse.getChannelData(1);
+          
+          for (let i = 0; i < length; i++) {
+            const n = i / length;
+            let envelope = 1;
+            
+            if (params.type === 'hall') {
+              envelope = Math.pow(1 - n, 2.5);
+            } else if (params.type === 'room') {
+              envelope = Math.pow(1 - n, 1.8);
+            } else { // Plate
+              envelope = Math.pow(1 - n, 2);
+            }
+            
+            left[i + preDelaySamples] = (Math.random() * 2 - 1) * envelope;
+            right[i + preDelaySamples] = (Math.random() * 2 - 1) * envelope;
+          }
+          
+          // Apply damping (simple one-pole IIR low-pass filter)
+          const b1 = Math.exp(-2 * Math.PI * damping / sampleRate);
+          let prevL = 0, prevR = 0;
+          for (let i = 0; i < impulse.length; i++) {
+            left[i] = left[i] * (1 - b1) + b1 * prevL;
+            right[i] = right[i] * (1 - b1) + b1 * prevR;
+            prevL = left[i];
+            prevR = right[i];
+          }
+          
+          convolver.buffer = impulse;
+        }
+        
+        // Initialize
+        updateReverbGains();
+        generateAndApplyImpulseResponse();
+        
+        const api = {
+          setParam(id, value) {
+            params[id] = value;
+            switch(id) {
+              case 'mix':
+                updateReverbGains();
+                break;
+              case 'type':
+              case 'decay':
+              case 'predelay':
+              case 'damping':
+                generateAndApplyImpulseResponse();
+                break;
+            }
+          },
+          getParam(id) { return params[id]; },
+          getParams() { return { ...params }; }
+        };
+        
+        return { 
+          input, 
+          output, 
+          nodes: [input, output, wetGain, dryGain, convolver], 
+          api 
+        };
+      },
+      
+      // Custom UI for algorithmic reverb
+      renderUI: (containerId, instance) => {
+        const container = document.getElementById(containerId);
+        if (!container || !instance?.api) return;
+        
+        const params = instance.api.getParams();
+        
+        container.innerHTML = `
+          <div class="algorithmic-reverb-panel" style="
+            background: linear-gradient(135deg, #3a3f4b, #2c313a);
+            border-radius: 8px;
+            padding: 20px;
+            color: #abb2bf;
+            font-family: 'Roboto Mono', monospace;
+          ">
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: 20px; border-bottom: 1px solid #4a505e; padding-bottom: 15px;">
+              <h3 style="margin: 0; color: #61afef; font-size: 1.2em;">Algorithmic Reverb Processor</h3>
+              <p style="margin-top: 5px; font-size: 0.8em; opacity: 0.7;">Advanced algorithmic reverb with multiple room types</p>
+            </div>
+
+            <!-- Main Panel -->
+            <div style="display: flex; gap: 20px; padding: 20px; background-color: #2c313a; border-radius: 6px; flex-wrap: wrap;">
+              
+              <!-- Reverb Type Selector -->
+              <div style="display: flex; flex-direction: column; flex-basis: 150px; flex-grow: 1;">
+                <h4 style="margin-top: 0;">Reverb Type</h4>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  ${['plate', 'hall', 'room'].map(type => `
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                      <input type="radio" name="reverb-type-${containerId}" value="${type}" ${params.type === type ? 'checked' : ''} style="margin-right: 5px;">
+                      <span>${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                    </label>
+                  `).join('')}
+                </div>
+              </div>
+              
+              <!-- Controls Section -->
+              <div style="display: flex; flex-grow: 2; justify-content: space-around; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+                ${[
+                  { id: 'mix', name: 'Mix (%)', value: params.mix, min: 0, max: 100, step: 1 },
+                  { id: 'decay', name: 'Decay (s)', value: params.decay, min: 0.1, max: 10, step: 0.1 },
+                  { id: 'predelay', name: 'Pre-Delay (ms)', value: params.predelay, min: 0, max: 200, step: 1 },
+                  { id: 'damping', name: 'Damping (Hz)', value: params.damping, min: 500, max: 15000, step: 100 }
+                ].map(param => `
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; flex-basis: 100px;">
+                    <div class="algo-knob" data-param="${param.id}" data-min="${param.min}" data-max="${param.max}" data-step="${param.step}" style="
+                      width: 80px;
+                      height: 80px;
+                      border-radius: 50%;
+                      position: relative;
+                      cursor: pointer;
+                      background: radial-gradient(circle at 30% 30%, #5a6274, #2c313a);
+                      border: 2px solid #4a505e;
+                    ">
+                      <canvas width="80" height="80" style="border-radius: 50%;"></canvas>
+                    </div>
+                    <input type="text" class="algo-knob-value" data-param="${param.id}" value="${param.value}" style="
+                      width: 60px;
+                      text-align: center;
+                      background-color: #21252b;
+                      border: 1px solid #4a505e;
+                      color: #98c379;
+                      border-radius: 3px;
+                      font-size: 0.8em;
+                      padding: 3px;
+                    ">
+                    <label style="font-size: 0.9em; font-weight: bold; text-align: center;">${param.name}</label>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Add radio button functionality
+        const radioButtons = container.querySelectorAll(`input[name="reverb-type-${containerId}"]`);
+        radioButtons.forEach(radio => {
+          radio.addEventListener('change', () => {
+            instance.api.setParam('type', radio.value);
+          });
+        });
+        
+        // Add knob functionality (similar to convolution reverb)
+        const knobs = container.querySelectorAll('.algo-knob');
+        const valueInputs = container.querySelectorAll('.algo-knob-value');
+        
+        knobs.forEach(knob => {
+          const canvas = knob.querySelector('canvas');
+          const ctx = canvas.getContext('2d');
+          const paramId = knob.dataset.param;
+          const min = parseFloat(knob.dataset.min);
+          const max = parseFloat(knob.dataset.max);
+          const step = parseFloat(knob.dataset.step);
+          
+          function drawKnob(value) {
+            const angle = -125 + ((value - min) / (max - min)) * 250;
+            
+            ctx.clearRect(0, 0, 80, 80);
+            
+            // Background arc
+            ctx.beginPath();
+            ctx.arc(40, 40, 32, (-125 - 10) * Math.PI / 180, (-125 + 250 + 10) * Math.PI / 180);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#444';
+            ctx.stroke();
+            
+            // Foreground arc
+            ctx.beginPath();
+            ctx.arc(40, 40, 32, -125 * Math.PI / 180, angle * Math.PI / 180);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#98c379';
+            ctx.stroke();
+            
+            // Indicator line
+            ctx.save();
+            ctx.translate(40, 40);
+            ctx.rotate(angle * Math.PI / 180);
+            ctx.beginPath();
+            ctx.moveTo(0, -24);
+            ctx.lineTo(0, -36);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#98c379';
+            ctx.stroke();
+            ctx.restore();
+          }
+          
+          function updateValue(val) {
+            val = Math.round(val / step) * step;
+            val = Math.max(min, Math.min(max, val));
+            val = Number.isInteger(step) ? parseInt(val) : parseFloat(val.toFixed(2));
+            
+            instance.api.setParam(paramId, val);
+            drawKnob(val);
+            
+            const input = container.querySelector(`.algo-knob-value[data-param="${paramId}"]`);
+            if (input) input.value = val;
+          }
+          
+          // Initial draw
+          drawKnob(instance.api.getParam(paramId));
+          
+          // Mouse interaction
+          let isDragging = false;
+          let startY, startVal;
+          
+          knob.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            startVal = instance.api.getParam(paramId);
+            e.preventDefault();
+          });
+          
+          document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const deltaY = startY - e.clientY;
+            const range = max - min;
+            const newVal = startVal + (deltaY / 100) * range;
+            updateValue(newVal);
+          });
+          
+          document.addEventListener('mouseup', () => {
+            isDragging = false;
+          });
+        });
+        
+        // Add text input functionality
+        valueInputs.forEach(input => {
+          input.addEventListener('change', () => {
+            const paramId = input.dataset.param;
+            const value = parseFloat(input.value);
+            if (!isNaN(value)) {
+              instance.api.setParam(paramId, value);
+              const knob = container.querySelector(`.algo-knob[data-param="${paramId}"]`);
+              if (knob) {
+                const canvas = knob.querySelector('canvas');
+                const ctx = canvas.getContext('2d');
+                const min = parseFloat(knob.dataset.min);
+                const max = parseFloat(knob.dataset.max);
+                
+                // Redraw knob
+                const angle = -125 + ((value - min) / (max - min)) * 250;
+                ctx.clearRect(0, 0, 80, 80);
+                
+                ctx.beginPath();
+                ctx.arc(40, 40, 32, (-125 - 10) * Math.PI / 180, (-125 + 250 + 10) * Math.PI / 180);
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = '#444';
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(40, 40, 32, -125 * Math.PI / 180, angle * Math.PI / 180);
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = '#98c379';
+                ctx.stroke();
+                
+                ctx.save();
+                ctx.translate(40, 40);
+                ctx.rotate(angle * Math.PI / 180);
+                ctx.beginPath();
+                ctx.moveTo(0, -24);
+                ctx.lineTo(0, -36);
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#98c379';
+                ctx.stroke();
+                ctx.restore();
+              }
+            }
+          });
+        });
+      }
     }
   };
 
@@ -720,7 +1517,44 @@
     list() { return Object.values(FX_PLUGINS); },
     get(id) { return FX_PLUGINS[id]; },
     create(id, ctx) { const def = FX_PLUGINS[id]; return def ? def.create(ctx) : null; },
-    getParams(id) { const def = FX_PLUGINS[id]; return def && def.params ? def.params : []; }
+    getParams(id) { const def = FX_PLUGINS[id]; return def && def.params ? def.params : []; },
+    
+    // Helper to get plugin instance from DAW track system
+    getInstance(trackIndex, slotIndex) {
+      if (!window.trackInsertChains) return null;
+      const chain = window.trackInsertChains.get(trackIndex);
+      if (!chain || !chain.chain) return null;
+      const entry = chain.chain.find(item => item.slotIndex === slotIndex);
+      return entry ? entry.instance : null;
+    },
+    
+    // Set parameter on a plugin instance
+    setParam(trackIndex, slotIndex, paramId, value) {
+      const instance = this.getInstance(trackIndex, slotIndex);
+      if (instance && instance.api && instance.api.setParam) {
+        try {
+          instance.api.setParam(paramId, value);
+          return true;
+        } catch (e) {
+          console.warn('Failed to set parameter:', e);
+        }
+      }
+      return false;
+    },
+    
+    // Get parameter value from a plugin instance
+    getParamValue(trackIndex, slotIndex, paramId) {
+      const instance = this.getInstance(trackIndex, slotIndex);
+      if (instance && instance.api && instance.api.getParams) {
+        try {
+          const params = instance.api.getParams();
+          return params[paramId];
+        } catch (e) {
+          console.warn('Failed to get parameter:', e);
+        }
+      }
+      return null;
+    }
   };
 
   global.FX_PLUGINS = FX_PLUGINS;
