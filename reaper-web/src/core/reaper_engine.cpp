@@ -5,6 +5,7 @@
 
 #include "reaper_engine.hpp"
 #include "audio_engine.hpp"
+#include "project_manager.hpp"
 #include "track_manager.hpp"
 #include "../media/media_item.hpp"
 #include <algorithm>
@@ -19,7 +20,9 @@ ReaperEngine* g_reaperEngine = nullptr;
 ReaperEngine::ReaperEngine() {
     // Initialize subsystems in dependency order
     m_audioEngine = std::make_unique<AudioEngine>();
+    m_projectManager = std::make_unique<ProjectManager>();
     m_trackManager = std::make_unique<TrackManager>();
+    m_mediaItemManager = std::make_unique<MediaItemManager>();
     
     // Reserve undo stack capacity
     m_undoStack.reserve(m_globalSettings.undoLevels);
@@ -28,6 +31,11 @@ ReaperEngine::ReaperEngine() {
 
 ReaperEngine::~ReaperEngine() {
     Shutdown();
+}
+
+bool ReaperEngine::Initialize() {
+    GlobalSettings defaultSettings;
+    return Initialize(defaultSettings);
 }
 
 bool ReaperEngine::Initialize(const GlobalSettings& settings) {
@@ -39,6 +47,11 @@ bool ReaperEngine::Initialize(const GlobalSettings& settings) {
     
     // Initialize audio engine first - critical for real-time performance
     if (!m_audioEngine->Initialize(settings.sampleRate, settings.bufferSize, settings.maxChannels)) {
+        return false;
+    }
+    
+    // Initialize project manager
+    if (!m_projectManager->Initialize()) {
         return false;
     }
     
@@ -66,11 +79,6 @@ bool ReaperEngine::Initialize(const GlobalSettings& settings) {
     return true;
 }
 
-bool ReaperEngine::Initialize() {
-    GlobalSettings defaultSettings;
-    return Initialize(defaultSettings);
-}
-
 void ReaperEngine::Shutdown() {
     if (!m_initialized.load()) {
         return;
@@ -82,6 +90,10 @@ void ReaperEngine::Shutdown() {
     // Shutdown subsystems in reverse order
     if (m_trackManager) {
         m_trackManager->Shutdown();
+    }
+    
+    if (m_projectManager) {
+        m_projectManager->Shutdown();
     }
     
     if (m_audioEngine) {
@@ -109,6 +121,7 @@ bool ReaperEngine::NewProject() {
     
     // Clear tracks and reset project state
     m_trackManager->ClearAllTracks();
+    m_projectManager->NewProject();
     
     // Reset master controls
     m_realtimeSettings.masterVolume = 1.0;
@@ -127,9 +140,9 @@ bool ReaperEngine::LoadProject(const std::string& filePath) {
         return false;
     }
     
-    // TODO: Implement project loading
-    // For now, just clear current project and set path
-    NewProject();
+    if (!m_projectManager->LoadProject(filePath)) {
+        return false;
+    }
     
     m_currentProjectPath = filePath;
     m_projectDirty = false;
@@ -151,11 +164,13 @@ bool ReaperEngine::SaveProject(const std::string& filePath) {
         return false; // Need a path for first save
     }
     
-    // TODO: Implement project saving
-    // For now, just update the path and mark as saved
-    m_currentProjectPath = savePath;
-    m_projectDirty = false;
-    return true;
+    if (m_projectManager->SaveProject(savePath)) {
+        m_currentProjectPath = savePath;
+        m_projectDirty = false;
+        return true;
+    }
+    
+    return false;
 }
 
 void ReaperEngine::Play() {
@@ -300,7 +315,7 @@ void ReaperEngine::ToggleMasterMute() {
 }
 
 void ReaperEngine::SetMetronome(bool enabled) {
-    m_transportState.metronomeEnabled = enabled;
+    m_realtimeSettings.metronomeEnabled = enabled;
 }
 
 void ReaperEngine::ProcessAudioBlock(float** inputs, float** outputs, int numChannels, int numSamples) {
@@ -329,7 +344,7 @@ void ReaperEngine::ProcessAudioBlock(float** inputs, float** outputs, int numCha
     // Process audio through the engine with track and media item integration
     double blockLength = static_cast<double>(numSamples) / m_globalSettings.sampleRate;
     m_audioEngine->ProcessBlock(inputs, outputs, numChannels, numSamples, 
-                               nullptr, m_trackManager.get(), 
+                               m_mediaItemManager.get(), m_trackManager.get(), 
                                m_transportState.playPosition.load(), blockLength);
     
     // Apply master volume and pan

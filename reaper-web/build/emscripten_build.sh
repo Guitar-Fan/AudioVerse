@@ -21,9 +21,14 @@ EMCC_FLAGS=(
     -ffast-math                        # Fast math for audio DSP
     
     # Memory configuration
-    -s INITIAL_MEMORY=67108864         # 64MB initial memory
+    -s TOTAL_MEMORY=256MB              # Large memory for audio buffers
     -s ALLOW_MEMORY_GROWTH=1           # Allow dynamic memory growth
-    -s MAXIMUM_MEMORY=1073741824       # 1GB maximum memory
+    -s MAXIMUM_MEMORY=1GB              # Maximum memory limit
+    
+    # Threading for real-time audio
+    -s USE_PTHREADS=1                  # Enable threading
+    -s PTHREAD_POOL_SIZE=4             # Thread pool size
+    -s PROXY_TO_PTHREAD=1              # Proxy main thread to worker
     
     # Audio-specific settings
     -s EXPORTED_FUNCTIONS="[
@@ -73,12 +78,16 @@ EMCC_FLAGS=(
     -s FORCE_FILESYSTEM=1              # Enable file system
     -s EXPORTED_RUNTIME_METHODS="['FS', 'ccall', 'cwrap']"
     
-    # Audio buffer optimization  
-    -s STACK_SIZE=2097152              # 2MB stack for audio processing
+    # Audio buffer optimization
+    -s INITIAL_MEMORY=64MB             # Initial memory for audio buffers
+    -s STACK_SIZE=2MB                  # Large stack for audio processing
     
     # Disable features not needed for audio
     -s DISABLE_EXCEPTION_CATCHING=1    # No exceptions in real-time audio
     -s NO_EXIT_RUNTIME=1               # Keep runtime alive
+    
+    # Emscripten-specific audio settings
+    -s WEBAUDIO=1                      # Enable Web Audio API support
     
     # Linking settings
     --bind                             # Enable embind for C++ binding
@@ -89,9 +98,21 @@ EMCC_FLAGS=(
     -o ${OUTPUT_DIR}/${PROJECT_NAME}.js
 )
 
-# Source files - core REAPER Web engine (minimal build)
+# Source files - core REAPER Web engine
 SOURCE_FILES=(
-    "${SRC_DIR}/wasm/simple_reaper_interface.cpp"
+    "${SRC_DIR}/core/reaper_engine.cpp"
+    "${SRC_DIR}/core/audio_engine.cpp"
+    "${SRC_DIR}/core/audio_buffer.cpp"
+    "${SRC_DIR}/core/project_manager.cpp"
+    "${SRC_DIR}/core/track_manager.cpp"
+    "${SRC_DIR}/media/media_item.cpp"
+        "src/jsfx/jsfx_interpreter.cpp"
+    "src/effects/reaper_effects.cpp"
+    "src/effects/effect_chain.cpp"
+)
+    "${SRC_DIR}/wasm/reaper_wasm_interface.cpp"
+    "${SRC_DIR}/effects/reaper_effects.cpp"
+    "${SRC_DIR}/audio/audio_device.cpp"
 )
 
 # Include directories

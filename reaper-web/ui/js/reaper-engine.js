@@ -7,6 +7,7 @@ class ReaperAudioEngine {
     constructor() {
         this.audioContext = null;
         this.wasmModule = null;
+        this.wasmEngine = null;
         this.audioWorkletNode = null;
         this.isInitialized = false;
         
@@ -18,6 +19,9 @@ class ReaperAudioEngine {
         // Performance monitoring
         this.cpuUsage = 0;
         this.audioDropouts = 0;
+        
+        // Track management
+        this.wasmTracks = new Map();
     }
     
     async initialize(audioContext) {
@@ -25,104 +29,102 @@ class ReaperAudioEngine {
             this.audioContext = audioContext;
             this.sampleRate = audioContext.sampleRate;
             
-            console.log('Initializing REAPER Audio Engine...');
+            console.log('Initializing REAPER Audio Engine with WASM...');
             
-            // Try to load WASM module
+            // Load WASM module
             await this.loadWASMModule();
             
-            // Set up audio worklet if available
+            // Set up audio worklet with WASM integration
             await this.setupAudioWorklet();
             
             this.isInitialized = true;
-            console.log('REAPER Audio Engine initialized successfully');
+            console.log('REAPER Audio Engine initialized successfully with WASM');
             
             return true;
         } catch (error) {
-            console.warn('WASM audio engine not available, using JavaScript fallback:', error);
+            console.warn('WASM audio engine failed, using JavaScript fallback:', error);
             this.isInitialized = true; // Still usable with JS fallback
             return false;
         }
     }
     
     async loadWASMModule() {
-        console.log('ReaperAudioEngine: Loading WASM module...');
-        
-        // Try to load the compiled REAPER engine WASM module
-        if (typeof ReaperWebModule !== 'undefined') {
-            try {
-                console.log('ReaperWebModule found, initializing...');
-                this.wasmModule = await ReaperWebModule();
+        try {
+            console.log('Loading WASM module...');
+            
+            if (typeof ReaperEngineModule === 'undefined') {
+                console.warn('ReaperEngineModule not found, falling back to JavaScript');
+                this.wasmModule = null;
+                return false;
+            }
+            
+            // Initialize the WASM module
+            this.wasmModule = await ReaperEngineModule();
+            
+            if (this.wasmModule) {
                 console.log('WASM module loaded successfully');
                 
-                // Check for API
-                if (this.wasmModule.ReaperWebAPI) {
-                    console.log('ReaperWebAPI found!');
-                    const result = this.wasmModule.ReaperWebAPI.createEngine();
-                    if (result) {
-                        console.log('C++ REAPER engine created via API');
-                        this.wasmModule.ReaperWebAPI.initializeEngine(this.sampleRate, this.bufferSize, 2);
-                        return;
-                    }
+                // Initialize the REAPER engine
+                this.wasmModule.ccall('reaper_initialize', null, [], []);
+                
+                // Pass WASM module to audio processor if it exists
+                if (this.audioNode) {
+                    this.audioNode.port.postMessage({
+                        type: 'wasm-module',
+                        module: this.wasmModule
+                    });
                 }
                 
-                // Check raw functions
-                if (this.wasmModule._reaper_engine_create) {
-                    console.log('Raw WASM functions found');
-                    if (this.wasmModule._reaper_engine_create()) {
-                        console.log('C++ REAPER engine created via raw functions');
-                        this.wasmModule._reaper_engine_initialize(this.sampleRate, this.bufferSize, 2);
-                        return;
-                    }
-                }
-            } catch (error) {
-                console.warn('WASM module loading failed:', error);
+                return true;
+            } else {
+                console.warn('Failed to load WASM module');
+                return false;
             }
-        }
-        
-        // Fallback: check for global Module
-        if (typeof Module !== 'undefined') {
-            this.wasmModule = Module;
-            console.log('Global WASM module loaded');
-        } else {
-            console.warn('No WASM module available, using JavaScript fallback');
+        } catch (error) {
+            console.error('Error loading WASM module:', error);
+            this.wasmModule = null;
+            return false;
         }
     }
     
-    async setupAudioWorklet() {
+    async setupAudioGraph() {
         try {
-            // Try to register audio worklet processor with absolute path
-            const workletPath = window.location.origin + window.location.pathname.replace('ReaVerse.html', '') + 'js/reaper-audio-processor.js';
-            console.log('Loading audio worklet from:', workletPath);
+            // Initialize Web Audio context
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                sampleRate: this.sampleRate,
+                latencyHint: 'interactive'
+            });
             
-            await this.audioContext.audioWorklet.addModule(workletPath);
+            // Load audio worklet processor
+            await this.audioContext.audioWorklet.addModule('./ui/js/reaper-audio-processor.js');
             
-            // Create worklet node
-            this.audioWorkletNode = new AudioWorkletNode(
-                this.audioContext, 
-                'reaper-audio-processor',
-                {
-                    numberOfInputs: 1,
-                    numberOfOutputs: 1,
-                    channelCount: 2,
-                    processorOptions: {
-                        sampleRate: this.sampleRate,
-                        bufferSize: this.bufferSize
-                    }
+            // Create audio worklet node
+            this.audioNode = new AudioWorkletNode(this.audioContext, 'reaper-audio-processor', {
+                processorOptions: {
+                    sampleRate: this.sampleRate,
+                    bufferSize: this.bufferSize
                 }
-            );
-            
-            // Connect to audio context destination
-            this.audioWorkletNode.connect(this.audioContext.destination);
+            });
             
             // Set up message handling
-            this.audioWorkletNode.port.onmessage = (event) => {
-                this.handleWorkletMessage(event.data);
-            };
+            this.audioNode.port.onmessage = this.handleAudioMessage.bind(this);
             
-            console.log('Audio worklet initialized successfully');
+            // Connect to output
+            this.audioNode.connect(this.audioContext.destination);
+            
+            // Pass WASM module to audio processor if available
+            if (this.wasmModule) {
+                this.audioNode.port.postMessage({
+                    type: 'wasm-module',
+                    module: this.wasmModule
+                });
+            }
+            
+            console.log('Audio graph initialized successfully');
+            return true;
         } catch (error) {
-            console.warn('Audio worklet setup failed, using ScriptProcessor fallback:', error);
-            this.setupScriptProcessorFallback();
+            console.error('Failed to initialize audio graph:', error);
+            return false;
         }
     }
     
@@ -171,16 +173,24 @@ class ReaperAudioEngine {
             return false;
         }
         
+        if (this.wasmEngine) {
+            this.wasmEngine.ccall('reaper_play', null, [], []);
+        }
+        
         if (this.audioWorkletNode) {
             this.audioWorkletNode.port.postMessage({ type: 'start' });
         }
         
         this.isProcessing = true;
-        console.log('Audio processing started');
+        console.log('Audio processing started with WASM engine');
         return true;
     }
     
     stopProcessing() {
+        if (this.wasmEngine) {
+            this.wasmEngine.ccall('reaper_stop', null, [], []);
+        }
+        
         if (this.audioWorkletNode) {
             this.audioWorkletNode.port.postMessage({ type: 'stop' });
         }
@@ -190,17 +200,49 @@ class ReaperAudioEngine {
     }
     
     addTrack(trackConfig) {
+        let wasmTrackId = -1;
+        
+        if (this.wasmEngine) {
+            wasmTrackId = this.wasmEngine.ccall('reaper_create_track', 'number', [], []);
+            
+            // Set initial parameters
+            if (trackConfig.volume !== undefined) {
+                this.wasmEngine.ccall('reaper_set_track_volume', null, 
+                    ['number', 'number'], [wasmTrackId, trackConfig.volume]);
+            }
+            
+            if (trackConfig.pan !== undefined) {
+                this.wasmEngine.ccall('reaper_set_track_pan', null, 
+                    ['number', 'number'], [wasmTrackId, trackConfig.pan]);
+            }
+            
+            if (trackConfig.mute !== undefined) {
+                this.wasmEngine.ccall('reaper_set_track_muted', null, 
+                    ['number', 'number'], [wasmTrackId, trackConfig.mute ? 1 : 0]);
+            }
+            
+            // Store mapping between UI track ID and WASM track ID
+            this.wasmTracks.set(trackConfig.id, wasmTrackId);
+        }
+        
         if (this.audioWorkletNode) {
             this.audioWorkletNode.port.postMessage({
                 type: 'add-track',
-                track: trackConfig
+                track: { ...trackConfig, wasmTrackId }
             });
         }
         
-        console.log('Track added to audio engine:', trackConfig.id);
+        console.log('Track added to WASM engine:', trackConfig.id, '→', wasmTrackId);
     }
     
     removeTrack(trackId) {
+        const wasmTrackId = this.wasmTracks.get(trackId);
+        
+        if (this.wasmEngine && wasmTrackId !== undefined) {
+            this.wasmEngine.ccall('reaper_delete_track', null, ['number'], [wasmTrackId]);
+            this.wasmTracks.delete(trackId);
+        }
+        
         if (this.audioWorkletNode) {
             this.audioWorkletNode.port.postMessage({
                 type: 'remove-track',
@@ -208,10 +250,37 @@ class ReaperAudioEngine {
             });
         }
         
-        console.log('Track removed from audio engine:', trackId);
+        console.log('Track removed from WASM engine:', trackId);
     }
     
     updateTrackParameter(trackId, parameter, value) {
+        const wasmTrackId = this.wasmTracks.get(trackId);
+        
+        if (this.wasmEngine && wasmTrackId !== undefined) {
+            switch (parameter) {
+                case 'volume':
+                    this.wasmEngine.ccall('reaper_set_track_volume', null, 
+                        ['number', 'number'], [wasmTrackId, value]);
+                    break;
+                case 'pan':
+                    this.wasmEngine.ccall('reaper_set_track_pan', null, 
+                        ['number', 'number'], [wasmTrackId, value]);
+                    break;
+                case 'mute':
+                    this.wasmEngine.ccall('reaper_set_track_muted', null, 
+                        ['number', 'number'], [wasmTrackId, value ? 1 : 0]);
+                    break;
+                case 'solo':
+                    this.wasmEngine.ccall('reaper_set_track_soloed', null, 
+                        ['number', 'number'], [wasmTrackId, value ? 1 : 0]);
+                    break;
+                case 'recordArm':
+                    this.wasmEngine.ccall('reaper_set_track_record_armed', null, 
+                        ['number', 'number'], [wasmTrackId, value ? 1 : 0]);
+                    break;
+            }
+        }
+        
         if (this.audioWorkletNode) {
             this.audioWorkletNode.port.postMessage({
                 type: 'update-track-parameter',
@@ -220,6 +289,89 @@ class ReaperAudioEngine {
                 value: value
             });
         }
+    }
+    
+    // Transport controls using WASM
+    play() {
+        if (this.wasmEngine) {
+            this.wasmEngine.ccall('reaper_play', null, [], []);
+        }
+        this.isProcessing = true;
+    }
+    
+    stop() {
+        if (this.wasmEngine) {
+            this.wasmEngine.ccall('reaper_stop', null, [], []);
+        }
+        this.isProcessing = false;
+    }
+    
+    pause() {
+        if (this.wasmEngine) {
+            this.wasmEngine.ccall('reaper_pause', null, [], []);
+        }
+        this.isProcessing = false;
+    }
+    
+    record() {
+        if (this.wasmEngine) {
+            this.wasmEngine.ccall('reaper_record', null, [], []);
+        }
+        this.isProcessing = true;
+    }
+    
+    isPlaying() {
+        if (this.wasmEngine) {
+            return this.wasmEngine.ccall('reaper_is_playing', 'number', [], []) !== 0;
+        }
+        return this.isProcessing;
+    }
+    
+    isRecording() {
+        if (this.wasmEngine) {
+            return this.wasmEngine.ccall('reaper_is_recording', 'number', [], []) !== 0;
+        }
+        return false;
+    }
+    
+    setPlaybackPosition(timeInSeconds) {
+        if (this.wasmEngine) {
+            this.wasmEngine.ccall('reaper_set_position', null, ['number'], [timeInSeconds]);
+        }
+        
+        if (this.audioWorkletNode) {
+            this.audioWorkletNode.port.postMessage({
+                type: 'set-position',
+                position: timeInSeconds
+            });
+        }
+    }
+    
+    getPlaybackPosition() {
+        if (this.wasmEngine) {
+            return this.wasmEngine.ccall('reaper_get_position', 'number', [], []);
+        }
+        return 0.0;
+    }
+    
+    setTempo(tempo) {
+        if (this.wasmEngine) {
+            this.wasmEngine.ccall('reaper_set_tempo', null, ['number'], [tempo]);
+        }
+        
+        if (this.audioWorkletNode) {
+            this.audioWorkletNode.port.postMessage({
+                type: 'set-tempo',
+                tempo: tempo
+            });
+        }
+    }
+    
+    getTempo() {
+        if (this.wasmEngine) {
+            return this.wasmEngine.ccall('reaper_get_tempo', 'number', [], []);
+        }
+        return 120.0;
     }
     
     addEffect(trackId, effectConfig) {
@@ -381,129 +533,5 @@ class ReaperAudioEngine {
     stopRecording() {
         console.log('Recording stopped');
         // Implementation for stopping recording
-    }
-    
-    // Transport Controls - WASM Integration
-    play() {
-        if (this.wasmModule && this.wasmModule.ReaperWebAPI && this.wasmModule.ReaperWebAPI.play) {
-            this.wasmModule.ReaperWebAPI.play();
-            console.log('WASM play command sent via API');
-        } else if (this.wasmModule && this.wasmModule._reaper_engine_play) {
-            this.wasmModule._reaper_engine_play();
-            console.log('WASM play command sent via raw function');
-        } else {
-            console.log('JavaScript fallback play');
-        }
-        this.isPlaying = true;
-        this.notifyStateChange('play');
-    }
-
-    pause() {
-        if (this.wasmModule && this.wasmModule.ReaperWebAPI && this.wasmModule.ReaperWebAPI.pause) {
-            this.wasmModule.ReaperWebAPI.pause();
-            console.log('WASM pause command sent via API');
-        } else if (this.wasmModule && this.wasmModule._reaper_engine_pause) {
-            this.wasmModule._reaper_engine_pause();
-            console.log('WASM pause command sent via raw function');
-        } else {
-            console.log('JavaScript fallback pause');
-        }
-        this.isPlaying = false;
-        this.notifyStateChange('pause');
-    }
-
-    stop() {
-        if (this.wasmModule && this.wasmModule.ReaperWebAPI && this.wasmModule.ReaperWebAPI.stop) {
-            this.wasmModule.ReaperWebAPI.stop();
-            console.log('WASM stop command sent via API');
-        } else if (this.wasmModule && this.wasmModule._reaper_engine_stop) {
-            this.wasmModule._reaper_engine_stop();
-            console.log('WASM stop command sent via raw function');
-        } else {
-            console.log('JavaScript fallback stop');
-        }
-        this.isPlaying = false;
-        this.notifyStateChange('stop');
-    }
-
-    record() {
-        if (this.wasmModule && this.wasmModule.ReaperWebAPI && this.wasmModule.ReaperWebAPI.record) {
-            this.wasmModule.ReaperWebAPI.record();
-            console.log('WASM record command sent via API');
-        } else if (this.wasmModule && this.wasmModule._reaper_engine_record) {
-            this.wasmModule._reaper_engine_record();
-            console.log('WASM record command sent via raw function');
-        } else {
-            console.log('JavaScript fallback record');
-        }
-        this.isRecording = true;
-        this.notifyStateChange('record');
-    }
-
-    stopRecord() {
-        if (this.wasmModule && this.wasmModule._reaper_engine_stop_record) {
-            this.wasmModule._reaper_engine_stop_record();
-            console.log('WASM stop record command sent');
-        } else {
-            console.log('JavaScript fallback stop record');
-        }
-        this.isRecording = false;
-        this.notifyStateChange('stopRecord');
-    }
-
-    // Master controls
-    setMasterVolume(volume) {
-        if (this.wasmModule && this.wasmModule.ReaperWebAPI && this.wasmModule.ReaperWebAPI.setMasterVolume) {
-            this.wasmModule.ReaperWebAPI.setMasterVolume(volume);
-        } else if (this.wasmModule && this.wasmModule._reaper_engine_set_master_volume) {
-            this.wasmModule._reaper_engine_set_master_volume(volume);
-        }
-        console.log('Master volume set to:', volume);
-    }
-
-    setTempo(bpm) {
-        if (this.wasmModule && this.wasmModule.ReaperWebAPI && this.wasmModule.ReaperWebAPI.setTempo) {
-            this.wasmModule.ReaperWebAPI.setTempo(bpm);
-        } else if (this.wasmModule && this.wasmModule._reaper_engine_set_tempo) {
-            this.wasmModule._reaper_engine_set_tempo(bpm);
-        }
-        console.log('Tempo set to:', bpm);
-    }
-
-    // Track controls
-    addTrackToEngine(trackConfig) {
-        if (this.wasmModule && this.wasmModule.ReaperWebAPI && this.wasmModule.ReaperWebAPI.createTrack) {
-            const trackId = this.wasmModule.ReaperWebAPI.createTrack();
-            if (this.wasmModule.ReaperWebAPI.setTrackVolume) {
-                this.wasmModule.ReaperWebAPI.setTrackVolume(trackId, trackConfig.volume || 0.8);
-            }
-            return trackId;
-        } else if (this.wasmModule && this.wasmModule._track_manager_create_track) {
-            const trackId = this.wasmModule._track_manager_create_track();
-            if (this.wasmModule._track_manager_set_track_volume) {
-                this.wasmModule._track_manager_set_track_volume(trackId, trackConfig.volume || 0.8);
-            }
-            return trackId;
-        }
-        return -1; // Fallback
-    }
-
-    removeTrackFromEngine(trackId) {
-        if (this.wasmModule && this.wasmModule.ReaperWebAPI && this.wasmModule.ReaperWebAPI.deleteTrack) {
-            this.wasmModule.ReaperWebAPI.deleteTrack(trackId);
-        } else if (this.wasmModule && this.wasmModule._track_manager_delete_track) {
-            this.wasmModule._track_manager_delete_track(trackId);
-        }
-        console.log('Track removed:', trackId);
-    }
-
-    // Event notification
-    notifyStateChange(action) {
-        if (typeof window !== 'undefined' && window.reaperUI) {
-            window.reaperUI.onEngineStateChange(action, {
-                isPlaying: this.isPlaying,
-                isRecording: this.isRecording
-            });
-        }
     }
 }

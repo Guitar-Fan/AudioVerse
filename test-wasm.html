@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM Test</title>
+</head>
+<body>
+    <h1>REAPER WASM Engine Test</h1>
+    <div id="status">Loading...</div>
+    <button id="testBtn" disabled>Test WASM Engine</button>
+    
+    <script src="./reaper-web/reaperengine.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const statusDiv = document.getElementById('status');
+            const testBtn = document.getElementById('testBtn');
+            
+            try {
+                statusDiv.textContent = 'Loading WASM module...';
+                
+                // Load WASM module
+                const wasmModule = await ReaperEngineModule();
+                
+                if (wasmModule) {
+                    statusDiv.textContent = 'WASM module loaded successfully!';
+                    testBtn.disabled = false;
+                    
+                    // Initialize REAPER engine
+                    wasmModule.ccall('reaper_initialize', null, [], []);
+                    
+                    testBtn.onclick = () => {
+                        try {
+                            // Test basic WASM functions
+                            wasmModule.ccall('reaper_create_track', null, ['string'], ['Test Track']);
+                            wasmModule.ccall('reaper_set_track_volume', null, ['number', 'number'], [1, 0.8]);
+                            wasmModule.ccall('reaper_play', null, [], []);
+                            
+                            const isPlaying = wasmModule.ccall('reaper_is_playing', 'number', [], []);
+                            
+                            statusDiv.textContent = `WASM functions working! Playing: ${isPlaying === 1}`;
+                            
+                            // Stop after test
+                            setTimeout(() => {
+                                wasmModule.ccall('reaper_stop', null, [], []);
+                                statusDiv.textContent += ' - Stopped';
+                            }, 1000);
+                            
+                        } catch (error) {
+                            statusDiv.textContent = `WASM function error: ${error.message}`;
+                        }
+                    };
+                } else {
+                    statusDiv.textContent = 'Failed to load WASM module';
+                }
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+                console.error('WASM loading error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

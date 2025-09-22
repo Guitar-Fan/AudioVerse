@@ -16,7 +16,9 @@
 
 // Forward declarations
 class AudioEngine;
+class ProjectManager;
 class TrackManager;
+class MediaItemManager;
 class EffectsProcessor;
 
 /**
@@ -73,6 +75,7 @@ public:
         std::atomic<bool> masterMute{false};
         std::atomic<double> masterPan{0.0};
         std::atomic<int> clickVolume{80};          // 0-100
+        std::atomic<bool> metronomeEnabled{false};
         std::atomic<bool> countIn{false};
         std::atomic<int> countInBars{1};
     };
@@ -82,8 +85,8 @@ public:
     ~ReaperEngine();
 
     // Core initialization - mirrors REAPER startup sequence
+    bool Initialize();
     bool Initialize(const GlobalSettings& settings);
-    bool Initialize(); // Default initialization
     void Shutdown();
     
     // Project management
@@ -133,7 +136,9 @@ public:
     
     // Subsystem access
     AudioEngine* GetAudioEngine() const { return m_audioEngine.get(); }
+    ProjectManager* GetProjectManager() const { return m_projectManager.get(); }
     TrackManager* GetTrackManager() const { return m_trackManager.get(); }
+    MediaItemManager* GetMediaItemManager() const { return m_mediaItemManager.get(); }
     
     // State access
     const TransportState& GetTransportState() const { return m_transportState; }
@@ -152,7 +157,9 @@ public:
 private:
     // Core subsystems
     std::unique_ptr<AudioEngine> m_audioEngine;
+    std::unique_ptr<ProjectManager> m_projectManager;
     std::unique_ptr<TrackManager> m_trackManager;
+    std::unique_ptr<MediaItemManager> m_mediaItemManager;
     
     // State
     GlobalSettings m_globalSettings;

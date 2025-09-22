@@ -1,6 +1,6 @@
 /*
- * REAPER Web - Audio Worklet Processor
- * Real-time audio processing in dedicated thread
+ * REAPER Web - Audio Worklet Processor with WASM Integration
+ * Real-time audio processing using C++ WASM engine
  */
 
 class ReaperAudioProcessor extends AudioWorkletProcessor {
@@ -11,38 +11,41 @@ class ReaperAudioProcessor extends AudioWorkletProcessor {
         this.sampleRate = options.processorOptions?.sampleRate || 44100;
         this.bufferSize = options.processorOptions?.bufferSize || 512;
         
+        // WASM integration
+        this.wasmModule = null;
+        this.wasmBuffers = {
+            inputLeft: null,
+            inputRight: null,
+            outputLeft: null,
+            outputRight: null
+        };
+        
         // Track management
         this.tracks = new Map();
-        this.masterTrack = null;
         
         // Transport state
         this.isPlaying = false;
         this.currentPosition = 0; // in samples
-        this.tempo = 120;
-        this.timeSignature = { numerator: 4, denominator: 4 };
         
         // Performance monitoring
         this.processTime = 0;
         this.maxProcessTime = 0;
         this.cpuThreshold = 0.8;
         
-        // Media items
-        this.mediaItems = new Map();
-        this.playingItems = new Set();
-        
-        // JSFX effects cache
-        this.effectInstances = new Map();
-        
         // Set up message handling
         this.port.onmessage = this.handleMessage.bind(this);
         
-        console.log('ReaperAudioProcessor initialized');
+        console.log('ReaperAudioProcessor initialized with WASM support');
     }
     
     handleMessage(event) {
         const { type, ...data } = event.data;
         
         switch (type) {
+            case 'wasm-module':
+                this.initializeWASM(data.module);
+                break;
+                
             case 'start':
                 this.isPlaying = true;
                 this.port.postMessage({ type: 'transport-started' });
@@ -57,10 +60,6 @@ class ReaperAudioProcessor extends AudioWorkletProcessor {
                 this.currentPosition = data.position * this.sampleRate;
                 break;
                 
-            case 'set-tempo':
-                this.tempo = data.tempo;
-                break;
-                
             case 'add-track':
                 this.addTrack(data.track);
                 break;
@@ -73,20 +72,24 @@ class ReaperAudioProcessor extends AudioWorkletProcessor {
                 this.updateTrackParameter(data.trackId, data.parameter, data.value);
                 break;
                 
-            case 'add-effect':
-                this.addEffect(data.trackId, data.effect);
-                break;
-                
-            case 'remove-effect':
-                this.removeEffect(data.trackId, data.effectId);
-                break;
-                
-            case 'load-media-item':
-                this.loadMediaItem(data.mediaItem);
-                break;
-                
             default:
                 console.log('Unknown message type:', type);
+        }
+    }
+    
+    initializeWASM(module) {
+        this.wasmModule = module;
+        
+        if (this.wasmModule) {
+            // Allocate WASM buffers for audio processing
+            const bufferSizeBytes = this.bufferSize * 4; // 4 bytes per float
+            
+            this.wasmBuffers.inputLeft = this.wasmModule._malloc(bufferSizeBytes);
+            this.wasmBuffers.inputRight = this.wasmModule._malloc(bufferSizeBytes);
+            this.wasmBuffers.outputLeft = this.wasmModule._malloc(bufferSizeBytes);
+            this.wasmBuffers.outputRight = this.wasmModule._malloc(bufferSizeBytes);
+            
+            console.log('WASM audio buffers allocated');
         }
     }
     
@@ -102,9 +105,9 @@ class ReaperAudioProcessor extends AudioWorkletProcessor {
                 output[channel].fill(0);
             }
             
-            if (this.isPlaying) {
-                // Process all tracks
-                this.processAllTracks(output, blockLength);
+            if (this.isPlaying && this.wasmModule && this.wasmBuffers.inputLeft) {
+                // Process audio through WASM engine
+                this.processAudioWithWASM(inputs[0], output, blockLength);
                 
                 // Update playback position
                 this.currentPosition += blockLength;
@@ -116,6 +119,10 @@ class ReaperAudioProcessor extends AudioWorkletProcessor {
                         position: this.currentPosition / this.sampleRate
                     });
                 }
+            } else if (this.isPlaying) {
+                // Fallback JavaScript processing
+                this.processAudioFallback(inputs[0], output, blockLength);
+                this.currentPosition += blockLength;
             }
             
             // Monitor CPU usage
@@ -138,6 +145,69 @@ class ReaperAudioProcessor extends AudioWorkletProcessor {
                 error: error.message
             });
             return true; // Continue processing
+        }
+    }
+    
+    processAudioWithWASM(input, output, blockLength) {
+        const inputLeft = input[0] || new Float32Array(blockLength);
+        const inputRight = input[1] || inputLeft;
+        
+        // Copy input data to WASM buffers
+        const wasmInputLeft = new Float32Array(
+            this.wasmModule.HEAPF32.buffer,
+            this.wasmBuffers.inputLeft,
+            blockLength
+        );
+        const wasmInputRight = new Float32Array(
+            this.wasmModule.HEAPF32.buffer,
+            this.wasmBuffers.inputRight,
+            blockLength
+        );
+        
+        wasmInputLeft.set(inputLeft);
+        wasmInputRight.set(inputRight);
+        
+        // Process audio through WASM engine
+        this.wasmModule.ccall(
+            'reaper_process_audio',
+            null,
+            ['number', 'number', 'number', 'number', 'number'],
+            [
+                this.wasmBuffers.inputLeft,
+                this.wasmBuffers.inputRight,
+                this.wasmBuffers.outputLeft,
+                this.wasmBuffers.outputRight,
+                blockLength
+            ]
+        );
+        
+        // Copy output data from WASM buffers
+        const wasmOutputLeft = new Float32Array(
+            this.wasmModule.HEAPF32.buffer,
+            this.wasmBuffers.outputLeft,
+            blockLength
+        );
+        const wasmOutputRight = new Float32Array(
+            this.wasmModule.HEAPF32.buffer,
+            this.wasmBuffers.outputRight,
+            blockLength
+        );
+        
+        output[0].set(wasmOutputLeft);
+        if (output[1]) {
+            output[1].set(wasmOutputRight);
+        }
+    }
+    
+    processAudioFallback(input, output, blockLength) {
+        // Simple JavaScript fallback
+        const inputLeft = input[0] || new Float32Array(blockLength);
+        const inputRight = input[1] || inputLeft;
+        
+        // Simple passthrough for now
+        output[0].set(inputLeft);
+        if (output[1]) {
+            output[1].set(inputRight);
         }
     }
     
@@ -444,38 +514,103 @@ class ReaperAudioProcessor extends AudioWorkletProcessor {
         };
         
         this.tracks.set(trackConfig.id, track);
+        
+        // Create track in WASM engine if available
+        if (this.wasmModule) {
+            this.wasmModule.ccall(
+                'reaper_create_track',
+                null,
+                ['string'],
+                [track.name]
+            );
+        }
+        
+        this.port.postMessage({
+            type: 'track-added',
+            trackId: track.id
+        });
+        
         console.log('Track added to processor:', track.id);
     }
     
     removeTrack(trackId) {
         this.tracks.delete(trackId);
+        
+        // Remove track from WASM engine if available
+        if (this.wasmModule) {
+            this.wasmModule.ccall(
+                'reaper_delete_track',
+                null,
+                ['number'],
+                [trackId]
+            );
+        }
+        
+        this.port.postMessage({
+            type: 'track-removed',
+            trackId
+        });
+        
         console.log('Track removed from processor:', trackId);
     }
     
     updateTrackParameter(trackId, parameter, value) {
         const track = this.tracks.get(trackId);
-        if (track) {
-            track[parameter] = value;
+        if (!track) return;
+        
+        track[parameter] = value;
+        
+        // Update parameter in WASM engine if available
+        if (this.wasmModule) {
+            switch (parameter) {
+                case 'volume':
+                    this.wasmModule.ccall(
+                        'reaper_set_track_volume',
+                        null,
+                        ['number', 'number'],
+                        [trackId, value]
+                    );
+                    break;
+                    
+                case 'pan':
+                    this.wasmModule.ccall(
+                        'reaper_set_track_pan',
+                        null,
+                        ['number', 'number'],
+                        [trackId, value]
+                    );
+                    break;
+                    
+                case 'mute':
+                    this.wasmModule.ccall(
+                        'reaper_set_track_muted',
+                        null,
+                        ['number', 'number'],
+                        [trackId, value ? 1 : 0]
+                    );
+                    break;
+                    
+                case 'solo':
+                    this.wasmModule.ccall(
+                        'reaper_set_track_soloed',
+                        null,
+                        ['number', 'number'],
+                        [trackId, value ? 1 : 0]
+                    );
+                    break;
+            }
         }
+        
+        this.port.postMessage({
+            type: 'track-parameter-updated',
+            trackId,
+            parameter,
+            value
+        });
     }
     
-    addEffect(trackId, effectConfig) {
-        const track = this.tracks.get(trackId);
-        if (track) {
-            track.effects.push(effectConfig);
-        }
-    }
-    
-    removeEffect(trackId, effectId) {
-        const track = this.tracks.get(trackId);
-        if (track) {
-            track.effects = track.effects.filter(effect => effect.id !== effectId);
-        }
-    }
-    
-    loadMediaItem(mediaItem) {
-        this.mediaItems.set(mediaItem.id, mediaItem);
-        console.log('Media item loaded to processor:', mediaItem.id);
+    static get parameterDescriptors() {
+        return [];
     }
 }
 
