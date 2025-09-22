@@ -1,0 +1,394 @@
+/*
+ * REAPER Web - Main Styling
+ * Core REAPER-style interface styling
+ */
+
+/* CSS Variables for REAPER Color Scheme */
+:root {
+    --reaper-bg-dark: #3c3c3c;
+    --reaper-bg-medium: #4a4a4a;
+    --reaper-bg-light: #5a5a5a;
+    --reaper-bg-lighter: #6a6a6a;
+    
+    --reaper-panel-bg: #3e3e3e;
+    --reaper-panel-border: #2a2a2a;
+    
+    --reaper-text-primary: #ffffff;
+    --reaper-text-secondary: #cccccc;
+    --reaper-text-muted: #999999;
+    
+    --reaper-accent-blue: #4a90e2;
+    --reaper-accent-green: #7ed321;
+    --reaper-accent-orange: #f5a623;
+    --reaper-accent-red: #d0021b;
+    
+    --reaper-track-bg: #454545;
+    --reaper-track-border: #2a2a2a;
+    --reaper-track-selected: #5a5a5a;
+    
+    --reaper-button-bg: #4a4a4a;
+    --reaper-button-hover: #5a5a5a;
+    --reaper-button-active: #6a6a6a;
+    
+    --reaper-slider-track: #2a2a2a;
+    --reaper-slider-thumb: #cccccc;
+    
+    --reaper-meter-bg: #2a2a2a;
+    --reaper-meter-green: #7ed321;
+    --reaper-meter-yellow: #f5a623;
+    --reaper-meter-red: #d0021b;
+    
+    /* Spacing */
+    --spacing-xs: 2px;
+    --spacing-sm: 4px;
+    --spacing-md: 8px;
+    --spacing-lg: 12px;
+    --spacing-xl: 16px;
+    
+    /* Font sizes */
+    --font-xs: 10px;
+    --font-sm: 11px;
+    --font-md: 12px;
+    --font-lg: 14px;
+    --font-xl: 16px;
+}
+
+/* Global Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    font-size: var(--font-md);
+    color: var(--reaper-text-primary);
+    background-color: var(--reaper-bg-dark);
+    overflow: hidden;
+    user-select: none;
+}
+
+/* Main Application Container */
+.reaper-app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Menu Bar */
+.menu-bar {
+    background-color: var(--reaper-panel-bg);
+    border-bottom: 1px solid var(--reaper-panel-border);
+    padding: var(--spacing-sm) var(--spacing-md);
+    height: 32px;
+    display: flex;
+    align-items: center;
+}
+
+.menu-items {
+    display: flex;
+    gap: var(--spacing-lg);
+}
+
+.menu-item {
+    padding: var(--spacing-sm) var(--spacing-md);
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background-color 0.15s ease;
+    position: relative;
+}
+
+.menu-item:hover,
+.menu-item.active {
+    background-color: var(--reaper-button-hover);
+}
+
+/* Menu Dropdowns */
+.menu-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: var(--reaper-panel-bg);
+    border: 1px solid var(--reaper-panel-border);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    min-width: 200px;
+    z-index: 1000;
+    padding: var(--spacing-xs) 0;
+    font-size: 13px;
+}
+
+.menu-dropdown-item {
+    padding: var(--spacing-xs) var(--spacing-md);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.15s ease;
+}
+
+.menu-dropdown-item:hover {
+    background-color: var(--reaper-button-hover);
+}
+
+.menu-dropdown-item.separator {
+    border-top: 1px solid var(--reaper-panel-border);
+    margin: var(--spacing-xs) 0;
+    padding: 0;
+    height: 1px;
+    cursor: default;
+}
+
+.menu-dropdown-item.separator:hover {
+    background-color: transparent;
+}
+
+.menu-shortcut {
+    color: var(--reaper-text-secondary);
+    font-size: 12px;
+    margin-left: var(--spacing-lg);
+}
+
+/* Toolbar */
+.toolbar {
+    background-color: var(--reaper-panel-bg);
+    border-bottom: 1px solid var(--reaper-panel-border);
+    padding: var(--spacing-sm) var(--spacing-md);
+    height: 40px;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.toolbar-section {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.toolbar-separator {
+    width: 1px;
+    height: 24px;
+    background-color: var(--reaper-panel-border);
+}
+
+.toolbar-btn {
+    width: 32px;
+    height: 32px;
+    background-color: var(--reaper-button-bg);
+    border: 1px solid var(--reaper-panel-border);
+    border-radius: 3px;
+    color: var(--reaper-text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.toolbar-btn:hover {
+    background-color: var(--reaper-button-hover);
+    border-color: var(--reaper-bg-lighter);
+}
+
+.toolbar-btn:active {
+    background-color: var(--reaper-button-active);
+}
+
+.toolbar-btn svg {
+    fill: currentColor;
+    stroke: currentColor;
+    stroke-width: 1;
+}
+
+/* Main Content Area */
+.main-content {
+    flex: 1;
+    display: flex;
+    min-height: 0; /* Important for flexbox overflow */
+}
+
+/* Hidden utility class */
+.hidden {
+    display: none !important;
+}
+
+/* Selection utility classes */
+.selected {
+    background-color: var(--reaper-track-selected) !important;
+}
+
+/* Button states */
+.btn-active {
+    background-color: var(--reaper-accent-blue) !important;
+    color: white !important;
+}
+
+.btn-recording {
+    background-color: var(--reaper-accent-red) !important;
+    color: white !important;
+}
+
+.btn-muted {
+    background-color: var(--reaper-accent-orange) !important;
+    color: white !important;
+}
+
+.btn-soloed {
+    background-color: var(--reaper-accent-green) !important;
+    color: white !important;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--reaper-bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--reaper-bg-lighter);
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--reaper-text-muted);
+}
+
+::-webkit-scrollbar-corner {
+    background: var(--reaper-bg-dark);
+}
+
+/* Range Slider Base Styling */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    outline: none;
+}
+
+/* Slider Track */
+input[type="range"]::-webkit-slider-track {
+    background: var(--reaper-slider-track);
+    height: 4px;
+    border-radius: 2px;
+}
+
+input[type="range"]::-moz-range-track {
+    background: var(--reaper-slider-track);
+    height: 4px;
+    border-radius: 2px;
+    border: none;
+}
+
+/* Slider Thumb */
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--reaper-slider-thumb);
+    height: 14px;
+    width: 14px;
+    border-radius: 50%;
+    border: 1px solid var(--reaper-panel-border);
+}
+
+input[type="range"]::-moz-range-thumb {
+    background: var(--reaper-slider-thumb);
+    height: 14px;
+    width: 14px;
+    border-radius: 50%;
+    border: 1px solid var(--reaper-panel-border);
+    cursor: pointer;
+}
+
+/* Focus states */
+input[type="range"]:focus::-webkit-slider-thumb {
+    box-shadow: 0 0 0 2px var(--reaper-accent-blue);
+}
+
+input[type="range"]:focus::-moz-range-thumb {
+    box-shadow: 0 0 0 2px var(--reaper-accent-blue);
+}
+
+/* Context Menu */
+.context-menu {
+    position: fixed;
+    background-color: var(--reaper-panel-bg);
+    border: 1px solid var(--reaper-panel-border);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    min-width: 150px;
+    overflow: hidden;
+}
+
+.context-item {
+    padding: var(--spacing-md) var(--spacing-lg);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    font-size: var(--font-sm);
+}
+
+.context-item:hover {
+    background-color: var(--reaper-button-hover);
+}
+
+.context-separator {
+    height: 1px;
+    background-color: var(--reaper-panel-border);
+    margin: var(--spacing-xs) 0;
+}
+
+/* Status Bar */
+.status-bar {
+    background-color: var(--reaper-panel-bg);
+    border-top: 1px solid var(--reaper-panel-border);
+    padding: var(--spacing-sm) var(--spacing-md);
+    height: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-xs);
+    color: var(--reaper-text-secondary);
+}
+
+.status-left, .status-right {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: center;
+}
+
+.status-separator {
+    color: var(--reaper-text-muted);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .toolbar-section {
+        gap: var(--spacing-xs);
+    }
+    
+    .menu-items {
+        gap: var(--spacing-md);
+    }
+}
+
+@media (max-width: 768px) {
+    .toolbar {
+        padding: var(--spacing-xs);
+    }
+    
+    .toolbar-btn {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .menu-item {
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+}

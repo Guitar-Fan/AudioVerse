@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioVerse Enhanced DAW - Reaper-Style Features</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .daw-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        /* Header */
+        .daw-header {
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
+        }
+        
+        .header-left h1 {
+            color: #4fc3f7;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+        
+        .connection-status {
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+        
+        .connected { color: #4caf50; }
+        .disconnected { color: #f44336; }
+        
+        .transport-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .transport-btn {
+            background: linear-gradient(45deg, #4fc3f7, #29b6f6);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1rem;
+            width: 45px;
+            height: 45px;
+            transition: all 0.2s;
+        }
+        
+        .transport-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 195, 247, 0.4);
+        }
+        
+        .transport-btn.active {
+            background: linear-gradient(45deg, #ff5722, #ff7043);
+        }
+        
+        .time-display {
+            background: rgba(0,0,0,0.5);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            margin: 0 20px;
+        }
+        
+        .header-right {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .tempo-control, .master-volume {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .tempo-control input, .master-volume input {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #4fc3f7;
+            color: white;
+            padding: 5px;
+            border-radius: 4px;
+            width: 80px;
+            text-align: center;
+        }
+        
+        /* Main Content */
+        .daw-main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        /* Left Sidebar */
+        .left-sidebar {
+            width: 250px;
+            background: rgba(0,0,0,0.2);
+            border-right: 1px solid #333;
+            padding: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        
+        .sidebar-section {
+            margin-bottom: 30px;
+        }
+        
+        .sidebar-section h3 {
+            color: #4fc3f7;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+        
+        .add-btn {
+            background: linear-gradient(45deg, #4caf50, #66bb6a);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        
+        .add-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(76, 175, 80, 0.3);
+        }
+        
+        .track-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .track-item {
+            background: rgba(255,255,255,0.05);
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            border-left: 3px solid #4fc3f7;
+        }
+        
+        .track-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .track-item.selected {
+            background: rgba(79, 195, 247, 0.2);
+        }
+        
+        /* Timeline and Track Area */
+        .timeline-track-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .timeline-header {
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid #333;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .zoom-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .zoom-btn {
+            background: rgba(79, 195, 247, 0.2);
+            color: #4fc3f7;
+            border: 1px solid #4fc3f7;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .zoom-btn:hover {
+            background: rgba(79, 195, 247, 0.3);
+        }
+        
+        .timeline-info {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        .timeline-container {
+            flex: 1;
+            position: relative;
+            overflow: auto;
+            background: #1a1a2e;
+        }
+        
+        .timeline-ruler {
+            height: 40px;
+            background: rgba(0,0,0,0.5);
+            border-bottom: 1px solid #333;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            height: 100%;
+            width: 1px;
+            background: #555;
+        }
+        
+        .timeline-marker.major {
+            background: #777;
+        }
+        
+        .timeline-label {
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            font-size: 0.8rem;
+            color: #aaa;
+            pointer-events: none;
+        }
+        
+        .playhead {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background: #ff5722;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        
+        .tracks-area {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .enhanced-track {
+            display: flex;
+            border-bottom: 1px solid #333;
+            min-height: 80px;
+        }
+        
+        .track-header {
+            width: 250px;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-right: 1px solid #333;
+        }
+        
+        .track-controls {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .track-btn {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            min-width: 25px;
+        }
+        
+        .track-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .track-btn.active {
+            background: #ff5722;
+        }
+        
+        .track-info {
+            flex: 1;
+        }
+        
+        .track-name {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .track-type {
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+        
+        .track-meters {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .volume-slider, .pan-slider {
+            width: 100%;
+            height: 20px;
+        }
+        
+        .track-timeline {
+            flex: 1;
+            background: rgba(255,255,255,0.03);
+            position: relative;
+            cursor: crosshair;
+        }
+        
+        .track-clips {
+            height: 100%;
+            position: relative;
+        }
+        
+        .audio-clip {
+            position: absolute;
+            background: linear-gradient(45deg, #4fc3f7, #29b6f6);
+            border-radius: 4px;
+            padding: 5px;
+            cursor: move;
+            border: 1px solid rgba(255,255,255,0.2);
+            min-width: 20px;
+            height: 60px;
+            top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .audio-clip:hover {
+            box-shadow: 0 2px 8px rgba(79, 195, 247, 0.5);
+        }
+        
+        /* Right Sidebar */
+        .right-sidebar {
+            width: 250px;
+            background: rgba(0,0,0,0.2);
+            border-left: 1px solid #333;
+            padding: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        
+        /* Footer */
+        .daw-footer {
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #2a2a4e, #1e1e3f);
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 500px;
+            border: 1px solid #4fc3f7;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .modal-header h3 {
+            color: #4fc3f7;
+        }
+        
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #fff;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #4fc3f7;
+            border-radius: 4px;
+            color: white;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #4fc3f7, #29b6f6);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(79, 195, 247, 0.3);
+        }
+        
+        /* Utility Classes */
+        .text-center { text-align: center; }
+        .mb-20 { margin-bottom: 20px; }
+        .mt-10 { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="daw-container">
+        <!-- Header -->
+        <header class="daw-header">
+            <div class="header-left">
+                <h1><i class="fas fa-music"></i> AudioVerse Enhanced DAW</h1>
+                <div class="connection-status" id="connectionStatus">
+                    <span class="disconnected">Initializing...</span>
+                </div>
+                <div id="engineInfo" style="font-size: 0.7rem; color: #888;">Loading Enhanced Engine...</div>
+            </div>
+            
+            <div class="header-center">
+                <!-- Transport Controls -->
+                <div class="transport-controls">
+                    <button id="rewindBtn" class="transport-btn" title="Rewind"><i class="fas fa-backward"></i></button>
+                    <button id="playBtn" class="transport-btn" title="Play/Pause"><i class="fas fa-play"></i></button>
+                    <button id="stopBtn" class="transport-btn" title="Stop"><i class="fas fa-stop"></i></button>
+                    <button id="recordBtn" class="transport-btn" title="Record"><i class="fas fa-circle"></i></button>
+                </div>
+                
+                <!-- Time Display -->
+                <div class="time-display">
+                    <span id="currentTime">0:00.00</span> / <span id="totalTime">0:00.00</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <!-- Tempo Control -->
+                <div class="tempo-control">
+                    <label>Tempo</label>
+                    <input type="number" id="tempoInput" value="120" min="60" max="200" step="1">
+                </div>
+                
+                <!-- Master Volume -->
+                <div class="master-volume">
+                    <label>Master</label>
+                    <input type="range" id="masterVolume" min="0" max="100" value="75" class="volume-slider">
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="daw-main">
+            <!-- Left Sidebar -->
+            <aside class="left-sidebar">
+                <div class="sidebar-section">
+                    <h3>Tracks</h3>
+                    <button id="addTrackBtn" class="add-btn">
+                        <i class="fas fa-plus"></i> Add Track (Ctrl+T)
+                    </button>
+                    <div id="trackList" class="track-list">
+                        <!-- Tracks will be added here -->
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>Timeline Controls</h3>
+                    <button id="zoomInBtn" class="add-btn">
+                        <i class="fas fa-search-plus"></i> Zoom In (Ctrl++)
+                    </button>
+                    <button id="zoomOutBtn" class="add-btn">
+                        <i class="fas fa-search-minus"></i> Zoom Out (Ctrl+-)
+                    </button>
+                    <button id="zoomFitBtn" class="add-btn">
+                        <i class="fas fa-expand-arrows-alt"></i> Zoom to Fit (Ctrl+F)
+                    </button>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>Project Info</h3>
+                    <div style="font-size: 0.9rem; color: #ccc;">
+                        <div>Tracks: <span id="trackCount">0</span></div>
+                        <div>Duration: <span id="projectDuration">0:00.00</span></div>
+                        <div>Zoom: <span id="zoomLevel">1.0x</span></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Timeline and Track Area -->
+            <section class="timeline-track-area">
+                <div class="timeline-header">
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" onclick="dawInterface.zoomIn()">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="zoom-btn" onclick="dawInterface.zoomOut()">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button class="zoom-btn" onclick="dawInterface.zoomToFitProject()">
+                            <i class="fas fa-expand-arrows-alt"></i> Fit
+                        </button>
+                    </div>
+                    <div class="timeline-info">
+                        Use mouse wheel + Ctrl to zoom | Click to set playhead | Drag to scroll
+                    </div>
+                </div>
+                
+                <div class="timeline-container" id="timelineContainer">
+                    <div class="timeline-ruler" id="timelineRuler">
+                        <!-- Timeline markers will be generated here -->
+                    </div>
+                    
+                    <div class="tracks-area" id="tracksContainer">
+                        <div class="text-center" style="padding: 40px; color: #666;">
+                            <i class="fas fa-music" style="font-size: 3rem; margin-bottom: 20px;"></i>
+                            <h3>Welcome to AudioVerse Enhanced DAW</h3>
+                            <p>Click "Add Track" to get started with Reaper-style features!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Sidebar -->
+            <aside class="right-sidebar">
+                <div class="sidebar-section">
+                    <h3>Selected Track</h3>
+                    <div id="selectedTrackInfo" class="track-details">
+                        <p style="color: #666;">No track selected</p>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>Keyboard Shortcuts</h3>
+                    <div style="font-size: 0.8rem; color: #ccc; line-height: 1.6;">
+                        <div><strong>Space:</strong> Play/Pause</div>
+                        <div><strong>Home:</strong> Rewind</div>
+                        <div><strong>Ctrl+R:</strong> Record</div>
+                        <div><strong>Ctrl+T:</strong> Add Track</div>
+                        <div><strong>Ctrl++:</strong> Zoom In</div>
+                        <div><strong>Ctrl+-:</strong> Zoom Out</div>
+                        <div><strong>Ctrl+F:</strong> Zoom to Fit</div>
+                        <div><strong>Mouse Wheel:</strong> Scroll Timeline</div>
+                        <div><strong>Ctrl+Wheel:</strong> Zoom Timeline</div>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>Features</h3>
+                    <div style="font-size: 0.8rem; color: #4fc3f7; line-height: 1.6;">
+                        <div>✅ Reaper-style Timeline</div>
+                        <div>✅ Advanced Track Management</div>
+                        <div>✅ Clip Manipulation</div>
+                        <div>✅ Recording System</div>
+                        <div>✅ Zoom & Scroll Controls</div>
+                        <div>✅ Keyboard Shortcuts</div>
+                        <div>✅ Real-time Processing</div>
+                        <div>✅ C++ Performance</div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Footer -->
+        <footer class="daw-footer">
+            <div class="footer-left">
+                <span>AudioVerse Enhanced DAW v3.0.0 - Reaper-Style Features | C++ Engine</span>
+            </div>
+            <div class="footer-right">
+                <span style="color: #4fc3f7;">Enhanced Performance Mode</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Track Creation Modal -->
+    <div id="trackModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Track</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="trackName">Track Name:</label>
+                    <input type="text" id="trackName" placeholder="Enter track name">
+                </div>
+                <div class="form-group">
+                    <label for="trackType">Track Type:</label>
+                    <select id="trackType">
+                        <option value="audio">Audio Track</option>
+                        <option value="midi">MIDI Track</option>
+                        <option value="instrument">Instrument Track</option>
+                        <option value="aux">Aux Send</option>
+                        <option value="master">Master Bus</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trackColor">Track Color:</label>
+                    <select id="trackColor">
+                        <option value="#4fc3f7">Blue</option>
+                        <option value="#4caf50">Green</option>
+                        <option value="#ff9800">Orange</option>
+                        <option value="#f44336">Red</option>
+                        <option value="#9c27b0">Purple</option>
+                        <option value="#607d8b">Gray</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer text-center">
+                <button id="createTrackBtn" class="btn-primary">Create Track</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the enhanced C++ engine -->
+    <script src="enhanced_cpp_daw_engine.js"></script>
+    <script src="reaper_style_daw_interface.js"></script>
+</body>
+</html>

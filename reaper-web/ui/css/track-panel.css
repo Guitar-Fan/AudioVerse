@@ -1,0 +1,439 @@
+/*
+ * REAPER Web - Track Panel Styling
+ * Left panel with track controls, mixer, and meters
+ */
+
+.track-panel {
+    width: 300px;
+    min-width: 250px;
+    max-width: 400px;
+    background-color: var(--reaper-panel-bg);
+    border-right: 1px solid var(--reaper-panel-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    resize: horizontal;
+}
+
+/* Track Panel Header */
+.track-panel-header {
+    background-color: var(--reaper-bg-medium);
+    border-bottom: 1px solid var(--reaper-panel-border);
+    padding: var(--spacing-sm) var(--spacing-md);
+    height: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-title {
+    font-size: var(--font-sm);
+    font-weight: bold;
+    color: var(--reaper-text-secondary);
+}
+
+.panel-controls {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.panel-btn {
+    width: 20px;
+    height: 20px;
+    background: none;
+    border: none;
+    color: var(--reaper-text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    transition: all 0.15s ease;
+}
+
+.panel-btn:hover {
+    background-color: var(--reaper-button-hover);
+    color: var(--reaper-text-primary);
+}
+
+/* Track Controls Container */
+.track-control {
+    background-color: var(--reaper-track-bg);
+    border-bottom: 1px solid var(--reaper-track-border);
+    padding: var(--spacing-md);
+    transition: background-color 0.15s ease;
+    position: relative;
+}
+
+.track-control:hover {
+    background-color: var(--reaper-bg-lighter);
+}
+
+.track-control.selected {
+    background-color: var(--reaper-track-selected);
+    border-left: 3px solid var(--reaper-accent-blue);
+}
+
+.track-control.master-track {
+    background: linear-gradient(to right, 
+        rgba(74, 144, 226, 0.1), 
+        var(--reaper-track-bg)
+    );
+    border-bottom: 2px solid var(--reaper-accent-blue);
+}
+
+/* Track Header */
+.track-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-md);
+}
+
+.track-number {
+    width: 24px;
+    height: 24px;
+    background-color: var(--reaper-bg-dark);
+    border: 1px solid var(--reaper-panel-border);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-sm);
+    font-weight: bold;
+    color: var(--reaper-text-primary);
+}
+
+.track-number.master {
+    background-color: var(--reaper-accent-blue);
+    border-color: var(--reaper-accent-blue);
+    color: white;
+}
+
+.track-name {
+    flex: 1;
+    margin: 0 var(--spacing-md);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background-color: var(--reaper-bg-dark);
+    border: 1px solid var(--reaper-panel-border);
+    border-radius: 3px;
+    color: var(--reaper-text-primary);
+    font-size: var(--font-sm);
+    outline: none;
+    cursor: text;
+}
+
+.track-name:focus {
+    border-color: var(--reaper-accent-blue);
+    box-shadow: 0 0 0 1px var(--reaper-accent-blue);
+}
+
+.track-controls-right {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.track-btn {
+    width: 24px;
+    height: 24px;
+    background-color: var(--reaper-button-bg);
+    border: 1px solid var(--reaper-panel-border);
+    border-radius: 3px;
+    color: var(--reaper-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-xs);
+    font-weight: bold;
+    transition: all 0.15s ease;
+}
+
+.track-btn:hover {
+    background-color: var(--reaper-button-hover);
+    color: var(--reaper-text-primary);
+}
+
+.fx-btn.active {
+    background-color: var(--reaper-accent-blue);
+    border-color: var(--reaper-accent-blue);
+    color: white;
+}
+
+.io-btn.active {
+    background-color: var(--reaper-accent-orange);
+    border-color: var(--reaper-accent-orange);
+    color: white;
+}
+
+/* Volume and Pan Controls */
+.track-volume-pan {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    align-items: center;
+}
+
+.volume-control, .pan-control {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.volume-slider, .pan-slider {
+    width: 100%;
+    height: 20px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-track,
+.pan-slider::-webkit-slider-track {
+    width: 100%;
+    height: 4px;
+    background: var(--reaper-slider-track);
+    border-radius: 2px;
+    border: none;
+}
+
+.volume-slider::-webkit-slider-track {
+    background: linear-gradient(to right, 
+        var(--reaper-slider-track) 0%, 
+        var(--reaper-slider-track) 70%, 
+        var(--reaper-accent-red) 100%
+    );
+}
+
+.volume-slider::-webkit-slider-thumb,
+.pan-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 16px;
+    background: var(--reaper-slider-thumb);
+    border: 1px solid var(--reaper-panel-border);
+    border-radius: 2px;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.volume-slider::-moz-range-track,
+.pan-slider::-moz-range-track {
+    width: 100%;
+    height: 4px;
+    background: var(--reaper-slider-track);
+    border-radius: 2px;
+    border: none;
+}
+
+.volume-slider::-moz-range-thumb,
+.pan-slider::-moz-range-thumb {
+    width: 12px;
+    height: 16px;
+    background: var(--reaper-slider-thumb);
+    border: 1px solid var(--reaper-panel-border);
+    border-radius: 2px;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.volume-label, .pan-label {
+    font-size: var(--font-xs);
+    color: var(--reaper-text-secondary);
+    text-align: center;
+    font-family: "Courier New", monospace;
+    min-height: 14px;
+}
+
+/* Track State Buttons */
+.track-buttons {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    justify-content: center;
+}
+
+.track-state-btn {
+    width: 32px;
+    height: 24px;
+    background-color: var(--reaper-button-bg);
+    border: 1px solid var(--reaper-panel-border);
+    border-radius: 3px;
+    color: var(--reaper-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-sm);
+    font-weight: bold;
+    transition: all 0.15s ease;
+}
+
+.track-state-btn:hover {
+    background-color: var(--reaper-button-hover);
+    color: var(--reaper-text-primary);
+}
+
+/* Button active states */
+.mute-btn.active {
+    background-color: var(--reaper-accent-orange);
+    border-color: var(--reaper-accent-orange);
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.solo-btn.active {
+    background-color: var(--reaper-accent-green);
+    border-color: var(--reaper-accent-green);
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.record-btn {
+    background-color: var(--reaper-accent-red);
+    border-color: var(--reaper-accent-red);
+    color: white;
+}
+
+.record-btn:hover {
+    background-color: #e81429;
+}
+
+.record-btn.active {
+    animation: record-pulse 1s infinite;
+}
+
+/* Track Meters */
+.track-meters {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.meter-container {
+    display: flex;
+    gap: var(--spacing-xs);
+    height: 100%;
+}
+
+.meter {
+    width: 8px;
+    height: 100%;
+    background-color: var(--reaper-meter-bg);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.meter::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 0%;
+    background: linear-gradient(to top,
+        var(--reaper-meter-green) 0%,
+        var(--reaper-meter-green) 60%,
+        var(--reaper-meter-yellow) 80%,
+        var(--reaper-meter-red) 100%
+    );
+    transition: height 0.1s ease-out;
+}
+
+.meter.peak::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--reaper-meter-red);
+    opacity: 0;
+    animation: peak-flash 0.5s ease-out;
+}
+
+@keyframes peak-flash {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Track List */
+.track-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Track type indicators */
+.track-control.audio::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: var(--reaper-accent-green);
+}
+
+.track-control.folder::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: var(--reaper-accent-orange);
+}
+
+/* Folder track indentation */
+.track-control.folder-child {
+    margin-left: 20px;
+    border-left: 1px dashed var(--reaper-text-muted);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .track-panel {
+        width: 250px;
+        min-width: 200px;
+    }
+    
+    .track-control {
+        padding: var(--spacing-sm);
+    }
+    
+    .track-meters {
+        height: 30px;
+    }
+    
+    .meter {
+        width: 6px;
+    }
+}
+
+@media (max-width: 768px) {
+    .track-panel {
+        width: 200px;
+        min-width: 180px;
+    }
+    
+    .track-volume-pan {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+    
+    .track-buttons {
+        gap: var(--spacing-xs);
+    }
+    
+    .track-state-btn {
+        width: 28px;
+        height: 20px;
+        font-size: var(--font-xs);
+    }
+}

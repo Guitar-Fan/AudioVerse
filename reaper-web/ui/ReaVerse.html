@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReaVerse - Web DAW</title>
+    <link rel="stylesheet" href="css/reaper-style.css">
+    <link rel="stylesheet" href="css/transport.css">
+    <link rel="stylesheet" href="css/track-panel.css">
+    <link rel="stylesheet" href="css/arrange-view.css">
+    <link rel="stylesheet" href="css/mixer-view.css">
+</head>
+<body>
+    <!-- Main Application Container -->
+    <div id="reaper-app" class="reaper-app">
+        
+        <!-- Menu Bar -->
+        <div class="menu-bar">
+            <div class="menu-items">
+                <div class="menu-item">File</div>
+                <div class="menu-item">Edit</div>
+                <div class="menu-item">View</div>
+                <div class="menu-item">Insert</div>
+                <div class="menu-item">Track</div>
+                <div class="menu-item">Item</div>
+                <div class="menu-item">Take</div>
+                <div class="menu-item">Actions</div>
+                <div class="menu-item">Options</div>
+                <div class="menu-item">Extensions</div>
+                <div class="menu-item">Help</div>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-section">
+                <button class="toolbar-btn" id="new-project" title="New Project">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M2 2h12v12H2V2zm1 1v10h10V3H3z"/>
+                        <path d="M8 5v6M5 8h6"/>
+                    </svg>
+                </button>
+                <button class="toolbar-btn" id="open-project" title="Open Project">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M2 3v10h12V5H8L6 3H2z"/>
+                    </svg>
+                </button>
+                <button class="toolbar-btn" id="save-project" title="Save Project">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M2 2v12h12V4.5L11.5 2H2z"/>
+                        <path d="M3 3h7v3H3V3z"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="toolbar-separator"></div>
+            
+            <div class="toolbar-section">
+                <button class="toolbar-btn" id="undo" title="Undo">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M3 8a5 5 0 0 1 5-5h4M3 8l3-3M3 8l3 3"/>
+                    </svg>
+                </button>
+                <button class="toolbar-btn" id="redo" title="Redo">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M13 8a5 5 0 0 0-5-5H4M13 8l-3-3M13 8l-3 3"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="toolbar-separator"></div>
+            
+            <div class="toolbar-section">
+                <button class="toolbar-btn" id="add-track" title="Add Track">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M8 2v12M2 8h12"/>
+                    </svg>
+                </button>
+                <button class="toolbar-btn" id="delete-track" title="Delete Track">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Transport Bar -->
+        <div class="transport-bar">
+            <div class="transport-controls">
+                <button class="transport-btn" id="goto-start" title="Go to Start">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path d="M3 4v12M7 10l10-6v12l-10-6z"/>
+                    </svg>
+                </button>
+                <button class="transport-btn" id="rewind" title="Rewind">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path d="M10 10l7-4v8l-7-4zM3 10l7-4v8l-7-4z"/>
+                    </svg>
+                </button>
+                <button class="transport-btn play-btn" id="play" title="Play">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path d="M6 4l10 6-10 6V4z"/>
+                    </svg>
+                </button>
+                <button class="transport-btn" id="pause" title="Pause">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <rect x="6" y="4" width="3" height="12"/>
+                        <rect x="11" y="4" width="3" height="12"/>
+                    </svg>
+                </button>
+                <button class="transport-btn" id="stop" title="Stop">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <rect x="5" y="5" width="10" height="10"/>
+                    </svg>
+                </button>
+                <button class="transport-btn" id="record" title="Record">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" r="6"/>
+                    </svg>
+                </button>
+                <button class="transport-btn" id="fast-forward" title="Fast Forward">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path d="M3 10l7-4v8l-7-4zM10 10l7-4v8l-7-4z"/>
+                    </svg>
+                </button>
+                <button class="transport-btn" id="goto-end" title="Go to End">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path d="M17 4v12M3 10l10-6v12l-10-6z"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="transport-info">
+                <div class="time-display">
+                    <span id="current-time">00:00:00.000</span>
+                    <span class="time-separator">/</span>
+                    <span id="total-time">00:00:00.000</span>
+                </div>
+                <div class="position-display">
+                    <span id="current-position">1.1.00</span>
+                    <span class="position-separator">|</span>
+                    <span id="tempo">120.00</span> BPM
+                </div>
+            </div>
+            
+            <div class="transport-options">
+                <button class="option-btn" id="loop" title="Loop">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M3 5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5z"/>
+                        <path d="M7 8l3-3M10 11l-3-3"/>
+                    </svg>
+                </button>
+                <button class="option-btn" id="metronome" title="Metronome">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M8 2l4 12H4l4-12z"/>
+                        <circle cx="8" cy="6" r="1"/>
+                    </svg>
+                </button>
+                <button class="option-btn" id="auto-crossfade" title="Auto-crossfade">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M2 6l6 6 6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            
+            <!-- Left Panel - Track Control Panel -->
+            <div class="track-panel">
+                <div class="track-panel-header">
+                    <div class="panel-title">TCP</div>
+                    <div class="panel-controls">
+                        <button class="panel-btn" id="tcp-minimize" title="Minimize">-</button>
+                        <button class="panel-btn" id="tcp-close" title="Hide">×</button>
+                    </div>
+                </div>
+                
+                <!-- Master Track Controls -->
+                <div class="track-control master-track" id="master-track">
+                    <div class="track-header">
+                        <div class="track-number">M</div>
+                        <div class="track-name">Master</div>
+                        <div class="track-controls-right">
+                            <button class="track-btn fx-btn" title="Effects">FX</button>
+                            <button class="track-btn io-btn" title="I/O">I/O</button>
+                        </div>
+                    </div>
+                    
+                    <div class="track-volume-pan">
+                        <div class="volume-control">
+                            <input type="range" class="volume-slider" min="0" max="200" value="100" id="master-volume">
+                            <span class="volume-label">0.0dB</span>
+                        </div>
+                        <div class="pan-control">
+                            <input type="range" class="pan-slider" min="-100" max="100" value="0" id="master-pan">
+                            <span class="pan-label">C</span>
+                        </div>
+                    </div>
+                    
+                    <div class="track-buttons">
+                        <button class="track-state-btn mute-btn" id="master-mute">M</button>
+                        <button class="track-state-btn solo-btn" id="master-solo">S</button>
+                    </div>
+                    
+                    <div class="track-meters">
+                        <div class="meter-container">
+                            <div class="meter left-meter" id="master-meter-l"></div>
+                            <div class="meter right-meter" id="master-meter-r"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dynamic Track List -->
+                <div class="track-list" id="track-list">
+                    <!-- Tracks will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Arrange View -->
+            <div class="arrange-view">
+                <div class="arrange-header">
+                    <div class="timeline-ruler" id="timeline-ruler">
+                        <!-- Timeline markers will be generated here -->
+                    </div>
+                </div>
+                
+                <div class="arrange-content" id="arrange-content">
+                    <!-- Track lanes will be generated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Panel - Mixer View (Initially Hidden) -->
+        <div class="mixer-panel hidden" id="mixer-panel">
+            <div class="mixer-header">
+                <div class="mixer-title">Mixer</div>
+                <button class="panel-btn" id="mixer-close">×</button>
+            </div>
+            <div class="mixer-content" id="mixer-content">
+                <!-- Mixer channels will be generated here -->
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-left">
+                <span id="project-status">Ready</span>
+                <span class="status-separator">|</span>
+                <span id="audio-status">Audio: 44.1kHz, 512 samples</span>
+            </div>
+            <div class="status-right">
+                <span id="cpu-usage">CPU: 0%</span>
+                <span class="status-separator">|</span>
+                <span id="memory-usage">RAM: 0MB</span>
+                <span class="status-separator">|</span>
+                <span id="disk-usage">Disk: 0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menus (Hidden by default) -->
+    <div class="context-menu hidden" id="track-context-menu">
+        <div class="context-item">Insert new track</div>
+        <div class="context-item">Duplicate track</div>
+        <div class="context-separator"></div>
+        <div class="context-item">Remove track</div>
+        <div class="context-separator"></div>
+        <div class="context-item">Track color...</div>
+        <div class="context-item">Track icon...</div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../js/reaper-web.js"></script>
+    <script src="js/reaper-engine.js"></script>
+    <script src="js/ui-manager.js"></script>
+    <script src="js/track-controls.js"></script>
+    <script src="js/transport-controls.js"></script>
+    <script src="js/arrange-view.js"></script>
+    <script src="js/mixer-view.js"></script>
+    <script src="js/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+</body>
+</html>

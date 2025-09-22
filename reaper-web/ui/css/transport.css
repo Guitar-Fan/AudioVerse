@@ -1,0 +1,260 @@
+/*
+ * REAPER Web - Transport Controls Styling
+ * Play, stop, record, and timeline controls
+ */
+
+.transport-bar {
+    background-color: var(--reaper-panel-bg);
+    border-bottom: 1px solid var(--reaper-panel-border);
+    padding: var(--spacing-md);
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-xl);
+}
+
+/* Transport Controls */
+.transport-controls {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.transport-btn {
+    width: 40px;
+    height: 40px;
+    background-color: var(--reaper-button-bg);
+    border: 1px solid var(--reaper-panel-border);
+    border-radius: 4px;
+    color: var(--reaper-text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.transport-btn:hover {
+    background-color: var(--reaper-button-hover);
+    border-color: var(--reaper-bg-lighter);
+}
+
+.transport-btn:active {
+    background-color: var(--reaper-button-active);
+    transform: translateY(1px);
+}
+
+.transport-btn.active {
+    background-color: var(--reaper-accent-blue);
+    border-color: var(--reaper-accent-blue);
+    box-shadow: 0 0 8px rgba(74, 144, 226, 0.4);
+}
+
+.transport-btn svg {
+    fill: currentColor;
+    stroke: none;
+}
+
+/* Special styling for play button */
+.play-btn {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--reaper-accent-green), #6bb516);
+    border-color: var(--reaper-accent-green);
+}
+
+.play-btn:hover {
+    background: linear-gradient(135deg, #8edc3a, var(--reaper-accent-green));
+}
+
+.play-btn.active {
+    background: linear-gradient(135deg, var(--reaper-accent-green), #5a9e12);
+    box-shadow: 0 0 12px rgba(126, 211, 33, 0.6);
+}
+
+/* Record button special styling */
+#record {
+    background: linear-gradient(135deg, var(--reaper-accent-red), #b8021a);
+    border-color: var(--reaper-accent-red);
+}
+
+#record:hover {
+    background: linear-gradient(135deg, #e81429, var(--reaper-accent-red));
+}
+
+#record.active {
+    background: linear-gradient(135deg, var(--reaper-accent-red), #a00116);
+    box-shadow: 0 0 12px rgba(208, 2, 27, 0.6);
+    animation: record-pulse 1s infinite;
+}
+
+@keyframes record-pulse {
+    0%, 100% { box-shadow: 0 0 12px rgba(208, 2, 27, 0.6); }
+    50% { box-shadow: 0 0 20px rgba(208, 2, 27, 0.9); }
+}
+
+/* Transport Info Display */
+.transport-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-width: 200px;
+}
+
+.time-display {
+    font-family: "Courier New", monospace;
+    font-size: var(--font-lg);
+    font-weight: bold;
+    color: var(--reaper-text-primary);
+    background-color: var(--reaper-bg-dark);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: 4px;
+    border: 1px solid var(--reaper-panel-border);
+    min-width: 180px;
+    text-align: center;
+}
+
+.time-separator {
+    color: var(--reaper-text-muted);
+    margin: 0 var(--spacing-sm);
+}
+
+.position-display {
+    font-family: "Courier New", monospace;
+    font-size: var(--font-sm);
+    color: var(--reaper-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.position-separator {
+    color: var(--reaper-text-muted);
+}
+
+/* Transport Options */
+.transport-options {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.option-btn {
+    width: 32px;
+    height: 32px;
+    background-color: var(--reaper-button-bg);
+    border: 1px solid var(--reaper-panel-border);
+    border-radius: 3px;
+    color: var(--reaper-text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.option-btn:hover {
+    background-color: var(--reaper-button-hover);
+}
+
+.option-btn.active {
+    background-color: var(--reaper-accent-blue);
+    border-color: var(--reaper-accent-blue);
+    color: white;
+}
+
+.option-btn svg {
+    fill: currentColor;
+    stroke: currentColor;
+    stroke-width: 1;
+}
+
+/* Loop button special styling */
+#loop.active {
+    background-color: var(--reaper-accent-orange);
+    border-color: var(--reaper-accent-orange);
+}
+
+/* Metronome button special styling */
+#metronome.active {
+    background-color: var(--reaper-accent-green);
+    border-color: var(--reaper-accent-green);
+    animation: metronome-tick 1s infinite;
+}
+
+@keyframes metronome-tick {
+    0%, 90%, 100% { transform: scale(1); }
+    10% { transform: scale(1.1); }
+}
+
+/* Time display animations */
+.time-display.playing {
+    border-color: var(--reaper-accent-green);
+    box-shadow: 0 0 4px rgba(126, 211, 33, 0.3);
+}
+
+.time-display.recording {
+    border-color: var(--reaper-accent-red);
+    box-shadow: 0 0 4px rgba(208, 2, 27, 0.3);
+    animation: recording-glow 1s infinite alternate;
+}
+
+@keyframes recording-glow {
+    from { box-shadow: 0 0 4px rgba(208, 2, 27, 0.3); }
+    to { box-shadow: 0 0 8px rgba(208, 2, 27, 0.6); }
+}
+
+/* Responsive transport controls */
+@media (max-width: 1200px) {
+    .transport-bar {
+        padding: var(--spacing-sm);
+        gap: var(--spacing-lg);
+    }
+    
+    .transport-controls {
+        gap: var(--spacing-xs);
+    }
+    
+    .transport-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .play-btn {
+        width: 42px;
+        height: 42px;
+    }
+    
+    .transport-info {
+        min-width: 160px;
+    }
+    
+    .time-display {
+        min-width: 140px;
+        font-size: var(--font-md);
+    }
+}
+
+@media (max-width: 768px) {
+    .transport-bar {
+        flex-direction: column;
+        height: auto;
+        gap: var(--spacing-md);
+        padding: var(--spacing-md);
+    }
+    
+    .transport-controls {
+        order: 2;
+    }
+    
+    .transport-info {
+        order: 1;
+    }
+    
+    .transport-options {
+        order: 3;
+    }
+}
