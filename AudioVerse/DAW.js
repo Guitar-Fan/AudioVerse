@@ -96,6 +96,9 @@ const recordBtn = document.getElementById('recordBtn');
 const stopBtn = document.getElementById('stopBtn');
 const playBtn = document.getElementById('playBtn');
 const pauseBtn = document.getElementById('pauseBtn');
+const goToStartBtn = document.getElementById('goToStartBtn');
+const skipBackBtn = document.getElementById('skipBackBtn');
+const skipForwardBtn = document.getElementById('skipForwardBtn');
 const timelineDiv = document.getElementById('timeline');
 const tracksDiv = document.getElementById('tracks');
 const fileInput = document.getElementById('fileInput');
@@ -1106,10 +1109,10 @@ function convertDbToVolume(dbValue, minDb, maxDb) {
 }
 
 // Play clip using Howler.js with volume automation
-function playClipWithTone(clip, playDelay, sourceOffset, sourceDuration, startOffset, clipStartTime, trackGain) {
-  // Check if Tone.js player is available and loaded
-  if (!clip.tonePlayer || !clip.useTone || !clip.tonePlayer.loaded) {
-    console.warn('Tone.Player not available or not loaded for clip:', clip.name, 'Player loaded:', clip.tonePlayer?.loaded, 'falling back to Web Audio API');
+async function playClipWithTone(clip, playDelay, sourceOffset, sourceDuration, startOffset, clipStartTime, trackGain) {
+  // Check if we have the audio URL for creating a new player
+  if (!clip.audioUrl || !clip.useTone) {
+    console.warn('Audio URL not available for Tone.js playback for clip:', clip.name, 'falling back to Web Audio API');
     return false;
   }
   
@@ -1118,44 +1121,78 @@ function playClipWithTone(clip, playDelay, sourceOffset, sourceDuration, startOf
   try {
     // Ensure Tone.js is started
     if (!toneStarted) {
-      initializeToneJS();
+      await initializeToneJS();
     }
+    
+    // Create a new player instance for each playback (Tone.js best practice)
+    const player = new Tone.Player({
+      url: clip.audioUrl,
+      onload: () => {
+        console.log(`Playback player loaded for ${clip.name}`);
+      },
+      onerror: (error) => {
+        console.error(`Playback player error for ${clip.name}:`, error.message || error);
+      }
+    });
+    
+    // Create volume node for this playback instance
+    const volumeNode = new Tone.Volume(0); // Start at 0dB
+    
+    // Connect player -> volume -> destination
+    player.connect(volumeNode);
+    volumeNode.toDestination();
     
     // Calculate start time in Tone.js context
     const toneStartTime = Tone.now() + playDelay;
     
     // Apply volume automation if enabled
-    if (clip.automation.volume.enabled) {
-      applyToneVolumeAutomation(clip, toneStartTime);
+    if (clip.automation && clip.automation.volume && clip.automation.volume.enabled && clip.automation.volume.points.length > 0) {
+      applyToneVolumeAutomationToNode(volumeNode, clip.automation.volume, toneStartTime, sourceOffset, sourceDuration);
     }
     
     // Start the player at the specified time and offset
     if (sourceDuration < clip.duration) {
       // Play for a specific duration
-      clip.tonePlayer.start(toneStartTime, sourceOffset, sourceDuration);
+      player.start(toneStartTime, sourceOffset, sourceDuration);
     } else {
       // Play from offset to end
-      clip.tonePlayer.start(toneStartTime, sourceOffset);
+      player.start(toneStartTime, sourceOffset);
     }
     
     // Add to active sources for proper stopping
     activeAudioSources.push({
-      player: clip.tonePlayer,
-      volumeNode: clip.toneVolume,
+      player: player,
+      volumeNode: volumeNode,
       stop: () => {
         try {
-          clip.tonePlayer.stop();
+          player.stop();
+          player.dispose();
+          volumeNode.dispose();
         } catch (e) {
-          console.warn('Error stopping Tone.js player:', e);
+          console.warn('Error stopping Tone.js player:', e.message || e);
         }
       }
     });
     
-    console.log('Tone.js playback started successfully for:', clip.name);
+    // Auto cleanup after duration
+    setTimeout(() => {
+      try {
+        if (player.disposed === false) {
+          player.dispose();
+        }
+        if (volumeNode.disposed === false) {
+          volumeNode.dispose();
+        }
+      } catch (error) {
+        console.warn('Cleanup error:', error.message || error);
+      }
+    }, (playDelay + sourceDuration + 1) * 1000);
+    
+    console.log('Tone.js playbook started successfully for:', clip.name);
     return true;
     
   } catch (error) {
-    console.error('Error during Tone.js playback:', error);
+    console.error('Error during Tone.js playback:', error.message || error);
     return false;
   }
 }
@@ -1466,23 +1503,23 @@ function playAll() {
   if (playing) return;
   
   // Initialize Tone.js and audio context
-  initializeToneJS().then(() => {
-    startPlayback();
-  }).catch(error => {
+  initializeToneJS().then(async () => {
+    await startPlayback();
+  }).catch(async (error) => {
     console.error('Failed to initialize Tone.js:', error);
     // Fallback to regular audio context
     initAudioContext();
     if (audioCtx.state === 'suspended') {
-      audioCtx.resume().then(() => {
-        startPlayback();
+      audioCtx.resume().then(async () => {
+        await startPlayback();
       });
     } else {
-      startPlayback();
+      await startPlayback();
     }
   });
 }
 
-function startPlayback() {
+async function startPlayback() {
   playing = true;
   playBtn.disabled = true;
   pauseBtn.disabled = false;
@@ -1524,7 +1561,7 @@ function startPlayback() {
       try { trackChain.outputNode.connect(trackGain); } catch {}
     }
     
-    track.clips.forEach(clip => {
+    track.clips.forEach(async clip => {
       if (!clip.audioBuffer) return;
       
       const clipStartTime = clip.startTime;
@@ -1538,7 +1575,7 @@ function startPlayback() {
         const sourceDuration = Math.min(clip.duration, clipEndTime - Math.max(startOffset, clipStartTime));
         
         // Try Tone.js first, fallback to Web Audio API if needed
-        const toneSuccess = playClipWithTone(clip, playDelay, sourceOffset, sourceDuration, startOffset, clipStartTime, trackIndex);
+        const toneSuccess = await playClipWithTone(clip, playDelay, sourceOffset, sourceDuration, startOffset, clipStartTime, trackIndex);
         
         if (!toneSuccess && clip.audioBuffer) {
           // Fallback to Web Audio API
@@ -1571,13 +1608,26 @@ function startPlayback() {
   
   // Update playhead during playback
   const updatePlayheadLoop = () => {
-    if (!playing) return;
+    if (!playing) {
+      console.log('Playhead loop stopped: not playing');
+      return;
+    }
     
     // Use Tone.js transport time if available, otherwise fall back to AudioContext
     if (toneStarted && typeof Tone !== 'undefined' && Tone.Transport.state === 'started') {
       playheadTime = startOffset + Tone.Transport.seconds;
     } else {
       playheadTime = startOffset + (audioCtx.currentTime - startTime);
+    }
+    
+    // Debug log occasionally (every 60 frames = ~1 second)
+    if (Math.floor(Date.now() / 1000) % 2 === 0 && Math.floor(Date.now() / 16) % 60 === 0) {
+      console.log('Playhead loop running:', {
+        playing,
+        playheadTime: playheadTime.toFixed(2),
+        autoScrollEnabled,
+        toneTransportState: toneStarted ? Tone?.Transport?.state : 'N/A'
+      });
     }
     
     // Update pitch automation for all tracks with active clips
@@ -1596,11 +1646,28 @@ function startPlayback() {
     // Auto-scroll if enabled
     if (autoScrollEnabled) {
       const workspaceEl = document.getElementById('workspace');
-      const gridOffset = TRACK_HEADER_WIDTH;
-      const playheadX = gridOffset + playheadTime * PIXELS_PER_SEC;
-      const workspaceWidth = workspaceEl.clientWidth;
-      const scrollLeft = Math.max(0, playheadX - workspaceWidth / 2);
-      workspaceEl.scrollLeft = scrollLeft;
+      const workspaceMainEl = workspaceEl?.querySelector('.workspace-main');
+      const scrollElement = workspaceMainEl || workspaceEl;
+      
+      if (scrollElement) {
+        const gridOffset = TRACK_HEADER_WIDTH;
+        const playheadX = gridOffset + playheadTime * PIXELS_PER_SEC;
+        const workspaceWidth = scrollElement.clientWidth;
+        const scrollLeft = Math.max(0, playheadX - workspaceWidth / 2);
+        
+        console.log('Auto-scroll debug:', {
+          playheadTime: playheadTime.toFixed(2),
+          playheadX,
+          workspaceWidth,
+          scrollLeft,
+          currentScrollLeft: scrollElement.scrollLeft,
+          elementType: scrollElement.className
+        });
+        
+        scrollElement.scrollLeft = scrollLeft;
+      } else {
+        console.warn('Scroll element not found for auto-scroll');
+      }
     }
     
     renderTimeline();
@@ -1686,6 +1753,52 @@ function stopAll() {
   pauseAll();
   // Don't automatically reset to 0 - let user control playhead position
   // playheadTime = 0; // Remove this line
+  renderTimeline();
+}
+
+// New transport functions
+function goToBeginning() {
+  console.log('Going to beginning');
+  playheadTime = 0;
+  
+  // If playing, restart Tone.js Transport from beginning
+  if (playing && toneStarted && typeof Tone !== 'undefined') {
+    Tone.Transport.stop();
+    Tone.Transport.start();
+  }
+  
+  renderTimeline();
+}
+
+function skipBackOneMeasure() {
+  const secPerBar = getSecPerBar();
+  const newTime = Math.max(0, playheadTime - secPerBar);
+  console.log(`Skipping back 1 measure: ${playheadTime.toFixed(2)}s -> ${newTime.toFixed(2)}s`);
+  
+  playheadTime = newTime;
+  
+  // If playing, update Tone.js Transport position
+  if (playing && toneStarted && typeof Tone !== 'undefined') {
+    Tone.Transport.stop();
+    Tone.Transport.start('+0', playheadTime);
+  }
+  
+  renderTimeline();
+}
+
+function skipForwardOneMeasure() {
+  const secPerBar = getSecPerBar();
+  const newTime = playheadTime + secPerBar;
+  console.log(`Skipping forward 1 measure: ${playheadTime.toFixed(2)}s -> ${newTime.toFixed(2)}s`);
+  
+  playheadTime = newTime;
+  
+  // If playing, update Tone.js Transport position
+  if (playing && toneStarted && typeof Tone !== 'undefined') {
+    Tone.Transport.stop();
+    Tone.Transport.start('+0', playheadTime);
+  }
+  
   renderTimeline();
 }
 
@@ -2945,6 +3058,19 @@ function init() {
   pauseBtn.onclick = () => {
     pauseAll();
   };
+
+  // New transport button handlers
+  goToStartBtn.onclick = () => {
+    goToBeginning();
+  };
+
+  skipBackBtn.onclick = () => {
+    skipBackOneMeasure();
+  };
+
+  skipForwardBtn.onclick = () => {
+    skipForwardOneMeasure();
+  };
   
   // Initialize plugin strip
   initializePluginStrip();
@@ -2956,21 +3082,7 @@ function init() {
 // Ensure initialization after DOM is loaded
 window.onload = init;
 
-// Replace updatePlayhead to auto-scroll horizontally to keep playhead centered if enabled
-function updatePlayhead(t) {
-  playheadTime = t;
-  renderTimeline();
-
-  if (autoScrollEnabled) {
-    const workspaceEl = document.getElementById('workspace');
-    const gridOffset = TRACK_HEADER_WIDTH;
-    const playheadX = gridOffset + playheadTime * PIXELS_PER_SEC;
-    const workspaceWidth = workspaceEl.clientWidth;
-    // Scroll so playhead is centered, but not before start or after end
-    const scrollLeft = Math.max(0, playheadX - workspaceWidth / 2);
-    workspaceEl.scrollLeft = scrollLeft;
-  }
-}
+// Note: updatePlayhead function removed - auto-scroll is now handled in updatePlayheadLoop
 
 // --- Add Track Button ---
 addTrackBtn.onclick = () => {
@@ -3551,6 +3663,18 @@ document.addEventListener('keydown', (e) => {
       } else {
         stopBtn.click();
       }
+      break;
+    case 'Home':
+      e.preventDefault();
+      goToStartBtn.click();
+      break;
+    case 'ArrowLeft':
+      e.preventDefault();
+      skipBackBtn.click();
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      skipForwardBtn.click();
       break;
     case 'z':
     case 'Z':
@@ -4644,7 +4768,6 @@ function updatePluginStrip() {
 function createPluginSlot(pluginId, slotIndex, trackIndex) {
   const slot = document.createElement('div');
   slot.className = 'plugin-slot';
-  slot.dataset.expanded = 'false'; // Track expansion state
   
   if (pluginId) {
     const plugin = window.FXPlugins ? FXPlugins.get(pluginId) : null;
@@ -4653,43 +4776,30 @@ function createPluginSlot(pluginId, slotIndex, trackIndex) {
     const isEnabled = track.insertEnabled[slotIndex] !== false;
     const isBypassed = !isEnabled;
     
+    // Simple square with plugin name only - Ableton style
     slot.innerHTML = `
-      <div class="plugin-slot-header">
-        <span class="plugin-slot-name" title="${pluginName}">${pluginName}</span>
-        <div class="plugin-slot-controls">
-          <button class="plugin-slot-btn expand" 
-                  title="Expand/Collapse" data-track="${trackIndex}" data-slot="${slotIndex}">▼</button>
-          <button class="plugin-slot-btn bypass ${isBypassed ? 'active' : ''}" 
+      <div class="plugin-square ${isBypassed ? 'bypassed' : ''}">
+        <span class="plugin-name" title="${pluginName}">${pluginName}</span>
+        <div class="plugin-square-controls">
+          <button class="plugin-square-btn bypass ${isBypassed ? 'active' : ''}" 
                   title="Bypass" data-track="${trackIndex}" data-slot="${slotIndex}">B</button>
-          <button class="plugin-slot-btn remove" 
+          <button class="plugin-square-btn remove" 
                   title="Remove" data-track="${trackIndex}" data-slot="${slotIndex}">×</button>
         </div>
-      </div>
-      <div class="plugin-slot-content collapsed">
-        ${renderPluginParameters(pluginId, trackIndex, slotIndex)}
       </div>
     `;
     
     // Add event listeners
-    const expandBtn = slot.querySelector('.expand');
     const bypassBtn = slot.querySelector('.bypass');
     const removeBtn = slot.querySelector('.remove');
-    const content = slot.querySelector('.plugin-slot-content');
+    const pluginSquare = slot.querySelector('.plugin-square');
     
-    if (expandBtn) {
-      expandBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isExpanded = slot.dataset.expanded === 'true';
-        slot.dataset.expanded = (!isExpanded).toString();
-        content.classList.toggle('collapsed', isExpanded);
-        expandBtn.textContent = isExpanded ? '▼' : '▲';
-        
-        // If expanding, open the full plugin UI
-        if (!isExpanded) {
-          expandPluginUI(pluginId, trackIndex, slotIndex);
-        }
-      });
-    }
+    // Main click opens plugin dialog (not inline parameters)
+    pluginSquare.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('plugin-square-btn')) {
+        openPluginDialog(pluginId, trackIndex, slotIndex);
+      }
+    });
     
     if (bypassBtn) {
       bypassBtn.addEventListener('click', (e) => {
@@ -4704,23 +4814,11 @@ function createPluginSlot(pluginId, slotIndex, trackIndex) {
         removePlugin(trackIndex, slotIndex);
       });
     }
-    
-    // Click on slot content to expand
-    slot.addEventListener('click', (e) => {
-      if (!e.target.classList.contains('plugin-slot-btn')) {
-        expandBtn.click();
-      }
-    });
   } else {
-    // Empty slot
+    // Empty slot - Ableton style square
     slot.innerHTML = `
-      <div class="plugin-slot-header">
-        <span class="plugin-slot-name">Empty</span>
-      </div>
-      <div class="plugin-slot-content">
-        <div style="text-align: center; color: #777; padding: 20px;">
-          Click to add plugin
-        </div>
+      <div class="plugin-square empty">
+        <span class="plugin-name" style="color: #777; font-style: italic;">Empty</span>
       </div>
     `;
     
@@ -4894,15 +4992,23 @@ function togglePluginBypass(trackIndex, slotIndex) {
   render();
 }
 
-function expandPluginUI(pluginId, trackIndex, slotIndex) {
-  // Check if there's an existing FX overlay
-  if (document.getElementById('fxOverlay')) {
-    // Use existing FX system to show full plugin UI
-    if (window.fxSelected) {
-      window.fxSelected = { trackIndex, slotIndex };
-      showFXView();
-    }
+function openPluginDialog(pluginId, trackIndex, slotIndex) {
+  // Set the selected plugin for the FX system
+  window.fxSelected = { trackIndex, slotIndex };
+  
+  // Open the FX overlay with the plugin parameters
+  if (fxOverlay) {
+    fxOverlay.classList.remove('hidden');
+    renderFxView();
+  } else {
+    // Fallback if FX overlay not available
+    console.warn('FX overlay not available');
   }
+}
+
+function expandPluginUI(pluginId, trackIndex, slotIndex) {
+  // Redirect to the new dialog system
+  openPluginDialog(pluginId, trackIndex, slotIndex);
 }
 
 // Add parameter change handling
@@ -5762,67 +5868,80 @@ function previewVolumeAutomated() {
 }
 
 function stopVolumePreview() {
-  if (volumePreviewPlayer) {
-    volumePreviewPlayer.stop();
-    volumePreviewPlayer.dispose();
-    volumePreviewPlayer = null;
-  }
-  if (volumePreviewVolume) {
-    volumePreviewVolume.dispose();
-    volumePreviewVolume = null;
-  }
+  stopPreview();
 }
 
-// Global variables for volume preview
-let volumePreviewPlayer = null;
-let volumePreviewVolume = null;
+// Preview player management
+let currentPreviewPlayer = null;
+let currentPreviewVolume = null;
 
-function previewClipWithTone(clip, withAutomation) {
+async function previewClipWithTone(clip, withAutomation) {
   if (!clip.audioUrl) {
     console.warn('No audio URL available for preview');
     return;
   }
   
-  // Initialize Tone.js if needed
-  if (!toneStarted) {
-    initializeToneJS().then(() => {
-      startPreview();
-    });
-  } else {
-    startPreview();
-  }
+  // Stop any existing preview
+  stopPreview();
   
-  function startPreview() {
-    try {
-      // Create preview player and volume node
-      volumePreviewPlayer = new Tone.Player({
-        url: clip.audioUrl,
-        onload: () => {
-          console.log('Preview player loaded');
-        },
-        onerror: (error) => {
-          console.error('Preview player error:', error);
-        }
-      });
-      
-      volumePreviewVolume = new Tone.Volume(0);
-      
-      // Connect player -> volume -> destination
-      volumePreviewPlayer.connect(volumePreviewVolume);
-      volumePreviewVolume.toDestination();
-      
-      if (withAutomation && clip.automation.volume.enabled && clip.automation.volume.points.length > 0) {
-        // Apply automation to preview
-        const startTime = Tone.now();
-        applyToneVolumeAutomationToNode(volumePreviewVolume, clip.automation.volume, startTime, 0, clip.duration);
-      }
-      
-      // Start playback
-      volumePreviewPlayer.start();
-      
-    } catch (error) {
-      console.error('Error creating preview player:', error);
+  try {
+    // Initialize Tone.js if needed
+    if (!toneStarted) {
+      await initializeToneJS();
     }
+    
+    // Create new preview player and volume node
+    currentPreviewPlayer = new Tone.Player({
+      url: clip.audioUrl,
+      onload: () => {
+        console.log('Preview player loaded');
+      },
+      onerror: (error) => {
+        console.error('Preview player error:', error.message || error);
+      }
+    });
+    
+    currentPreviewVolume = new Tone.Volume(0);
+    
+    // Connect player -> volume -> destination
+    currentPreviewPlayer.connect(currentPreviewVolume);
+    currentPreviewVolume.toDestination();
+    
+    if (withAutomation && clip.automation.volume.enabled && clip.automation.volume.points.length > 0) {
+      // Apply automation to preview
+      const startTime = Tone.now();
+      applyToneVolumeAutomationToNode(currentPreviewVolume, clip.automation.volume, startTime, 0, clip.duration);
+    }
+    
+    // Start playback
+    currentPreviewPlayer.start();
+    
+    // Auto-cleanup after clip duration
+    setTimeout(() => {
+      stopPreview();
+    }, (clip.duration || 10) * 1000);
+    
+  } catch (error) {
+    console.error('Error creating preview player:', error.message || error);
+  }
+}
+
+function stopPreview() {
+  try {
+    if (currentPreviewPlayer) {
+      if (currentPreviewPlayer.state !== 'stopped') {
+        currentPreviewPlayer.stop();
+      }
+      currentPreviewPlayer.dispose();
+      currentPreviewPlayer = null;
+    }
+    
+    if (currentPreviewVolume) {
+      currentPreviewVolume.dispose();
+      currentPreviewVolume = null;
+    }
+  } catch (error) {
+    console.error('Error stopping preview:', error.message || error);
   }
 }
 
