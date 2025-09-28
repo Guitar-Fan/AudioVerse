@@ -90,6 +90,82 @@
             <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
+        
+        <!-- AudioVerse Universe Logo -->
+        <div class="audioverse-logo-container ml-4" title="AudioVerse - Universe of Sound">
+          <svg class="audioverse-logo" width="80" height="40" viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg">
+            <!-- Background cosmic gradient -->
+            <defs>
+              <radialGradient id="cosmicGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ff9500" stop-opacity="0.2"/>
+                <stop offset="50%" stop-color="#1de9b6" stop-opacity="0.1"/>
+                <stop offset="100%" stop-color="#000" stop-opacity="0.05"/>
+              </radialGradient>
+              <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#1de9b6"/>
+                <stop offset="50%" stop-color="#ff9500"/>
+                <stop offset="100%" stop-color="#ff5050"/>
+              </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                <feMerge> 
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            
+            <!-- Cosmic background -->
+            <circle cx="40" cy="20" r="35" fill="url(#cosmicGlow)" opacity="0.6"/>
+            
+            <!-- Stars -->
+            <circle cx="15" cy="8" r="0.8" fill="#1de9b6" opacity="0.8">
+              <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="65" cy="12" r="0.6" fill="#ff9500" opacity="0.7">
+              <animate attributeName="opacity" values="0.4;1;0.4" dur="3s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="70" cy="30" r="0.5" fill="#ff5050" opacity="0.6">
+              <animate attributeName="opacity" values="0.5;1;0.5" dur="2.5s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="8" cy="32" r="0.4" fill="#1de9b6" opacity="0.9">
+              <animate attributeName="opacity" values="0.2;1;0.2" dur="1.8s" repeatCount="indefinite"/>
+            </circle>
+            
+            <!-- Central planet/orb -->
+            <circle cx="40" cy="20" r="8" fill="none" stroke="#ff9500" stroke-width="1" opacity="0.6">
+              <animateTransform attributeName="transform" type="rotate" values="0 40 20;360 40 20" dur="20s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="40" cy="20" r="5" fill="#1de9b6" opacity="0.3"/>
+            <circle cx="42" cy="18" r="2" fill="#ff9500" opacity="0.8"/>
+            
+            <!-- Audio waveform integrated into cosmic design -->
+            <path d="M5 20 L10 18 L15 22 L20 16 L25 24 L30 14 L35 26 L40 20 L45 14 L50 26 L55 16 L60 22 L65 18 L70 20 L75 22" 
+                  stroke="url(#waveGradient)" stroke-width="1.5" fill="none" filter="url(#glow)" opacity="0.7">
+              <animate attributeName="d" 
+                       values="M5 20 L10 18 L15 22 L20 16 L25 24 L30 14 L35 26 L40 20 L45 14 L50 26 L55 16 L60 22 L65 18 L70 20 L75 22;
+                               M5 20 L10 22 L15 18 L20 24 L25 16 L30 26 L35 14 L40 20 L45 26 L50 14 L55 24 L60 16 L65 22 L70 20 L75 18;
+                               M5 20 L10 18 L15 22 L20 16 L25 24 L30 14 L35 26 L40 20 L45 14 L50 26 L55 16 L60 22 L65 18 L70 20 L75 22" 
+                       dur="4s" repeatCount="indefinite"/>
+            </path>
+            
+            <!-- Orbiting elements -->
+            <g transform-origin="40 20">
+              <circle cx="52" cy="20" r="1.5" fill="#1de9b6" opacity="0.8"/>
+              <animateTransform attributeName="transform" type="rotate" values="0 40 20;360 40 20" dur="8s" repeatCount="indefinite"/>
+            </g>
+            
+            <g transform-origin="40 20">
+              <circle cx="28" cy="20" r="1" fill="#ff5050" opacity="0.7"/>
+              <animateTransform attributeName="transform" type="rotate" values="0 40 20;-360 40 20" dur="12s" repeatCount="indefinite"/>
+            </g>
+            
+            <!-- AudioVerse text -->
+            <text x="40" y="36" text-anchor="middle" fill="#ff9500" font-family="Arial, sans-serif" font-size="6" font-weight="bold" opacity="0.9">
+              AudioVerse
+            </text>
+          </svg>
+        </div>
       </div>
     </div>
   </div>
@@ -152,7 +228,9 @@
     <div id="workspace" class="flex-1 overflow-auto bg-gray-900 flex flex-col">
       <div class="workspace-main flex-1 overflow-auto">
         <div id="timeline" class="sticky top-0 z-10"></div>
-        <div id="tracks"></div>
+        <div id="tracks">
+          <!-- Tracks will be created dynamically by JavaScript -->
+        </div>
       </div>
       
       <!-- Plugin Strip (Ableton Style) -->
@@ -245,8 +323,44 @@
         </div>
       </div>
       
-      <!-- Editor Tools -->
-      <div class="editor-tools flex gap-2">
+        <!-- Editor Tools -->
+        <div class="editor-tools flex gap-2">
+          <!-- Pitch Shift Button -->
+          <button id="pitchShiftBtn" class="px-3 py-1 bg-purple-700 border border-purple-500 text-white rounded hover:bg-purple-600 transition-colors" title="Pitch Shift Selected Audio" disabled>
+            <svg width="12" height="12" viewBox="0 0 16 16">
+              <path d="M8 2 L12 6 L10 6 L10 10 L6 10 L6 6 L4 6 L8 2 Z" fill="currentColor"/>
+              <path d="M2 14 L14 14" stroke="currentColor" stroke-width="1"/>
+            </svg>
+            <span class="ml-1 text-xs">Pitch</span>
+          </button>
+          
+          <!-- Volume Automation Label -->
+          <span class="px-2 py-1 bg-gray-800 border border-gray-600 text-gray-300 rounded text-xs">Volume Automation</span>
+          
+          <!-- Automation Toggle Button -->
+          <button id="editorAutomationBtn" class="px-3 py-1 bg-gray-700 border border-gray-500 text-gray-300 rounded hover:bg-orange-600 transition-colors" title="Toggle Automation">
+            <svg width="12" height="12" viewBox="0 0 16 16">
+              <path d="M2 12 L6 8 L10 10 L14 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="6" cy="8" r="1.5" fill="currentColor"/>
+              <circle cx="10" cy="10" r="1.5" fill="currentColor"/>
+            </svg>
+            <span class="ml-1 text-xs">Auto</span>
+          </button>        <!-- Curve Mode Toggle -->
+        <button id="editorCurveModeBtn" class="px-2 py-1 bg-gray-700 border border-gray-500 text-gray-300 rounded hover:bg-blue-600 transition-colors text-xs" title="Toggle Curved/Straight Lines">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <path id="curveModeIcon" d="M2 12 C 6 8, 10 10, 14 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+          </svg>
+          <span class="ml-1 text-xs">Curve</span>
+        </button>
+        
+        <!-- Volume Range Controls (shown only for volume automation) -->
+        <div id="volumeRangeControls" class="flex gap-1 items-center">
+          <label class="text-xs text-gray-400">Range:</label>
+          <input type="number" id="volumeMinRange" value="-100" min="-100" max="24" step="1" class="w-12 px-1 py-1 bg-gray-700 border border-gray-600 rounded text-xs text-center" title="Min dB">
+          <span class="text-xs text-gray-400">to</span>
+          <input type="number" id="volumeMaxRange" value="12" min="-100" max="24" step="1" class="w-12 px-1 py-1 bg-gray-700 border border-gray-600 rounded text-xs text-center" title="Max dB">
+          <span class="text-xs text-gray-400">dB</span>
+        </div>
         <button id="editorZoomFit" class="px-3 py-1 bg-gray-700 border border-gray-500 text-gray-300 rounded hover:bg-gray-600 transition-colors" title="Zoom to Fit">
           <svg width="12" height="12" viewBox="0 0 16 16">
             <rect x="1" y="1" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1"/>
@@ -382,6 +496,157 @@
     </div>
   </div>
 
+  <!-- Volume Automation Apply Dialog Modal -->
+  <div id="volumeAutomationOverlay" class="modal-overlay hidden">
+    <div id="volumeAutomationDialog" class="modal-dialog">
+      <div class="modal-header">
+        <h3>Apply Volume Automation</h3>
+        <button id="volumeAutomationClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-content">
+        <div class="volume-automation-content p-6">
+          <!-- Selected Audio Info -->
+          <div class="selection-info mb-6 p-4 bg-gray-800 rounded-lg">
+            <h4 class="text-sm font-semibold text-gray-300 mb-2">Volume Automation</h4>
+            <div class="text-sm text-gray-400">
+              <div>Clip: <span id="volumeAutomationClipName">Audio Clip</span></div>
+              <div>Duration: <span id="volumeAutomationDuration">0.00s</span></div>
+              <div>Automation Points: <span id="volumeAutomationPointCount">0</span></div>
+            </div>
+          </div>
+          
+          <!-- Automation Preview -->
+          <div class="automation-preview mb-6 p-4 bg-gray-800 rounded-lg">
+            <h4 class="text-sm font-semibold text-gray-300 mb-3">Automation Preview</h4>
+            <div class="automation-curve-preview bg-gray-900 rounded h-32 p-2 relative">
+              <canvas id="volumeAutomationPreviewCanvas" class="w-full h-full"></canvas>
+            </div>
+          </div>
+          
+          <!-- Processing Options -->
+          <div class="processing-options mb-6">
+            <h4 class="text-sm font-semibold text-gray-300 mb-3">Processing Options</h4>
+            <div class="space-y-2">
+              <label class="flex items-center">
+                <input type="checkbox" id="volumeAutomationSmooth" checked class="mr-2">
+                <span class="text-sm text-gray-300">Smooth transitions between points</span>
+              </label>
+              <label class="flex items-center">
+                <input type="checkbox" id="volumeAutomationPreserveClips" class="mr-2">
+                <span class="text-sm text-gray-300">Keep original clip as backup</span>
+              </label>
+            </div>
+          </div>
+          
+          <!-- Preview Controls -->
+          <div class="preview-controls mb-6 p-4 bg-gray-800 rounded-lg">
+            <h4 class="text-sm font-semibold text-gray-300 mb-3">Preview</h4>
+            <div class="flex gap-2">
+              <button id="previewVolumeOriginal" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm">Play Original</button>
+              <button id="previewVolumeAutomated" class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">Play with Automation</button>
+              <button id="stopVolumePreview" class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm">Stop</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="volumeAutomationApply" class="modal-btn primary">Apply Automation</button>
+        <button id="volumeAutomationCancel" class="modal-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pitch Shift Dialog Modal -->
+  <div id="pitchShiftOverlay" class="modal-overlay hidden">
+    <div id="pitchShiftDialog" class="modal-dialog">
+      <div class="modal-header">
+        <h3>Pitch Shift Audio</h3>
+        <button id="pitchShiftClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-content">
+        <div class="pitch-shift-content p-6">
+          <!-- Selected Audio Info -->
+          <div class="selection-info mb-6 p-4 bg-gray-800 rounded-lg">
+            <h4 class="text-sm font-semibold text-gray-300 mb-2">Selected Audio</h4>
+            <div class="text-sm text-gray-400">
+              <div>Start: <span id="pitchShiftSelStart">0.00s</span></div>
+              <div>Duration: <span id="pitchShiftSelDuration">0.00s</span></div>
+              <div>Track: <span id="pitchShiftSelTrack">Track 1</span></div>
+            </div>
+          </div>
+          
+          <!-- Pitch Control -->
+          <div class="pitch-controls mb-6">
+            <label class="block text-sm font-semibold text-gray-300 mb-3">Pitch Shift (Semitones)</label>
+            <div class="pitch-slider-container">
+              <!-- Slider Track with Visual Markers -->
+              <div class="slider-track relative mb-2">
+                <input type="range" id="pitchShiftSlider" min="-12" max="12" value="0" step="0.1" 
+                       class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                <!-- Semitone markers -->
+                <div class="semitone-markers flex justify-between text-xs text-gray-500 mt-1">
+                  <span>-12</span><span>-6</span><span>0</span><span>+6</span><span>+12</span>
+                </div>
+              </div>
+              
+              <!-- Value Display and Fine Controls -->
+              <div class="pitch-value-controls flex items-center justify-center gap-4 mt-4">
+                <button id="pitchDownFine" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm" title="Down 0.1 semitones">-</button>
+                <div class="pitch-display text-center">
+                  <div class="text-2xl font-bold text-white" id="pitchShiftValue">0.0</div>
+                  <div class="text-xs text-gray-400">semitones</div>
+                </div>
+                <button id="pitchUpFine" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm" title="Up 0.1 semitones">+</button>
+              </div>
+              
+              <!-- Preset Buttons -->
+              <div class="pitch-presets mt-4 grid grid-cols-4 gap-2">
+                <button class="pitch-preset-btn px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs" data-semitones="-12">-1 Oct</button>
+                <button class="pitch-preset-btn px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs" data-semitones="-7">-5th</button>
+                <button class="pitch-preset-btn px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs" data-semitones="7">+5th</button>
+                <button class="pitch-preset-btn px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs" data-semitones="12">+1 Oct</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Processing Options -->
+          <div class="processing-options mb-6">
+            <h4 class="text-sm font-semibold text-gray-300 mb-3">Processing Options</h4>
+            <div class="space-y-2">
+              <label class="flex items-center">
+                <input type="checkbox" id="pitchShiftPreserveFormants" class="mr-2">
+                <span class="text-sm text-gray-300">Preserve formants (better for vocals)</span>
+              </label>
+              <label class="flex items-center">
+                <input type="checkbox" id="pitchShiftHighQuality" checked class="mr-2">
+                <span class="text-sm text-gray-300">High quality processing (slower)</span>
+              </label>
+            </div>
+          </div>
+          
+          <!-- Preview Controls -->
+          <div class="preview-controls mb-6 p-4 bg-gray-800 rounded-lg">
+            <h4 class="text-sm font-semibold text-gray-300 mb-3">Preview</h4>
+            <div class="flex gap-2">
+              <button id="previewOriginal" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm">Play Original</button>
+              <button id="previewPitchShifted" class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">Play Pitch Shifted</button>
+              <button id="stopPreview" class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm">Stop</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="pitchShiftApply" class="modal-btn primary">Apply Pitch Shift</button>
+        <button id="pitchShiftCancel" class="modal-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tone@15.0.4/build/Tone.js"></script>
   <script src="FXPlugins.js"></script>
   <script src="DAW.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
