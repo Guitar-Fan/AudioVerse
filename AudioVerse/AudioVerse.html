@@ -53,6 +53,29 @@
           </svg>
         </button>
         
+        <!-- Undo/Redo Controls -->
+        <div class="undo-redo-controls flex gap-1 ml-4 pl-4 border-l border-gray-600">
+          <button id="undoBtn" title="Undo (Ctrl+Z)" disabled class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-30">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <path d="M3 8l4-4v2h5c1.1 0 2 .9 2 2s-.9 2-2 2H7v2L3 8z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button id="redoBtn" title="Redo (Ctrl+Y)" disabled class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-30">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <path d="M13 8l-4-4v2H4c-1.1 0-2 .9-2 2s.9 2 2 2h5v2l4-4z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- REAPER Enhancements -->
+        <div class="reaper-controls flex gap-1 ml-4 pl-4 border-l border-gray-600">
+          <button id="reaperEnhancementsBtn" title="REAPER Enhancements" class="p-2 bg-gray-700 rounded hover:bg-orange-600 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <path d="M2 2h12v2H2zM2 6h8v2H2zM2 10h10v2H2zM13 6l2 2-2 2z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        
         <!-- View Toggle Buttons -->
         <div class="view-controls flex gap-1 ml-4 pl-4 border-l border-gray-600">
           <button id="arrangeViewBtn" title="Arrangement View" class="p-1.5 bg-orange-500 text-black rounded text-xs font-semibold active w-8 h-8 flex items-center justify-center">
@@ -218,6 +241,18 @@
         </svg>
         <span>METRO</span>
       </button>
+      <button id="snapGridBtn" title="Toggle snap to grid">
+        <svg width="14" height="14" viewBox="0 0 16 16" class="inline mr-1">
+          <defs>
+            <pattern id="grid" width="4" height="4" patternUnits="userSpaceOnUse">
+              <path d="M 4 0 L 0 0 0 4" fill="none" stroke="currentColor" stroke-width="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="16" height="16" fill="url(#grid)" opacity="0.7"/>
+          <rect x="6" y="6" width="4" height="4" fill="currentColor" opacity="0.8"/>
+        </svg>
+        <span>SNAP</span>
+      </button>
       <div class="zoom-section flex gap-1">
         <button class="zoom-btn px-3 py-1 bg-gray-700 border border-red-400 text-red-400 rounded hover:bg-red-600 hover:text-white transition-colors" id="zoomInBtn" title="Zoom in">
           <svg width="12" height="12" viewBox="0 0 16 16">
@@ -232,6 +267,22 @@
           </svg>
         </button>
       </div>
+      <!-- CPU Monitor -->
+      <div id="cpuMonitor">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="4" y="4" width="8" height="8" rx="0.5" fill="currentColor" opacity="0.3"/>
+          <rect x="5" y="5" width="2" height="2" fill="currentColor"/>
+          <rect x="9" y="5" width="2" height="2" fill="currentColor"/>
+          <rect x="5" y="9" width="2" height="2" fill="currentColor"/>
+          <rect x="9" y="9" width="2" height="2" fill="currentColor"/>
+        </svg>
+        <span id="cpuUsage">CPU: 0%</span>
+        <div id="cpuMeter">
+          <div id="cpuBar" style="width: 0%"></div>
+        </div>
+      </div>
+      
       <!-- Spacer and Settings Button on the right -->
       <div class="flex-1"></div>
       <button id="settingsBtn" class="px-3 py-1 bg-gray-700 border border-gray-600 text-gray-300 rounded hover:bg-gray-600 transition-colors flex items-center gap-2" title="Settings (Shift+/)">
@@ -298,6 +349,86 @@
     </div>
   </div>
 
+  <!-- Audio Analysis Dialog -->
+  <div id="analysisOverlay" class="modal-overlay hidden">
+    <div id="analysisDialog" class="modal-dialog modal-wide">
+      <div class="modal-header">
+        <div class="flex items-center gap-2">
+          <svg width="16" height="16" viewBox="0 0 16 16" class="text-orange-500">
+            <path d="M2 2h12v2H2V2zm0 4h12v2H2V6zm0 4h12v2H2v-2z" fill="currentColor"/>
+          </svg>
+          <h3>Audio Analysis</h3>
+          <span id="analysisClipName" class="text-sm text-gray-400 ml-2">No clip selected</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="refreshAnalysis" class="p-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors text-xs" title="Refresh Analysis">
+            ↻
+          </button>
+          <button id="analysisClose" class="modal-close" title="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-content analysis-content">
+        <div class="analysis-grid grid grid-cols-3 gap-4 h-full">
+          <!-- Spectrum Analyzer -->
+          <div class="analysis-section bg-gray-900 rounded p-3">
+            <h4 class="text-xs font-semibold mb-2 text-gray-300">Spectrum Analyzer</h4>
+            <canvas id="spectrumCanvas" class="w-full h-32 bg-black rounded"></canvas>
+            <div class="spectrum-controls mt-2 flex gap-2 text-xs">
+              <button id="spectrumLinear" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs">Linear</button>
+              <button id="spectrumLog" class="px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs">Log</button>
+              <button id="spectrumPeakHold" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs">Peak Hold</button>
+            </div>
+          </div>
+
+          <!-- Level Meters -->
+          <div class="analysis-section bg-gray-900 rounded p-3">
+            <h4 class="text-xs font-semibold mb-2 text-gray-300">Level Meters</h4>
+            <div class="meters-container">
+              <canvas id="levelMetersCanvas" class="w-full h-32 bg-black rounded"></canvas>
+              <div class="meter-values mt-2 text-xs text-gray-400">
+                <div class="flex justify-between">
+                  <span>Peak: <span id="peakValue">-∞ dB</span></span>
+                  <span>RMS: <span id="rmsValue">-∞ dB</span></span>
+                </div>
+                <div class="flex justify-between mt-1">
+                  <span>LUFS: <span id="lufsValue">-∞</span></span>
+                  <span>Range: <span id="rangeValue">-- LU</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Phase & Music Analysis -->
+          <div class="analysis-section bg-gray-900 rounded p-3">
+            <h4 class="text-xs font-semibold mb-2 text-gray-300">Music Analysis</h4>
+            <canvas id="phaseCorrelationCanvas" class="w-full h-16 bg-black rounded mb-2"></canvas>
+            <div class="music-info text-xs text-gray-400">
+              <div class="flex justify-between">
+                <span>Tempo:</span>
+                <span id="tempoValue">-- BPM</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Key:</span>
+                <span id="keyValue">--</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Phase:</span>
+                <span id="phaseValue">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="analysisCloseFooter" class="modal-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Mixer View Window -->
   <div id="mixerWindow" class="window hidden">
     <div id="mixerContainer" class="flex-1 overflow-auto bg-gradient-to-b from-gray-900 to-gray-800 p-4">
@@ -318,6 +449,11 @@
       </div>
       <div id="fxView" class="modal-content">
         <!-- Populated dynamically -->
+        <div id="scriptedFxSection" style="margin-top: 1.5em;">
+          <h4 style="margin-bottom: 0.5em;">Scripted FX (JSFX-style)</h4>
+          <div id="scriptedFxList"></div>
+          <button id="addScriptedFxBtn" class="modal-btn" style="margin-top: 0.5em;">Add Scripted FX</button>
+        </div>
       </div>
       <div class="modal-footer">
         <button id="fxCloseFooter" class="modal-btn">Close</button>
@@ -665,8 +801,34 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/tone@15.0.4/build/Tone.js"></script>
+  <!-- Audio Analysis Libraries -->
+  <script src="https://unpkg.com/meyda/dist/web/meyda.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/@tonaljs/tonal/browser/tonal.min.js"></script>
+  <!-- VexWarp Time Stretching Libraries -->
+  <script src="dsp.js"></script>
+  <script src="VexWarpTimeStretcher.js"></script>
+  <script>
+    // Ensure VexWarp is properly initialized before loading other scripts
+    console.log('VexWarp loaded check:', {
+      DSP: typeof DSP,
+      VexWarpTimeStretcher: typeof VexWarpTimeStretcher,
+      VexWarp: typeof VexWarp,
+      TimeStretcher: VexWarp && typeof VexWarp.TimeStretcher
+    });
+    
+    // Test VexWarp instantiation
+    try {
+      const testStretcher = new VexWarp.TimeStretcher(44100, 1, {});
+      console.log('VexWarp TimeStretcher test instantiation successful');
+    } catch (error) {
+      console.error('VexWarp TimeStretcher test instantiation failed:', error);
+    }
+  </script>
   <script src="FXPlugins.js"></script>
   <script src="DAW.js"></script>
+  <script src="ReaperEnhancements.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
 </body>

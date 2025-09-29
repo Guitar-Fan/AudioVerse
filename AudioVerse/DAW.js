@@ -107,6 +107,7 @@ const bpmInput = document.getElementById('bpm');
 const tsNumInput = document.getElementById('timeSigNum');
 const tsDenInput = document.getElementById('timeSigDen');
 const metronomeBtn = document.getElementById('metronomeBtn');
+
 const zoomInBtn = document.getElementById('zoomInBtn');
 const zoomOutBtn = document.getElementById('zoomOutBtn');
 const workspace = document.getElementById('workspace');
@@ -452,7 +453,7 @@ function renderTracks() {
     
     volumeContainer.appendChild(volumeSlider);
     volumeContainer.appendChild(volumeLabel);
-    
+
     trackControls.appendChild(armBtn);
     trackControls.appendChild(muteBtn);
     trackControls.appendChild(soloBtn);
@@ -531,8 +532,137 @@ function renderTracks() {
       nameDiv.innerText = clip.name;
       clipDiv.appendChild(nameDiv);
 
-      // Dragging
+      // Add resize handle for time stretching
+      let resizeHandle = document.createElement('div');
+      resizeHandle.className = 'clip-resize-handle';
+      resizeHandle.style.position = 'absolute';
+      resizeHandle.style.right = '0';
+      resizeHandle.style.top = '0';
+      resizeHandle.style.width = '8px';
+      resizeHandle.style.height = '100%';
+      resizeHandle.style.cursor = 'ew-resize';
+      resizeHandle.style.background = 'rgba(255, 255, 255, 0.3)';
+      resizeHandle.style.opacity = '0';
+      resizeHandle.style.transition = 'opacity 0.2s';
+      resizeHandle.style.zIndex = '10';
+      resizeHandle.title = 'Drag to time stretch';
+      
+      // Show handle on hover
+      clipDiv.addEventListener('mouseenter', () => {
+        resizeHandle.style.opacity = '1';
+      });
+      
+      clipDiv.addEventListener('mouseleave', () => {
+        if (!resizeHandle.dataset.dragging) {
+          resizeHandle.style.opacity = '0';
+        }
+      });
+      
+      clipDiv.appendChild(resizeHandle);
+
+      // Add resize drag functionality
+      let isResizing = false;
+      let originalWidth = 0;
+      let originalDuration = 0;
+      let startX = 0;
+      
+      resizeHandle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        isResizing = true;
+        resizeHandle.dataset.dragging = 'true';
+        resizeHandle.style.opacity = '1';
+        
+        originalWidth = clipDiv.offsetWidth;
+        originalDuration = clip.duration;
+        startX = e.clientX;
+        
+        // Add global mouse events
+        const handleMouseMove = (e) => {
+          if (!isResizing) return;
+          
+          const deltaX = e.clientX - startX;
+          const newWidth = Math.max(MIN_CLIP_WIDTH, originalWidth + deltaX);
+          const newDuration = newWidth / PIXELS_PER_SEC;
+          const stretchRatio = newDuration / originalDuration;
+          
+          // Update visual feedback
+          clipDiv.style.width = newWidth + 'px';
+          
+          // Update canvas width
+          const canvas = clipDiv.querySelector('.waveform-canvas');
+          if (canvas && clip.audioBuffer) {
+            canvas.width = newWidth - 8;
+            
+            // Verify audio buffer integrity before drawing
+            const bufferOk = clip.audioBuffer && 
+                           clip.audioBuffer.length > 0 && 
+                           clip.audioBuffer.getChannelData(0) && 
+                           clip.audioBuffer.getChannelData(0).length > 0;
+            
+            if (bufferOk) {
+              drawWaveform(canvas, clip.audioBuffer, clip.offset, newDuration, false, clip.selected);
+            } else {
+              console.warn('Audio buffer invalid during drag, skipping waveform draw');
+            }
+          }
+          
+          // Show stretch ratio tooltip
+          clipDiv.title = `${clip.name} - Stretch: ${stretchRatio.toFixed(2)}x (${newDuration.toFixed(2)}s)`;
+        };
+        
+        const handleMouseUp = (e) => {
+          if (!isResizing) return;
+          
+          isResizing = false;
+          resizeHandle.dataset.dragging = 'false';
+          
+          const deltaX = e.clientX - startX;
+          const newWidth = Math.max(MIN_CLIP_WIDTH, originalWidth + deltaX);
+          const newDuration = newWidth / PIXELS_PER_SEC;
+          const stretchRatio = newDuration / originalDuration;
+          
+          // Apply time stretch using VexWarp if the ratio changed significantly
+          if (Math.abs(stretchRatio - 1.0) > 0.01) {
+            console.log('Applying time stretch from drag:', {
+              trackIndex: tIdx,
+              clipIndex: cIdx,
+              stretchRatio: stretchRatio,
+              originalDuration: originalDuration,
+              newDuration: newDuration,
+              clipName: clip.name,
+              hasAudioBuffer: !!clip.audioBuffer,
+              audioBufferLength: clip.audioBuffer ? clip.audioBuffer.length : 'N/A'
+            });
+            
+            applyTimeStretchToClip(tIdx, cIdx, stretchRatio);
+          } else {
+            console.log('Stretch ratio too small, not applying:', stretchRatio);
+            
+            // Just update the duration for visual purposes if no actual stretching
+            clip.duration = newDuration;
+            render();
+          }
+          
+          // Clean up event listeners
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+          
+          // Reset tooltip
+          clipDiv.title = clip.name + ' - Drag to move. Right-click for actions';
+        };
+        
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+      });
+
+      // Dragging (only for the clip body, not the resize handle)
       clipDiv.addEventListener('dragstart', (e) => {
+        if (e.target === resizeHandle || e.target.closest('.clip-resize-handle')) {
+          e.preventDefault();
+          return;
+        }
         e.dataTransfer.setData('text/plain', JSON.stringify({tIdx, cIdx}));
       });
 
@@ -2178,6 +2308,8 @@ function closeSettings() {
   settingsOverlay.classList.add('hidden');
 }
 
+
+
 function undo() {
   if (undoStack.length > 1) {
     redoStack.push(undoStack.pop());
@@ -2266,6 +2398,8 @@ function fadeOutClip(tIdx, cIdx, fadeDuration = 0.5) {
   }
   render();
 }
+
+
 
 // --- Audio Analysis and Visualization ---
 function drawSpectrum(canvas, track) {
@@ -3072,6 +3206,8 @@ function init() {
     skipForwardOneMeasure();
   };
   
+
+  
   // Initialize plugin strip
   initializePluginStrip();
   
@@ -3125,6 +3261,8 @@ metronomeBtn.onclick = () => {
   metronomeBtn.textContent = metronomeEnabled ? 'Metronome On' : 'Metronome Off';
   metronomeBtn.className = metronomeEnabled ? 'metronome-btn metronome-on' : 'metronome-btn';
 };
+
+
 
 // --- Window Management System
 let currentView = 'arrangement';
@@ -6135,3 +6273,283 @@ function applyToneVolumeAutomation(clip, startTime) {
   
   console.log(`Applied Tone.js volume automation with ${autoData.points.length} points for clip: ${clip.name}`);
 }
+
+// Time stretching using VexWarp
+async function applyTimeStretchToClip(trackIndex, clipIndex, stretchRatio) {
+  console.log('Checking VexWarp availability...', {
+    hasVexWarp: !!window.VexWarp,
+    hasTimeStretcher: !!(window.VexWarp && window.VexWarp.TimeStretcher),
+    hasVexWarpTimeStretcher: !!window.VexWarpTimeStretcher
+  });
+  
+  if (!window.VexWarp || !window.VexWarp.TimeStretcher) {
+    console.error('VexWarp TimeStretcher not available');
+    alert('VexWarp time stretching library not loaded. Please refresh the page.');
+    return;
+  }
+  
+  const track = tracks[trackIndex];
+  const clip = track.clips[clipIndex];
+  
+  if (!clip || !clip.audioBuffer) {
+    console.error('No audio buffer to stretch');
+    return;
+  }
+  
+  // Verify audio buffer integrity before processing
+  console.log('Audio buffer check before stretch:', {
+    bufferExists: !!clip.audioBuffer,
+    bufferLength: clip.audioBuffer ? clip.audioBuffer.length : 'N/A',
+    channels: clip.audioBuffer ? clip.audioBuffer.numberOfChannels : 'N/A',
+    sampleRate: clip.audioBuffer ? clip.audioBuffer.sampleRate : 'N/A',
+    duration: clip.duration,
+    clipName: clip.name
+  });
+  
+  // Test channel data access
+  try {
+    if (clip.audioBuffer) {
+      const testChannel = clip.audioBuffer.getChannelData(0);
+      const hasData = testChannel && testChannel.length > 0;
+      const firstSamples = hasData ? Array.from(testChannel.slice(0, 5)) : [];
+      
+      console.log('Channel data test:', {
+        hasChannelData: hasData,
+        channelLength: testChannel ? testChannel.length : 'N/A',
+        firstSamples: firstSamples
+      });
+      
+      if (!hasData) {
+        console.error('Audio buffer has no channel data!');
+        return;
+      }
+    }
+  } catch (channelError) {
+    console.error('Error accessing channel data:', channelError);
+    return;
+  }
+  
+  try {
+    console.log(`Applying time stretch: ${stretchRatio.toFixed(3)}x to clip "${clip.name}"`);
+    
+    // Create VexWarp TimeStretcher instance
+    const stretcher = new window.VexWarp.TimeStretcher(
+      clip.audioBuffer.sampleRate,
+      clip.audioBuffer.numberOfChannels,
+      {
+        algorithm: 'psola', // Use PSOLA algorithm by default
+        frameSize: 2048,
+        hopSize: 512,
+        preserveFormants: true
+      }
+    );
+    
+    // Get original audio data
+    const originalLength = clip.audioBuffer.length;
+    const channelData = [];
+    
+    for (let channel = 0; channel < clip.audioBuffer.numberOfChannels; channel++) {
+      channelData.push(clip.audioBuffer.getChannelData(channel));
+    }
+    
+    // Calculate new length
+    const newLength = Math.floor(originalLength * stretchRatio);
+    
+    // Create new audio buffer for stretched audio
+    const stretchedBuffer = Tone.context.createBuffer(
+      clip.audioBuffer.numberOfChannels,
+      newLength,
+      clip.audioBuffer.sampleRate
+    );
+    
+    // Process each channel
+    for (let channel = 0; channel < clip.audioBuffer.numberOfChannels; channel++) {
+      const inputData = channelData[channel];
+      const outputData = new Float32Array(newLength);
+      
+      console.log(`Processing channel ${channel}:`, {
+        inputLength: inputData.length,
+        outputLength: outputData.length,
+        hasValidInput: inputData && inputData.length > 0
+      });
+      
+      // Verify input data is valid
+      if (!inputData || inputData.length === 0) {
+        console.error(`Channel ${channel} has invalid input data`);
+        throw new Error(`Invalid audio data for channel ${channel}`);
+      }
+      
+      // Apply time stretching using VexWarp
+      try {
+        stretcher.stretch(inputData, outputData, stretchRatio);
+        
+        // Verify output data
+        let hasValidOutput = false;
+        for (let i = 0; i < Math.min(100, outputData.length); i++) {
+          if (outputData[i] !== 0) {
+            hasValidOutput = true;
+            break;
+          }
+        }
+        
+        if (!hasValidOutput) {
+          console.warn(`Channel ${channel} output appears to be all zeros`);
+        }
+        
+        console.log(`Channel ${channel} stretch completed:`, {
+          outputNonZeroSamples: hasValidOutput,
+          firstFewSamples: Array.from(outputData.slice(0, 5))
+        });
+        
+      } catch (stretchError) {
+        console.error(`Error stretching channel ${channel}:`, stretchError);
+        
+        // Fallback: simple resampling for this channel
+        for (let i = 0; i < newLength; i++) {
+          const sourceIndex = (i / newLength) * inputData.length;
+          const index1 = Math.floor(sourceIndex);
+          const index2 = Math.min(index1 + 1, inputData.length - 1);
+          const fraction = sourceIndex - index1;
+          
+          outputData[i] = inputData[index1] * (1 - fraction) + inputData[index2] * fraction;
+        }
+        
+        console.log(`Applied fallback resampling for channel ${channel}`);
+      }
+      
+      // Copy stretched data to buffer
+      stretchedBuffer.copyToChannel(outputData, channel);
+    }
+    
+    // Store original data for potential recovery
+    const originalAudioBuffer = clip.audioBuffer;
+    const originalDuration = clip.duration;
+    const originalTonePlayer = clip.tonePlayer;
+    
+    try {
+      // Create blob URL from stretched audio
+      const url = await bufferToBlob(stretchedBuffer);
+      
+      // Create new Tone.Player
+      const newTonePlayer = new Tone.Player({
+        url: url,
+        playbackRate: 1.0,
+        onload: () => {
+          console.log(`Time-stretched clip "${clip.name}" loaded successfully`);
+          
+          // Only update clip data after successful load
+          clip.audioBuffer = stretchedBuffer;
+          clip.duration = newLength / stretchedBuffer.sampleRate;
+          
+          // Dispose old player only after new one is ready
+          if (originalTonePlayer) {
+            originalTonePlayer.dispose();
+          }
+          
+          // Update visual
+          render();
+        },
+        onerror: (error) => {
+          console.error('Error loading time-stretched audio:', error);
+          
+          // Restore original data on error
+          clip.audioBuffer = originalAudioBuffer;
+          clip.duration = originalDuration;
+          clip.tonePlayer = originalTonePlayer;
+          
+          alert('Error loading time-stretched audio. Reverted to original.');
+          render();
+        }
+      }).toDestination();
+      
+      // Connect to track effects chain if it exists
+      if (track.effectsChain) {
+        newTonePlayer.disconnect();
+        newTonePlayer.connect(track.effectsChain);
+      }
+      
+      // Update clip with new player
+      clip.tonePlayer = newTonePlayer;
+      
+    } catch (blobError) {
+      console.error('Error creating audio blob:', blobError);
+      
+      // Fallback: update audioBuffer directly without recreating Tone.Player
+      clip.audioBuffer = stretchedBuffer;
+      clip.duration = newLength / stretchedBuffer.sampleRate;
+      
+      console.log('Fallback: Updated audioBuffer directly');
+      render();
+    }
+    
+    console.log(`Time stretch complete: ${clip.duration.toFixed(2)}s (ratio: ${stretchRatio.toFixed(3)}x)`);
+    
+  } catch (error) {
+    console.error('Error applying time stretch:', error);
+    console.log('Error details:', {
+      trackIndex: trackIndex,
+      clipIndex: clipIndex,
+      clipName: clip ? clip.name : 'Unknown',
+      hasAudioBuffer: clip ? !!clip.audioBuffer : false,
+      stretchRatio: stretchRatio
+    });
+    
+    // Ensure clip data integrity
+    if (clip && clip.audioBuffer) {
+      console.log('Clip audio buffer still exists after error');
+    } else {
+      console.error('Clip audio buffer has been lost!');
+    }
+    
+    alert('Error applying time stretch: ' + error.message + '\nClip data has been preserved.');
+    
+    // Re-render to ensure UI is consistent
+    render();
+  }
+}
+
+// Helper function to convert AudioBuffer to Blob URL
+async function bufferToBlob(audioBuffer) {
+  const numberOfChannels = audioBuffer.numberOfChannels;
+  const length = audioBuffer.length;
+  const sampleRate = audioBuffer.sampleRate;
+  
+  // Create WAV file
+  const arrayBuffer = new ArrayBuffer(44 + length * numberOfChannels * 2);
+  const view = new DataView(arrayBuffer);
+  
+  // WAV header
+  const writeString = (offset, string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  };
+  
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + length * numberOfChannels * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numberOfChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numberOfChannels * 2, true);
+  view.setUint16(32, numberOfChannels * 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, length * numberOfChannels * 2, true);
+  
+  // Convert float samples to 16-bit PCM
+  let offset = 44;
+  for (let i = 0; i < length; i++) {
+    for (let channel = 0; channel < numberOfChannels; channel++) {
+      const sample = Math.max(-1, Math.min(1, audioBuffer.getChannelData(channel)[i]));
+      view.setInt16(offset, sample * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+  
+  return URL.createObjectURL(new Blob([arrayBuffer], { type: 'audio/wav' }));
+}
+
+

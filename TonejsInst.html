@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tone.js Synthesis Engine & Instruments</title>
+    <script src="https://cdn.jsdelivr.net/npm/tone@latest/build/Tone.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .instrument-card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .instrument-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .keyboard {
+            display: flex;
+            margin: 1rem 0;
+            height: 120px;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .key {
+            cursor: pointer;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            user-select: none;
+            transition: all 0.1s ease;
+            position: relative;
+        }
+
+        .key.white {
+            background: linear-gradient(to bottom, #ffffff 0%, #f0f0f0 100%);
+            color: #333;
+            border: 1px solid #ccc;
+            border-right: none;
+            flex: 1;
+            z-index: 1;
+        }
+
+        .key.black {
+            background: linear-gradient(to bottom, #333 0%, #000 100%);
+            color: #fff;
+            width: 30px;
+            height: 70px;
+            margin: 0 -15px;
+            z-index: 2;
+            border-radius: 0 0 4px 4px;
+        }
+
+        .key:hover {
+            transform: translateY(2px);
+        }
+
+        .key.active {
+            background: var(--primary-color) !important;
+            color: white !important;
+            transform: translateY(4px);
+        }
+
+        .parameter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .parameter-control {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .parameter-control label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .value-display {
+            color: var(--text-color);
+            font-weight: bold;
+            background: var(--bg-color);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .waveform-display {
+            width: 100%;
+            height: 80px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+
+        .sequencer {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 4px;
+            margin: 1rem 0;
+        }
+
+        .step {
+            aspect-ratio: 1;
+            background: var(--bg-color);
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .step.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .step.playing {
+            background: var(--status-ready);
+            border-color: var(--status-ready);
+            animation: pulse 0.1s ease;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .transport-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: var(--bg-color);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .bpm-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .bpm-control input {
+            width: 60px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .effect-chain {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: var(--bg-color);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .effect-unit {
+            background: var(--card-bg);
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            min-width: 150px;
+        }
+
+        .effect-unit h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text-color);
+            font-size: 0.9rem;
+        }
+
+        .scope {
+            width: 100%;
+            height: 100px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+
+        .preset-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .preset-btn {
+            background: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.8rem;
+        }
+
+        .preset-btn:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .preset-btn.active {
+            background: var(--secondary-color);
+            border-color: var(--secondary-color);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Tone.js Synthesis Engine & Instruments</h1>
+            <p>Explore the built-in synthesis capabilities of Tone.js</p>
+        </header>
+
+        <!-- Main Synthesizer -->
+        <div class="card">
+            <h2>Interactive Synthesizer</h2>
+            <div class="preset-selector">
+                <button class="preset-btn active" data-preset="polySynth">PolySynth</button>
+                <button class="preset-btn" data-preset="fmSynth">FM Synth</button>
+                <button class="preset-btn" data-preset="amSynth">AM Synth</button>
+                <button class="preset-btn" data-preset="monoSynth">Mono Synth</button>
+                <button class="preset-btn" data-preset="duoSynth">Duo Synth</button>
+                <button class="preset-btn" data-preset="membraneSynth">Membrane</button>
+                <button class="preset-btn" data-preset="metalSynth">Metal Synth</button>
+                <button class="preset-btn" data-preset="pluckSynth">Pluck Synth</button>
+            </div>
+            
+            <div class="keyboard" id="keyboard"></div>
+            
+            <div class="parameter-grid" id="synthParams">
+                <!-- Parameters will be dynamically populated -->
+            </div>
+            
+            <canvas class="waveform-display" id="waveform" width="600" height="80"></canvas>
+        </div>
+
+        <!-- Drum Machine -->
+        <div class="card">
+            <h2>Drum Machine</h2>
+            <div class="transport-controls">
+                <button id="playButton">Play</button>
+                <button id="stopButton">Stop</button>
+                <button id="clearButton">Clear</button>
+                <div class="bpm-control">
+                    <label>BPM:</label>
+                    <input type="number" id="bpmInput" value="120" min="60" max="200">
+                </div>
+            </div>
+            
+            <div id="drumSequencer">
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Kick</strong>
+                    <div class="sequencer" id="kickSequencer"></div>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Snare</strong>
+                    <div class="sequencer" id="snareSequencer"></div>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Hi-Hat</strong>
+                    <div class="sequencer" id="hihatSequencer"></div>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Open Hat</strong>
+                    <div class="sequencer" id="openhatSequencer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Effect Rack -->
+        <div class="card">
+            <h2>Effects Rack</h2>
+            <div class="effect-chain">
+                <div class="effect-unit">
+                    <h4>Reverb</h4>
+                    <div class="parameter-control">
+                        <label>Room Size <span class="value-display" id="reverbRoom">0.4</span></label>
+                        <input type="range" id="reverbRoomSlider" min="0" max="1" step="0.01" value="0.4">
+                    </div>
+                    <div class="parameter-control">
+                        <label>Wet <span class="value-display" id="reverbWet">0.3</span></label>
+                        <input type="range" id="reverbWetSlider" min="0" max="1" step="0.01" value="0.3">
+                    </div>
+                </div>
+                
+                <div class="effect-unit">
+                    <h4>Delay</h4>
+                    <div class="parameter-control">
+                        <label>Time <span class="value-display" id="delayTime">0.3s</span></label>
+                        <input type="range" id="delayTimeSlider" min="0" max="1" step="0.01" value="0.3">
+                    </div>
+                    <div class="parameter-control">
+                        <label>Feedback <span class="value-display" id="delayFeedback">0.4</span></label>
+                        <input type="range" id="delayFeedbackSlider" min="0" max="0.9" step="0.01" value="0.4">
+                    </div>
+                </div>
+                
+                <div class="effect-unit">
+                    <h4>Filter</h4>
+                    <div class="parameter-control">
+                        <label>Frequency <span class="value-display" id="filterFreq">1000Hz</span></label>
+                        <input type="range" id="filterFreqSlider" min="100" max="5000" step="10" value="1000">
+                    </div>
+                    <div class="parameter-control">
+                        <label>Q <span class="value-display" id="filterQ">1</span></label>
+                        <input type="range" id="filterQSlider" min="0.1" max="10" step="0.1" value="1">
+                    </div>
+                </div>
+                
+                <div class="effect-unit">
+                    <h4>Distortion</h4>
+                    <div class="parameter-control">
+                        <label>Amount <span class="value-display" id="distAmount">0.4</span></label>
+                        <input type="range" id="distAmountSlider" min="0" max="1" step="0.01" value="0.4">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instruments Showcase -->
+        <div class="instrument-grid">
+            <div class="instrument-card">
+                <h3>Noise Instruments</h3>
+                <button class="preset-btn" onclick="playNoise('white')">White Noise</button>
+                <button class="preset-btn" onclick="playNoise('pink')">Pink Noise</button>
+                <button class="preset-btn" onclick="playNoise('brown')">Brown Noise</button>
+                <canvas class="scope" id="noiseScope" width="280" height="100"></canvas>
+            </div>
+            
+            <div class="instrument-card">
+                <h3>Oscillators</h3>
+                <button class="preset-btn" onclick="playOscillator('sine')">Sine Wave</button>
+                <button class="preset-btn" onclick="playOscillator('square')">Square Wave</button>
+                <button class="preset-btn" onclick="playOscillator('sawtooth')">Sawtooth</button>
+                <button class="preset-btn" onclick="playOscillator('triangle')">Triangle</button>
+                <canvas class="scope" id="oscScope" width="280" height="100"></canvas>
+            </div>
+            
+            <div class="instrument-card">
+                <h3>Physical Models</h3>
+                <button class="preset-btn" onclick="playPhysical('string')">String</button>
+                <button class="preset-btn" onclick="playPhysical('bell')">Bell</button>
+                <button class="preset-btn" onclick="playPhysical('drum')">Drum</button>
+                <button class="preset-btn" onclick="playPhysical('wind')">Wind</button>
+                <canvas class="scope" id="physicalScope" width="280" height="100"></canvas>
+            </div>
+            
+            <div class="instrument-card">
+                <h3>Granular Synthesis</h3>
+                <button class="preset-btn" onclick="playGranular('texture1')">Texture 1</button>
+                <button class="preset-btn" onclick="playGranular('texture2')">Texture 2</button>
+                <button class="preset-btn" onclick="playGranular('clouds')">Clouds</button>
+                <button class="preset-btn" onclick="playGranular('grains')">Grains</button>
+                <canvas class="scope" id="granularScope" width="280" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Tone.js
+        let isStarted = false;
+        document.documentElement.addEventListener('mousedown', async () => {
+            if (!isStarted) {
+                await Tone.start();
+                console.log('Tone.js Audio Context Started');
+                isStarted = true;
+                setupVisualizations();
+            }
+        });
+
+        // Main synthesizer and effects
+        let currentSynth = null;
+        let reverb = new Tone.Reverb(0.4).toDestination();
+        let delay = new Tone.FeedbackDelay(0.3, 0.4);
+        let filter = new Tone.Filter(1000, "lowpass");
+        let distortion = new Tone.Distortion(0.4);
+
+        // Effect chain
+        delay.connect(reverb);
+        filter.connect(delay);
+        distortion.connect(filter);
+
+        // Drum machine
+        let drumSequence = null;
+        let currentStep = 0;
+        let kickPattern = new Array(16).fill(false);
+        let snarePattern = new Array(16).fill(false);
+        let hihatPattern = new Array(16).fill(false);
+        let openhatPattern = new Array(16).fill(false);
+
+        // Drum samples (using synthesized drums)
+        const kick = new Tone.MembraneSynth().toDestination();
+        const snare = new Tone.NoiseSynth().toDestination();
+        const hihat = new Tone.MetalSynth().toDestination();
+        const openhat = new Tone.MetalSynth().toDestination();
+
+        // Configure drum sounds
+        kick.set({
+            pitchDecay: 0.05,
+            octaves: 10,
+            oscillator: { type: "sine" },
+            envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 }
+        });
+
+        snare.set({
+            noise: { type: "white" },
+            envelope: { attack: 0.005, decay: 0.1, sustain: 0.0 }
+        });
+
+        hihat.set({
+            frequency: 200,
+            envelope: { attack: 0.001, decay: 0.1, release: 0.01 },
+            harmonicity: 5.1,
+            modulationIndex: 32,
+            resonance: 4000,
+            octaves: 1.5
+        });
+
+        openhat.set({
+            frequency: 200,
+            envelope: { attack: 0.001, decay: 0.3, release: 0.3 },
+            harmonicity: 5.1,
+            modulationIndex: 32,
+            resonance: 4000,
+            octaves: 1.5
+        });
+
+        // Initialize synthesizer
+        function initSynth(type = 'polySynth') {
+            if (currentSynth) {
+                currentSynth.dispose();
+            }
+
+            switch (type) {
+                case 'polySynth':
+                    currentSynth = new Tone.PolySynth(Tone.Synth).connect(distortion);
+                    break;
+                case 'fmSynth':
+                    currentSynth = new Tone.PolySynth(Tone.FMSynth).connect(distortion);
+                    break;
+                case 'amSynth':
+                    currentSynth = new Tone.PolySynth(Tone.AMSynth).connect(distortion);
+                    break;
+                case 'monoSynth':
+                    currentSynth = new Tone.MonoSynth().connect(distortion);
+                    break;
+                case 'duoSynth':
+                    currentSynth = new Tone.DuoSynth().connect(distortion);
+                    break;
+                case 'membraneSynth':
+                    currentSynth = new Tone.MembraneSynth().connect(distortion);
+                    break;
+                case 'metalSynth':
+                    currentSynth = new Tone.MetalSynth().connect(distortion);
+                    break;
+                case 'pluckSynth':
+                    currentSynth = new Tone.PluckSynth().connect(distortion);
+                    break;
+            }
+
+            updateParameterControls(type);
+        }
+
+        // Create keyboard
+        function createKeyboard() {
+            const keyboard = document.getElementById('keyboard');
+            const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const octave = 4;
+
+            notes.forEach(note => {
+                const key = document.createElement('div');
+                const isBlack = note.includes('#');
+                key.className = `key ${isBlack ? 'black' : 'white'}`;
+                key.textContent = note;
+                key.dataset.note = note + octave;
+
+                key.addEventListener('mousedown', () => playNote(note + octave, key));
+                key.addEventListener('mouseup', () => stopNote(note + octave, key));
+                key.addEventListener('mouseleave', () => stopNote(note + octave, key));
+
+                keyboard.appendChild(key);
+            });
+        }
+
+        function playNote(note, keyElement) {
+            if (!currentSynth) return;
+            
+            keyElement.classList.add('active');
+            
+            if (currentSynth.triggerAttack) {
+                currentSynth.triggerAttack(note);
+            } else {
+                currentSynth.triggerAttackRelease(note, '8n');
+            }
+        }
+
+        function stopNote(note, keyElement) {
+            if (!currentSynth) return;
+            
+            keyElement.classList.remove('active');
+            
+            if (currentSynth.triggerRelease) {
+                currentSynth.triggerRelease(note);
+            }
+        }
+
+        // Parameter controls
+        function updateParameterControls(synthType) {
+            const paramsContainer = document.getElementById('synthParams');
+            paramsContainer.innerHTML = '';
+
+            let parameters = {};
+
+            switch (synthType) {
+                case 'polySynth':
+                case 'fmSynth':
+                case 'amSynth':
+                    parameters = {
+                        'Attack': { param: 'envelope.attack', min: 0, max: 2, step: 0.01, value: 0.01 },
+                        'Decay': { param: 'envelope.decay', min: 0, max: 2, step: 0.01, value: 0.1 },
+                        'Sustain': { param: 'envelope.sustain', min: 0, max: 1, step: 0.01, value: 0.3 },
+                        'Release': { param: 'envelope.release', min: 0, max: 5, step: 0.01, value: 1 }
+                    };
+                    break;
+                case 'monoSynth':
+                case 'duoSynth':
+                    parameters = {
+                        'Attack': { param: 'envelope.attack', min: 0, max: 2, step: 0.01, value: 0.005 },
+                        'Decay': { param: 'envelope.decay', min: 0, max: 2, step: 0.01, value: 0.1 },
+                        'Sustain': { param: 'envelope.sustain', min: 0, max: 1, step: 0.01, value: 0.9 },
+                        'Release': { param: 'envelope.release', min: 0, max: 5, step: 0.01, value: 1 },
+                        'Filter Freq': { param: 'filterEnvelope.baseFrequency', min: 50, max: 5000, step: 10, value: 1000 }
+                    };
+                    break;
+                default:
+                    parameters = {
+                        'Attack': { param: 'envelope.attack', min: 0, max: 2, step: 0.01, value: 0.01 },
+                        'Decay': { param: 'envelope.decay', min: 0, max: 2, step: 0.01, value: 0.4 },
+                        'Sustain': { param: 'envelope.sustain', min: 0, max: 1, step: 0.01, value: 0.1 },
+                        'Release': { param: 'envelope.release', min: 0, max: 5, step: 0.01, value: 1.4 }
+                    };
+            }
+
+            Object.entries(parameters).forEach(([name, param]) => {
+                const control = document.createElement('div');
+                control.className = 'parameter-control';
+                
+                const label = document.createElement('label');
+                label.innerHTML = `${name} <span class="value-display" id="${name.toLowerCase().replace(' ', '')}">${param.value}</span>`;
+                
+                const slider = document.createElement('input');
+                slider.type = 'range';
+                slider.min = param.min;
+                slider.max = param.max;
+                slider.step = param.step;
+                slider.value = param.value;
+                
+                slider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    document.getElementById(name.toLowerCase().replace(' ', '')).textContent = 
+                        name.includes('Freq') ? `${Math.round(value)}Hz` : value.toFixed(2);
+                    
+                    if (currentSynth) {
+                        const paramPath = param.param.split('.');
+                        if (paramPath.length === 2) {
+                            currentSynth[paramPath[0]][paramPath[1]] = value;
+                        } else {
+                            currentSynth[paramPath[0]] = value;
+                        }
+                    }
+                });
+                
+                control.appendChild(label);
+                control.appendChild(slider);
+                paramsContainer.appendChild(control);
+            });
+        }
+
+        // Drum sequencer
+        function createSequencer() {
+            const sequencers = ['kick', 'snare', 'hihat', 'openhat'];
+            
+            sequencers.forEach(drum => {
+                const container = document.getElementById(`${drum}Sequencer`);
+                
+                for (let i = 0; i < 16; i++) {
+                    const step = document.createElement('div');
+                    step.className = 'step';
+                    step.textContent = i + 1;
+                    step.dataset.drum = drum;
+                    step.dataset.step = i;
+                    
+                    step.addEventListener('click', () => {
+                        const pattern = eval(`${drum}Pattern`);
+                        pattern[i] = !pattern[i];
+                        step.classList.toggle('active', pattern[i]);
+                    });
+                    
+                    container.appendChild(step);
+                }
+            });
+        }
+
+        function startDrumSequence() {
+            if (drumSequence) {
+                drumSequence.dispose();
+            }
+            
+            drumSequence = new Tone.Sequence((time, step) => {
+                // Highlight current step
+                document.querySelectorAll('.step').forEach((el, idx) => {
+                    el.classList.remove('playing');
+                    if (idx % 16 === step) {
+                        el.classList.add('playing');
+                    }
+                });
+                
+                // Play drums
+                if (kickPattern[step]) kick.triggerAttackRelease('C2', '8n', time);
+                if (snarePattern[step]) snare.triggerAttackRelease('4n', time);
+                if (hihatPattern[step]) hihat.triggerAttackRelease('G5', '32n', time);
+                if (openhatPattern[step]) openhat.triggerAttackRelease('A5', '8n', time);
+                
+                currentStep = step;
+            }, [...Array(16).keys()], '16n');
+            
+            drumSequence.start(0);
+            Tone.Transport.start();
+        }
+
+        function stopDrumSequence() {
+            if (drumSequence) {
+                drumSequence.stop();
+            }
+            Tone.Transport.stop();
+            document.querySelectorAll('.step').forEach(el => el.classList.remove('playing'));
+        }
+
+        // Additional instrument functions
+        function playNoise(type) {
+            const noise = new Tone.Noise(type).toDestination();
+            noise.start();
+            setTimeout(() => noise.stop(), 2000);
+        }
+
+        function playOscillator(type) {
+            const osc = new Tone.Oscillator(440, type).toDestination();
+            osc.start();
+            setTimeout(() => osc.stop(), 1000);
+        }
+
+        function playPhysical(type) {
+            let synth;
+            switch (type) {
+                case 'string':
+                    synth = new Tone.PluckSynth().toDestination();
+                    synth.triggerAttackRelease('C4', '2n');
+                    break;
+                case 'bell':
+                    synth = new Tone.MetalSynth().toDestination();
+                    synth.triggerAttackRelease('C5', '1n');
+                    break;
+                case 'drum':
+                    synth = new Tone.MembraneSynth().toDestination();
+                    synth.triggerAttackRelease('C2', '4n');
+                    break;
+                case 'wind':
+                    synth = new Tone.NoiseSynth().toDestination();
+                    synth.triggerAttackRelease('4n');
+                    break;
+            }
+        }
+
+        function playGranular(type) {
+            // Simulated granular synthesis using multiple oscillators
+            const grainCount = 8;
+            const grains = [];
+            
+            for (let i = 0; i < grainCount; i++) {
+                const grain = new Tone.Oscillator(
+                    200 + Math.random() * 800, 
+                    ['sine', 'triangle', 'sawtooth'][Math.floor(Math.random() * 3)]
+                ).toDestination();
+                
+                grain.volume.value = -20 - Math.random() * 10;
+                grain.start('+' + Math.random() * 0.5);
+                grain.stop('+' + (0.5 + Math.random() * 1.5));
+                grains.push(grain);
+            }
+        }
+
+        // Effect controls
+        function setupEffectControls() {
+            // Reverb
+            document.getElementById('reverbRoomSlider').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                reverb.roomSize.value = value;
+                document.getElementById('reverbRoom').textContent = value.toFixed(2);
+            });
+
+            document.getElementById('reverbWetSlider').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                reverb.wet.value = value;
+                document.getElementById('reverbWet').textContent = value.toFixed(2);
+            });
+
+            // Delay
+            document.getElementById('delayTimeSlider').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                delay.delayTime.value = value;
+                document.getElementById('delayTime').textContent = value.toFixed(2) + 's';
+            });
+
+            document.getElementById('delayFeedbackSlider').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                delay.feedback.value = value;
+                document.getElementById('delayFeedback').textContent = value.toFixed(2);
+            });
+
+            // Filter
+            document.getElementById('filterFreqSlider').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                filter.frequency.value = value;
+                document.getElementById('filterFreq').textContent = Math.round(value) + 'Hz';
+            });
+
+            document.getElementById('filterQSlider').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                filter.Q.value = value;
+                document.getElementById('filterQ').textContent = value.toFixed(1);
+            });
+
+            // Distortion
+            document.getElementById('distAmountSlider').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                distortion.distortion = value;
+                document.getElementById('distAmount').textContent = value.toFixed(2);
+            });
+        }
+
+        // Transport controls
+        function setupTransportControls() {
+            document.getElementById('playButton').addEventListener('click', startDrumSequence);
+            document.getElementById('stopButton').addEventListener('click', stopDrumSequence);
+            
+            document.getElementById('clearButton').addEventListener('click', () => {
+                kickPattern.fill(false);
+                snarePattern.fill(false);
+                hihatPattern.fill(false);
+                openhatPattern.fill(false);
+                document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+            });
+
+            document.getElementById('bpmInput').addEventListener('input', (e) => {
+                Tone.Transport.bpm.value = parseInt(e.target.value);
+            });
+        }
+
+        // Preset selection
+        function setupPresetSelection() {
+            document.querySelectorAll('.preset-btn[data-preset]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.preset-btn[data-preset]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    initSynth(btn.dataset.preset);
+                });
+            });
+        }
+
+        // Simple visualization setup
+        function setupVisualizations() {
+            // This would ideally use Tone.js's built-in analyzers
+            // For now, we'll just show static placeholder canvases
+            const canvases = document.querySelectorAll('canvas');
+            canvases.forEach(canvas => {
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#333';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#c3073f';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let i = 0; i < canvas.width; i++) {
+                    const y = canvas.height / 2 + Math.sin(i * 0.02) * 20;
+                    if (i === 0) ctx.moveTo(i, y);
+                    else ctx.lineTo(i, y);
+                }
+                ctx.stroke();
+            });
+        }
+
+        // Initialize everything
+        window.addEventListener('load', () => {
+            initSynth();
+            createKeyboard();
+            createSequencer();
+            setupEffectControls();
+            setupTransportControls();
+            setupPresetSelection();
+            
+            // Set some default patterns
+            kickPattern[0] = kickPattern[4] = kickPattern[8] = kickPattern[12] = true;
+            snarePattern[4] = snarePattern[12] = true;
+            hihatPattern[2] = hihatPattern[6] = hihatPattern[10] = hihatPattern[14] = true;
+            
+            // Update UI
+            document.querySelectorAll('.step').forEach((step, idx) => {
+                const drum = step.dataset.drum;
+                const stepNum = parseInt(step.dataset.step);
+                const pattern = eval(`${drum}Pattern`);
+                step.classList.toggle('active', pattern[stepNum]);
+            });
+        });
+    </script>
+</body>
+</html>
