@@ -133,7 +133,7 @@
         </button>
         
         <!-- AudioVerse Universe Logo -->
-        <div class="audioverse-logo-container ml-4" title="AudioVerse - Universe of Sound">
+        <div class="audioverse-logo-container ml-4" title="AudioVerse - Universe of Sound" style="cursor: pointer;">
           <svg class="audioverse-logo" width="80" height="40" viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg">
             <!-- Background cosmic gradient -->
             <defs>
@@ -829,6 +829,435 @@
   <script src="FXPlugins.js"></script>
   <script src="DAW.js"></script>
   <script src="ReaperEnhancements.js"></script>
+  <!-- AudioVerse Features Showcase Dialog -->
+  <div id="audioverseFeaturesOverlay" class="modal-overlay hidden">
+    <div id="audioverseFeaturesDialog" class="modal-dialog features-dialog modal-wide">
+      <div class="modal-header features-header">
+        <div class="features-title-section">
+          <div class="features-cosmic-icon">
+            <svg width="32" height="32" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="featuresCosmicGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#ff9500" stop-opacity="0.8"/>
+                  <stop offset="100%" stop-color="#1de9b6" stop-opacity="0.3"/>
+                </radialGradient>
+              </defs>
+              <circle cx="20" cy="20" r="18" fill="url(#featuresCosmicGlow)"/>
+              <circle cx="20" cy="20" r="8" fill="none" stroke="#ff9500" stroke-width="1">
+                <animateTransform attributeName="transform" type="rotate" values="0 20 20;360 20 20" dur="10s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="20" cy="20" r="3" fill="#1de9b6" opacity="0.8"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="features-main-title">AudioVerse</h3>
+            <p class="features-subtitle">Universe of Sound • Advanced Web DAW</p>
+          </div>
+        </div>
+        <button id="audioverseFeaturesClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="modal-content features-content">
+        <!-- Welcome Message -->
+        <div class="features-welcome">
+          <div class="animated-text-container">
+            <p class="animated-text intro-text">Welcome to AudioVerse - where professional audio production meets cutting-edge web technology!</p>
+            <p class="animated-text intro-subtext">Discover powerful features that might be hidden in plain sight...</p>
+          </div>
+        </div>
+
+        <!-- Features Categories -->
+        <div class="features-categories">
+          <!-- Core Production -->
+          <div class="feature-category">
+            <div class="category-header">
+              <svg class="category-icon" width="24" height="24" viewBox="0 0 16 16">
+                <rect x="2" y="2" width="12" height="12" rx="2" fill="currentColor" opacity="0.3"/>
+                <path d="M4 6h8M4 8h6M4 10h8" stroke="currentColor" stroke-width="1"/>
+              </svg>
+              <h4 class="animated-text category-title">Core Production Features</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎵 Multi-track audio recording and playback</li>
+              <li class="animated-text feature-item">✂️ Non-destructive audio editing with waveform display</li>
+              <li class="animated-text feature-item">🎚️ Professional mixer with per-channel EQ and effects</li>
+              <li class="animated-text feature-item">📊 Real-time spectrum analyzer and level meters</li>
+              <li class="animated-text feature-item">⏱️ Precise timeline with snap-to-grid functionality</li>
+              <li class="animated-text feature-item">🔄 Unlimited undo/redo system</li>
+            </ul>
+          </div>
+
+          <!-- Advanced Effects -->
+          <div class="feature-category">
+            <div class="category-header">
+              <svg class="category-icon" width="24" height="24" viewBox="0 0 16 16">
+                <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1"/>
+                <path d="M8 4v8M4 8h8" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+              <h4 class="animated-text category-title">Advanced Audio Effects</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎛️ 6-band Parametric EQ with frequency response visualization</li>
+              <li class="animated-text feature-item">🌌 Lexicon 480L-style reverb with multiple algorithms</li>
+              <li class="animated-text feature-item">🔧 Custom scripted effects (JSFX-style)</li>
+              <li class="animated-text feature-item">⚡ Real-time audio processing with Web Audio API</li>
+              <li class="animated-text feature-item">📈 Visual feedback for all parameters</li>
+              <li class="animated-text feature-item">🎨 Plugin chain with drag-and-drop reordering</li>
+            </ul>
+          </div>
+
+          <!-- Time Manipulation -->
+          <div class="feature-category">
+            <div class="category-header">
+              <svg class="category-icon" width="24" height="24" viewBox="0 0 16 16">
+                <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1"/>
+                <path d="M8 8L12 4" stroke="currentColor" stroke-width="1"/>
+                <path d="M8 8L8 4" stroke="currentColor" stroke-width="1"/>
+              </svg>
+              <h4 class="animated-text category-title">Time & Pitch Control</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎼 Advanced pitch shifting (-12 to +12 semitones)</li>
+              <li class="animated-text feature-item">⏩ VexWarp time stretching without pitch change</li>
+              <li class="animated-text feature-item">🔄 Audio reversal and normalization</li>
+              <li class="animated-text feature-item">📐 Phase vocoder for precise time manipulation</li>
+              <li class="animated-text feature-item">🎯 Formant preservation for vocal processing</li>
+              <li class="animated-text feature-item">⚡ Real-time preview of all modifications</li>
+            </ul>
+          </div>
+
+          <!-- Professional Workflow -->
+          <div class="feature-category">
+            <div class="category-header">
+              <svg class="category-icon" width="24" height="24" viewBox="0 0 16 16">
+                <rect x="2" y="3" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1"/>
+                <path d="M5 7h6M5 9h4" stroke="currentColor" stroke-width="1"/>
+              </svg>
+              <h4 class="animated-text category-title">Professional Workflow</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">📊 Volume automation with visual curve editing</li>
+              <li class="animated-text feature-item">🎚️ Resizable interface elements for custom layouts</li>
+              <li class="animated-text feature-item">🔍 Multiple zoom levels and view modes</li>
+              <li class="animated-text feature-item">⌨️ Comprehensive keyboard shortcuts</li>
+              <li class="animated-text feature-item">💾 Project save/load functionality</li>
+              <li class="animated-text feature-item">🎯 CPU usage monitoring</li>
+            </ul>
+          </div>
+
+          <!-- Hidden Gems -->
+          <div class="feature-category highlight-category">
+            <div class="category-header">
+              <svg class="category-icon" width="24" height="24" viewBox="0 0 16 16">
+                <path d="M8 1L10 6H15L11 9L13 14L8 11L3 14L5 9L1 6H6L8 1Z" fill="currentColor"/>
+              </svg>
+              <h4 class="animated-text category-title">Hidden Gems & Power Features</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🌟 Triple-click any empty track area to add audio clip</li>
+              <li class="animated-text feature-item">🎛️ Right-click plugin slots for quick bypass/remove</li>
+              <li class="animated-text feature-item">🎹 Hold Shift while dragging for fine parameter control</li>
+              <li class="animated-text feature-item">⚡ Press 'M' to quickly mute/unmute selected tracks</li>
+              <li class="animated-text feature-item">🔍 Double-click waveforms to enter detailed editor</li>
+              <li class="animated-text feature-item">🎯 Use Ctrl+Z/Y for unlimited undo/redo operations</li>
+              <li class="animated-text feature-item">📱 Mobile-responsive interface works on tablets</li>
+              <li class="animated-text feature-item">🌌 Cosmic-themed visualizations throughout the interface</li>
+            </ul>
+          </div>
+
+          <!-- Technical Innovation -->
+          <div class="feature-category">
+            <div class="category-header">
+              <svg class="category-icon" width="24" height="24" viewBox="0 0 16 16">
+                <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1"/>
+                <circle cx="6" cy="6" r="1" fill="currentColor"/>
+                <circle cx="10" cy="6" r="1" fill="currentColor"/>
+                <circle cx="6" cy="10" r="1" fill="currentColor"/>
+                <circle cx="10" cy="10" r="1" fill="currentColor"/>
+              </svg>
+              <h4 class="animated-text category-title">Technical Innovation</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🌐 100% browser-based - no downloads required</li>
+              <li class="animated-text feature-item">⚡ Web Audio API with low-latency processing</li>
+              <li class="animated-text feature-item">🎛️ Custom DSP algorithms written in JavaScript</li>
+              <li class="animated-text feature-item">📊 Real-time audio analysis and visualization</li>
+              <li class="animated-text feature-item">🔧 Modular plugin architecture</li>
+              <li class="animated-text feature-item">🎨 Hardware-accelerated graphics rendering</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Call to Action -->
+        <div class="features-cta">
+          <div class="animated-text-container">
+            <p class="animated-text cta-text">Ready to explore the universe of sound?</p>
+            <p class="animated-text cta-subtext">Click anywhere outside this dialog to start creating!</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer features-footer">
+        <div class="footer-cosmic-elements">
+          <div class="cosmic-particle"></div>
+          <div class="cosmic-particle"></div>
+          <div class="cosmic-particle"></div>
+        </div>
+        <button id="audioverseFeaturesStart" class="modal-btn primary features-start-btn">Start Creating Music</button>
+        <button id="audioverseFeaturesCloseFooter" class="modal-btn">Explore Interface</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AudioVerse Features Guide Dialog -->
+  <div id="featuresOverlay" class="modal-overlay hidden">
+    <div id="featuresDialog" class="modal-dialog features-dialog modal-wide">
+      <div class="modal-header features-header">
+        <div class="features-title-section">
+          <div class="cosmic-icon">
+            <svg width="28" height="28" viewBox="0 0 40 40">
+              <circle cx="20" cy="20" r="15" fill="none" stroke="#ff9500" stroke-width="2" opacity="0.8">
+                <animate attributeName="r" values="15;18;15" dur="2s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="20" cy="20" r="6" fill="#1de9b6" opacity="0.6"/>
+              <circle cx="22" cy="18" r="2" fill="#ff9500"/>
+            </svg>
+          </div>
+          <div>
+            <h3>AudioVerse Quick Guide</h3>
+            <p class="subtitle">Click anywhere to try these features!</p>
+          </div>
+        </div>
+        <button id="featuresClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="modal-content features-content">
+        <!-- Welcome Message -->
+        <div class="welcome-section">
+          <p class="animated-text welcome-text">👋 Hey there! Want to know what you can actually DO in AudioVerse?</p>
+          <p class="animated-text welcome-subtext">Here's how to access all the cool stuff...</p>
+        </div>
+
+        <!-- Feature Categories -->
+        <div class="features-grid">
+          
+          <!-- Getting Started -->
+          <div class="feature-category">
+            <div class="category-header">
+              <span class="category-icon">🚀</span>
+              <h4 class="animated-text category-title">Getting Started (Easy!)</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">📁 <strong>Add music:</strong> Click the upload button (📤) in the top toolbar</li>
+              <li class="animated-text feature-item">➕ <strong>New track:</strong> Hit the + button next to upload</li>
+              <li class="animated-text feature-item">▶️ <strong>Play/pause:</strong> Press SPACEBAR or click the play button</li>
+              <li class="animated-text feature-item">⏹️ <strong>Stop:</strong> Press S or click the stop button</li>
+              <li class="animated-text feature-item">🔴 <strong>Record:</strong> Press R or click the record button</li>
+            </ul>
+          </div>
+
+          <!-- Quick Shortcuts -->
+          <div class="feature-category highlight-category">
+            <div class="category-header">
+              <span class="category-icon">⌨️</span>
+              <h4 class="animated-text category-title">Quick Shortcuts (Time Savers!)</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎵 <strong>SPACEBAR:</strong> Play/pause (works anywhere!)</li>
+              <li class="animated-text feature-item">🏠 <strong>HOME:</strong> Jump to beginning</li>
+              <li class="animated-text feature-item">⬅️➡️ <strong>Arrow keys:</strong> Skip forward/back</li>
+              <li class="animated-text feature-item">↩️ <strong>Ctrl+Z:</strong> Undo (unlimited!)</li>
+              <li class="animated-text feature-item">🔄 <strong>Ctrl+Y:</strong> Redo</li>
+              <li class="animated-text feature-item">🔇 <strong>M:</strong> Mute selected track</li>
+            </ul>
+          </div>
+
+          <!-- Cool Effects -->
+          <div class="feature-category">
+            <div class="category-header">
+              <span class="category-icon">🎛️</span>
+              <h4 class="animated-text category-title">Add Cool Effects</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎚️ <strong>EQ (shape your sound):</strong> Click the track's plugin area, then "Add Plugin"</li>
+              <li class="animated-text feature-item">🌌 <strong>Reverb (space echo):</strong> Same place, choose "Lexicon Reverb"</li>
+              <li class="animated-text feature-item">🎛️ <strong>Open mixer:</strong> Click "Mixer View" button in toolbar</li>
+              <li class="animated-text feature-item">🔊 <strong>Adjust levels:</strong> Drag the sliders in mixer view</li>
+              <li class="animated-text feature-item">🎨 <strong>Visual feedback:</strong> Watch the spectrum analyzer dance!</li>
+            </ul>
+          </div>
+
+          <!-- Editing Magic -->
+          <div class="feature-category">
+            <div class="category-header">
+              <span class="category-icon">✂️</span>
+              <h4 class="animated-text category-title">Edit Like a Pro</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🖱️ <strong>Select audio:</strong> Click and drag on any waveform</li>
+              <li class="animated-text feature-item">🔍 <strong>Zoom in/out:</strong> Use the +/- buttons or mouse wheel</li>
+              <li class="animated-text feature-item">📏 <strong>Snap to grid:</strong> Click "SNAP" to line things up perfectly</li>
+              <li class="animated-text feature-item">✂️ <strong>Cut/copy/paste:</strong> Right-click any audio clip</li>
+              <li class="animated-text feature-item">🎵 <strong>Double-click:</strong> Opens detailed audio editor</li>
+            </ul>
+          </div>
+
+          <!-- Advanced Stuff -->
+          <div class="feature-category">
+            <div class="category-header">
+              <span class="category-icon">🧙‍♂️</span>
+              <h4 class="animated-text category-title">Advanced Tricks</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎼 <strong>Change pitch:</strong> Audio editor → select audio → click "Pitch" button</li>
+              <li class="animated-text feature-item">⏩ <strong>Time stretch:</strong> Make audio faster/slower without changing pitch</li>
+              <li class="animated-text feature-item">📊 <strong>Volume automation:</strong> Audio editor → "Auto" button → draw curves</li>
+              <li class="animated-text feature-item">🔄 <strong>Reverse audio:</strong> Audio editor → select → "Reverse" button</li>
+              <li class="animated-text feature-item">📈 <strong>Normalize:</strong> Makes quiet audio louder automatically</li>
+            </ul>
+          </div>
+
+          <!-- Hidden Gems -->
+          <div class="feature-category secret-category">
+            <div class="category-header">
+              <span class="category-icon">💎</span>
+              <h4 class="animated-text category-title">Secret Features (Shh! 🤫)</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎯 <strong>Triple-click:</strong> On empty track area to quick-add audio</li>
+              <li class="animated-text feature-item">🖱️ <strong>Right-click plugins:</strong> Quick bypass or remove</li>
+              <li class="animated-text feature-item">⬆️ <strong>Hold Shift:</strong> While dragging for super-precise control</li>
+              <li class="animated-text feature-item">📱 <strong>Works on phones:</strong> Yes, really! AudioVerse is mobile-friendly</li>
+              <li class="animated-text feature-item">🌌 <strong>Easter egg:</strong> Try clicking this logo when music is playing!</li>
+              <li class="animated-text feature-item">💾 <strong>Auto-save:</strong> Your work is saved automatically</li>
+            </ul>
+          </div>
+
+        </div>
+
+        <!-- Call to Action -->
+        <div class="cta-section">
+          <p class="animated-text cta-text">Ready to make some music? 🎵</p>
+          <p class="animated-text cta-subtext">Close this dialog and start clicking around!</p>
+        </div>
+      </div>
+
+      <div class="modal-footer features-footer">
+        <div class="footer-note">
+          <span class="animated-text">💡 Tip: This dialog will remember what you've seen!</span>
+        </div>
+        <div class="footer-buttons">
+          <button id="featuresStart" class="modal-btn primary">Let's Go! 🚀</button>
+          <button id="featuresCloseFooter" class="modal-btn">I Got It ✨</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Track Volume Automation Dialog -->
+  <div id="trackAutomationOverlay" class="modal-overlay hidden">
+    <div id="trackAutomationDialog" class="modal-dialog automation-dialog modal-wide">
+      <div class="modal-header automation-header">
+        <div class="automation-title-section">
+          <div class="automation-icon">
+            <svg width="24" height="24" viewBox="0 0 16 16">
+              <path d="M2 8 L6 6 L10 10 L14 4" stroke="#ff9500" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="6" cy="6" r="2" fill="#ff9500"/>
+              <circle cx="10" cy="10" r="2" fill="#ff9500"/>
+            </svg>
+          </div>
+          <div>
+            <h3 id="automationTrackTitle">Track 1 - Volume Automation</h3>
+            <p class="automation-subtitle">Draw automation points to control track volume over time</p>
+          </div>
+        </div>
+        <button id="trackAutomationClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="modal-content automation-content">
+        <div class="automation-controls">
+          <div class="control-group">
+            <label>Volume Range:</label>
+            <input type="range" id="automationMinVolume" min="0" max="100" value="0" class="range-slider">
+            <span id="minVolumeLabel">0%</span>
+            <span class="range-separator">to</span>
+            <input type="range" id="automationMaxVolume" min="0" max="100" value="100" class="range-slider">
+            <span id="maxVolumeLabel">100%</span>
+          </div>
+          <div class="control-group">
+            <button id="automationAddPoint" class="automation-btn" title="Add Automation Point">
+              <svg width="14" height="14" viewBox="0 0 16 16">
+                <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              Add Point
+            </button>
+            <button id="automationDeletePoint" class="automation-btn danger" title="Delete Selected Point" disabled>
+              <svg width="14" height="14" viewBox="0 0 16 16">
+                <path d="M3 6h10l-1 8H4L3 6zM5 3V2a1 1 0 011-1h4a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.5" fill="none"/>
+              </svg>
+              Delete
+            </button>
+            <button id="automationClearAll" class="automation-btn danger" title="Clear All Points">
+              <svg width="14" height="14" viewBox="0 0 16 16">
+                <path d="M2 2l12 12M2 14L14 2" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              Clear All
+            </button>
+          </div>
+        </div>
+
+        <div class="automation-workspace">
+          <div class="automation-timeline" id="automationTimeline">
+            <!-- Timeline markers will be generated here -->
+          </div>
+          <div class="automation-editor" id="automationEditor">
+            <canvas id="automationCanvas" class="automation-canvas"></canvas>
+            <div class="automation-overlay" id="automationOverlay">
+              <!-- Automation points will be created here -->
+            </div>
+          </div>
+        </div>
+
+        <div class="automation-info">
+          <div class="info-group">
+            <span class="info-label">Selected Point:</span>
+            <span id="selectedPointInfo">None</span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">Track Duration:</span>
+            <span id="trackDurationInfo">0:00</span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">Automation Points:</span>
+            <span id="automationPointCount">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer automation-footer">
+        <div class="footer-info">
+          <span class="tip-text">💡 Click to add points, drag to move them, double-click to delete</span>
+        </div>
+        <div class="footer-buttons">
+          <button id="automationPreview" class="modal-btn secondary">
+            <svg width="14" height="14" viewBox="0 0 16 16">
+              <polygon points="4,2 4,14 13,8" fill="currentColor"/>
+            </svg>
+            Preview
+          </button>
+          <button id="automationSave" class="modal-btn primary">Save Automation</button>
+          <button id="automationCancel" class="modal-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
 </body>

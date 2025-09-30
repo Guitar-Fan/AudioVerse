@@ -13,7 +13,7 @@ const CLIP_COLORS = [
 const TRACK_COLORS = [
   "#374151", "#232b36", "#2d3748", "#3b4252", "#223",
 ];
-const TRACK_HEADER_WIDTH = 200; // px, must match .track-header width in CSS
+let TRACK_HEADER_WIDTH = 200; // px, must match .track-header width in CSS
 
 // --- State ---
 let tracks = [];
@@ -454,9 +454,20 @@ function renderTracks() {
     volumeContainer.appendChild(volumeSlider);
     volumeContainer.appendChild(volumeLabel);
 
+    // Automation Button
+    let automationBtn = document.createElement('button');
+    automationBtn.className = 'track-btn automation-btn' + (track.volumeAuto.enabled ? ' active' : '');
+    automationBtn.innerHTML = 'A';
+    automationBtn.title = 'Track Volume Automation';
+    automationBtn.onclick = (e) => {
+      e.stopPropagation();
+      openTrackAutomation(tIdx);
+    };
+
     trackControls.appendChild(armBtn);
     trackControls.appendChild(muteBtn);
     trackControls.appendChild(soloBtn);
+    trackControls.appendChild(automationBtn);
     trackControls.appendChild(volumeContainer);
     
     trackHeader.appendChild(trackInfo);
@@ -465,7 +476,7 @@ function renderTracks() {
     // Track Area (for clips)
     let trackDiv = document.createElement('div');
     trackDiv.className = 'track' + (track.muted ? ' muted' : '') + (track.selected ? ' selected' : '');
-    trackDiv.style.height = "90px";
+    trackDiv.style.height = (track.height || 90) + "px";
     trackDiv.style.position = 'relative';
     trackDiv.style.background = track.color;
     trackDiv.dataset.track = tIdx;
@@ -716,6 +727,13 @@ function renderTracks() {
     
     tracksDiv.appendChild(trackContainer);
   });
+  
+  // Refresh resizable components after rendering tracks
+  setTimeout(() => {
+    if (typeof refreshResizableComponents === 'function') {
+      refreshResizableComponents();
+    }
+  }, 0);
 }
 
 // --- Track Management Functions ---
@@ -2543,7 +2561,10 @@ function showClipContextMenu(e, tIdx, cIdx, clipDiv) {
     {label: canSplitAtPlayhead ? `Split at Playhead (${playheadTime.toFixed(2)}s)` : `Split at Center (${(clip.startTime + clip.duration/2).toFixed(2)}s)`, fn: () => {
       const splitTimeToUse = canSplitAtPlayhead ? playheadTime : (clip.startTime + clip.duration / 2);
       console.log('Executing split at:', splitTimeToUse);
-      splitClip(tIdx, cIdx, splitTimeToUse);
+      splitClip(tIdx, cIdx, splitTimeToUse).catch(error => {
+        console.error('Error splitting clip:', error);
+        alert('Failed to split clip: ' + error.message);
+      });
     }},
     {label: 'Delete', fn: () => { 
       if (settings.confirmDelete) {
@@ -2919,7 +2940,57 @@ function duplicateTrack(tIdx) {
 }
 
 // Fixed split function
-function splitClip(tIdx, cIdx, splitTime) {
+// Helper function to extract a portion of audio data into a new independent AudioBuffer
+function extractAudioBufferSegment(sourceBuffer, startOffsetInSeconds, durationInSeconds) {
+  const sampleRate = sourceBuffer.sampleRate;
+  const numberOfChannels = sourceBuffer.numberOfChannels;
+  
+  // Calculate sample positions
+  const startSample = Math.floor(startOffsetInSeconds * sampleRate);
+  const endSample = Math.min(
+    Math.floor((startOffsetInSeconds + durationInSeconds) * sampleRate),
+    sourceBuffer.length
+  );
+  const segmentLength = endSample - startSample;
+  
+  if (segmentLength <= 0) {
+    console.error('Invalid segment length for audio buffer extraction');
+    return null;
+  }
+  
+  console.log('Extracting audio segment:', {
+    startOffsetInSeconds,
+    durationInSeconds,
+    startSample,
+    endSample,
+    segmentLength,
+    sampleRate,
+    numberOfChannels
+  });
+  
+  // Create new independent AudioBuffer
+  const newBuffer = audioCtx.createBuffer(numberOfChannels, segmentLength, sampleRate);
+  
+  // Copy audio data for each channel
+  for (let channel = 0; channel < numberOfChannels; channel++) {
+    const sourceChannelData = sourceBuffer.getChannelData(channel);
+    const newChannelData = newBuffer.getChannelData(channel);
+    
+    // Copy the segment data
+    for (let i = 0; i < segmentLength; i++) {
+      const sourceIndex = startSample + i;
+      if (sourceIndex < sourceChannelData.length) {
+        newChannelData[i] = sourceChannelData[sourceIndex];
+      } else {
+        newChannelData[i] = 0; // Fill with silence if we exceed source length
+      }
+    }
+  }
+  
+  return newBuffer;
+}
+
+async function splitClip(tIdx, cIdx, splitTime) {
   const clip = tracks[tIdx].clips[cIdx];
   if (!clip || !clip.audioBuffer) {
     console.error('Cannot split clip: clip or audioBuffer missing');
@@ -2945,32 +3016,139 @@ function splitClip(tIdx, cIdx, splitTime) {
   
   console.log('Split offset from clip start:', splitOffset);
   
-  // Create first clip (from start to split point)
-  let firstClip = createClip(
-    clip.audioBuffer, 
-    clip.startTime, 
-    splitOffset, 
-    clip.offset, 
-    clip.color, 
-    clip.name + " (1)"
-  );
+  // Show progress indicator for the split operation
+  const progressDiv = document.createElement('div');
+  progressDiv.style.cssText = `
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.9); color: white; padding: 15px; border-radius: 8px;
+    z-index: 10000; text-align: center; min-width: 200px;
+  `;
+  progressDiv.innerHTML = `
+    <div style="margin-bottom: 10px;">Splitting clip...</div>
+    <div style="color: #1de9b6; font-size: 12px;">Creating independent audio segments</div>
+  `;
+  document.body.appendChild(progressDiv);
   
-  // Create second clip (from split point to end)
-  let secondClip = createClip(
-    clip.audioBuffer, 
-    splitTime, 
-    clip.duration - splitOffset, 
-    clip.offset + splitOffset, 
-    clip.color, 
-    clip.name + " (2)"
-  );
-  
-  tracks[tIdx].clips.splice(cIdx, 1, firstClip, secondClip);
-  tracks[tIdx].clips.sort((a, b) => a.startTime - b.startTime);
-  
-  saveState();
-  render();
-  console.log('Clip split successfully');
+  try {
+    // Create independent audio buffers for each split clip
+    const firstClipDuration = splitOffset;
+    const secondClipDuration = clip.duration - splitOffset;
+    
+    // Extract first portion (from clip start to split point)
+    const firstAudioBuffer = extractAudioBufferSegment(
+      clip.audioBuffer,
+      clip.offset, // Start from the clip's current offset in the source buffer
+      firstClipDuration
+    );
+    
+    // Extract second portion (from split point to clip end)
+    const secondAudioBuffer = extractAudioBufferSegment(
+      clip.audioBuffer,
+      clip.offset + splitOffset, // Start from clip offset + split offset
+      secondClipDuration
+    );
+    
+    if (!firstAudioBuffer || !secondAudioBuffer) {
+      console.error('Failed to extract audio buffer segments for split');
+      alert('Failed to split clip: could not extract audio segments');
+      return;
+    }
+    
+    // Create independent blob URLs for Tone.js integration if needed
+    let firstAudioUrl = null;
+    let secondAudioUrl = null;
+    
+    if (clip.audioUrl && typeof Tone !== 'undefined') {
+      try {
+        console.log('Creating independent blob URLs for split clips...');
+        firstAudioUrl = await bufferToBlob(firstAudioBuffer);
+        secondAudioUrl = await bufferToBlob(secondAudioBuffer);
+        console.log('Independent blob URLs created successfully');
+      } catch (blobError) {
+        console.warn('Failed to create blob URLs for split clips:', blobError);
+        // Continue without blob URLs - clips will still work with AudioBuffer
+      }
+    }
+    
+    // Create first clip (from start to split point) with independent audio buffer
+    let firstClip = createClip(
+      firstAudioBuffer, 
+      clip.startTime, 
+      firstClipDuration, 
+      0, // Reset offset since we extracted the exact segment
+      clip.color, 
+      clip.name + " (1)",
+      firstAudioUrl, // Independent blob URL
+      clip.mimeType
+    );
+    
+    // Create second clip (from split point to end) with independent audio buffer  
+    let secondClip = createClip(
+      secondAudioBuffer, 
+      splitTime, 
+      secondClipDuration, 
+      0, // Reset offset since we extracted the exact segment
+      clip.color, 
+      clip.name + " (2)",
+      secondAudioUrl, // Independent blob URL
+      clip.mimeType
+    );
+    
+    // Copy any automation data that might be relevant
+    if (clip.automation && clip.automation.volume && clip.automation.volume.points.length > 0) {
+      // Copy automation points that fall within each clip's time range
+      firstClip.automation.volume.points = clip.automation.volume.points.filter(point => 
+        point.time <= splitOffset
+      );
+      
+      secondClip.automation.volume.points = clip.automation.volume.points
+        .filter(point => point.time > splitOffset)
+        .map(point => ({ ...point, time: point.time - splitOffset })); // Adjust time relative to new clip start
+    }
+    
+    // Dispose of original Tone.js player and clean up blob URL if it exists
+    if (clip.tonePlayer) {
+      clip.tonePlayer.dispose();
+    }
+    if (clip.toneVolume) {
+      clip.toneVolume.dispose();
+    }
+    
+    // Clean up original blob URL to prevent memory leaks
+    if (clip.audioUrl && clip.audioUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(clip.audioUrl);
+      console.log('Revoked original blob URL for split clip');
+    }
+    
+    // Remove original clip and add the two new independent clips
+    tracks[tIdx].clips.splice(cIdx, 1, firstClip, secondClip);
+    tracks[tIdx].clips.sort((a, b) => a.startTime - b.startTime);
+    
+    // Clean up progress indicator
+    if (progressDiv && progressDiv.parentNode) {
+      document.body.removeChild(progressDiv);
+    }
+    
+    saveState();
+    render();
+    
+    console.log('Clip split successfully into two independent clips:', {
+      originalClip: clip.name,
+      firstClip: { name: firstClip.name, duration: firstClip.duration, hasBlob: !!firstClip.audioUrl },
+      secondClip: { name: secondClip.name, duration: secondClip.duration, hasBlob: !!secondClip.audioUrl },
+      totalDuration: firstClip.duration + secondClip.duration,
+      originalDuration: clip.duration
+    });
+    
+  } catch (error) {
+    // Clean up progress indicator on error
+    if (progressDiv && progressDiv.parentNode) {
+      document.body.removeChild(progressDiv);
+    }
+    
+    console.error('Error splitting clip:', error);
+    alert('Failed to split clip: ' + error.message);
+  }
 }
 
 function renameClip(tIdx, cIdx) {
@@ -3298,6 +3476,13 @@ function showFxView() {
   if (fxOverlay) fxOverlay.classList.remove('hidden');
   updateViewButtons(currentView);
   renderFxView();
+  
+  // Initialize resizable functionality for the modal
+  setTimeout(() => {
+    if (typeof refreshResizableComponents === 'function') {
+      refreshResizableComponents();
+    }
+  }, 100);
 }
 
 // Event listeners for window switching
@@ -3432,6 +3617,13 @@ function renderMixer() {
   
   // Add event listeners for mixer controls
   setupMixerEventListeners();
+  
+  // Refresh resizable components after rendering mixer
+  setTimeout(() => {
+    if (typeof refreshResizableComponents === 'function') {
+      refreshResizableComponents();
+    }
+  }, 0);
 }
 
 function createMasterChannel() {
@@ -4165,9 +4357,20 @@ function renderFxView() {
     const hasCustomUI = pluginDef && pluginDef.customUI && pluginDef.renderUI;
     
     if (hasCustomUI) {
-      // Use custom UI renderer
+      // Use custom UI renderer with resizable functionality
       try {
-        pluginDef.renderUI('pluginUI', instEntry?.instance);
+        if (typeof renderResizablePluginUI === 'function') {
+          renderResizablePluginUI(selectedId, 'pluginUI', instEntry?.instance, pluginDef.renderUI);
+        } else {
+          // Fallback to regular rendering
+          pluginDef.renderUI('pluginUI', instEntry?.instance);
+          // Make it resizable after rendering
+          setTimeout(() => {
+            if (typeof makePluginUIResizable === 'function') {
+              makePluginUIResizable('pluginUI');
+            }
+          }, 100);
+        }
       } catch (err) {
         console.error('Error rendering custom UI:', err);
         // Fall back to default sliders
@@ -6329,18 +6532,112 @@ async function applyTimeStretchToClip(trackIndex, clipIndex, stretchRatio) {
     return;
   }
   
+  // Add clip length validation to prevent freezing
+  const maxDurationForTimeStretch = 30; // Maximum duration in seconds for time stretching
+  const maxSamplesForTimeStretch = clip.audioBuffer.sampleRate * maxDurationForTimeStretch;
+  
+  if (clip.duration > maxDurationForTimeStretch || clip.audioBuffer.length > maxSamplesForTimeStretch) {
+    console.warn(`Clip too long for time stretching: ${clip.duration.toFixed(2)}s (max: ${maxDurationForTimeStretch}s)`);
+    
+    const userChoice = confirm(
+      `The clip "${clip.name}" is ${clip.duration.toFixed(2)} seconds long, which may cause the browser to freeze during time stretching.\n\n` +
+      `For clips longer than ${maxDurationForTimeStretch} seconds, we recommend:\n` +
+      `• Split the clip into smaller segments\n` +
+      `• Use a lower quality/faster processing mode\n` +
+      `• Try time stretching offline\n\n` +
+      `Do you want to continue anyway? (This may freeze your browser)`
+    );
+    
+    if (!userChoice) {
+      console.log('User cancelled time stretch for long clip');
+      return;
+    }
+    
+    console.log('User chose to proceed with time stretch for long clip - using fallback mode');
+    
+    // Use fast fallback processing for very long clips
+    try {
+      await applyFastTimeStretchToClip(trackIndex, clipIndex, stretchRatio);
+      return;
+    } catch (fallbackError) {
+      console.error('Fast time stretch also failed:', fallbackError);
+      alert('Time stretching failed for this clip. The clip may be too long or corrupted.');
+      return;
+    }
+  }
+  
   try {
     console.log(`Applying time stretch: ${stretchRatio.toFixed(3)}x to clip "${clip.name}"`);
     
-    // Create VexWarp TimeStretcher instance
+    // Show progress indicator for medium/large clips
+    let progressDiv = null;
+    if (clip.duration > 5) { // Show progress for clips longer than 5 seconds
+      progressDiv = document.createElement('div');
+      progressDiv.style.cssText = `
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        background: rgba(0,0,0,0.9); color: white; padding: 20px; border-radius: 8px;
+        z-index: 10000; text-align: center; min-width: 250px;
+      `;
+      progressDiv.innerHTML = `
+        <div style="margin-bottom: 10px;">Time stretching: "${clip.name}"</div>
+        <div style="background: #333; height: 8px; border-radius: 4px; overflow: hidden;">
+          <div id="timeStretchProgress" style="background: #1de9b6; height: 100%; width: 0%; transition: width 0.3s;"></div>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px; color: #ccc;">Processing...</div>
+      `;
+      document.body.appendChild(progressDiv);
+    }
+    
+    // Optimize VexWarp parameters based on clip length for better performance
+    let frameSize = 2048;
+    let hopSize = 512;
+    let stftBins = 8192;
+    let algorithm = 'psola';
+    
+    // Use smaller frames and bins for longer clips to reduce memory usage and processing time
+    if (clip.duration > 20) {
+      // Very long clips: prioritize speed over quality
+      frameSize = 512;
+      hopSize = 128;
+      stftBins = 2048;
+      algorithm = 'simple'; // Use simpler algorithm
+    } else if (clip.duration > 15) {
+      frameSize = 1024;
+      hopSize = 256;
+      stftBins = 4096;
+    } else if (clip.duration > 10) {
+      frameSize = 1536;
+      hopSize = 384;
+      stftBins = 6144;
+    }
+    
+    console.log(`VexWarp parameters for ${clip.duration.toFixed(2)}s clip:`, {
+      frameSize, hopSize, stftBins, algorithm
+    });
+    
+    // Create VexWarp TimeStretcher instance with optimized parameters
     const stretcher = new window.VexWarp.TimeStretcher(
       clip.audioBuffer.sampleRate,
       clip.audioBuffer.numberOfChannels,
       {
-        algorithm: 'psola', // Use PSOLA algorithm by default
-        frameSize: 2048,
-        hopSize: 512,
-        preserveFormants: true
+        algorithm: algorithm,
+        frameSize: frameSize,
+        hopSize: hopSize,
+        stftBins: stftBins,
+        preserveFormants: algorithm === 'psola', // Only preserve formants for high-quality modes
+        progressCallback: (details, message) => {
+          // Update progress bar if visible
+          if (progressDiv) {
+            const progressBar = document.getElementById('timeStretchProgress');
+            if (progressBar && details.current_window && details.total_windows) {
+              const progress = (details.current_window / details.total_windows) * 100;
+              progressBar.style.width = progress + '%';
+            }
+          }
+          
+          // Call original progress callback
+          VexWarpTools.onProgress(details, message);
+        }
       }
     );
     
@@ -6362,7 +6659,7 @@ async function applyTimeStretchToClip(trackIndex, clipIndex, stretchRatio) {
       clip.audioBuffer.sampleRate
     );
     
-    // Process each channel
+    // Process each channel with yielding for better responsiveness
     for (let channel = 0; channel < clip.audioBuffer.numberOfChannels; channel++) {
       const inputData = channelData[channel];
       const outputData = new Float32Array(newLength);
@@ -6373,10 +6670,24 @@ async function applyTimeStretchToClip(trackIndex, clipIndex, stretchRatio) {
         hasValidInput: inputData && inputData.length > 0
       });
       
+      // Update progress indicator for multi-channel processing
+      if (progressDiv) {
+        const progressBar = document.getElementById('timeStretchProgress');
+        if (progressBar) {
+          const channelProgress = (channel / clip.audioBuffer.numberOfChannels) * 50; // First 50% for channel setup
+          progressBar.style.width = channelProgress + '%';
+        }
+      }
+      
       // Verify input data is valid
       if (!inputData || inputData.length === 0) {
         console.error(`Channel ${channel} has invalid input data`);
         throw new Error(`Invalid audio data for channel ${channel}`);
+      }
+      
+      // Yield to browser between channels for better responsiveness
+      if (channel > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1));
       }
       
       // Apply time stretching using VexWarp
@@ -6484,6 +6795,11 @@ async function applyTimeStretchToClip(trackIndex, clipIndex, stretchRatio) {
     
     console.log(`Time stretch complete: ${clip.duration.toFixed(2)}s (ratio: ${stretchRatio.toFixed(3)}x)`);
     
+    // Clean up progress indicator
+    if (progressDiv && progressDiv.parentNode) {
+      document.body.removeChild(progressDiv);
+    }
+    
   } catch (error) {
     console.error('Error applying time stretch:', error);
     console.log('Error details:', {
@@ -6493,6 +6809,11 @@ async function applyTimeStretchToClip(trackIndex, clipIndex, stretchRatio) {
       hasAudioBuffer: clip ? !!clip.audioBuffer : false,
       stretchRatio: stretchRatio
     });
+    
+    // Clean up progress indicator on error
+    if (progressDiv && progressDiv.parentNode) {
+      document.body.removeChild(progressDiv);
+    }
     
     // Ensure clip data integrity
     if (clip && clip.audioBuffer) {
@@ -6505,6 +6826,169 @@ async function applyTimeStretchToClip(trackIndex, clipIndex, stretchRatio) {
     
     // Re-render to ensure UI is consistent
     render();
+  }
+}
+
+// Fast time stretch fallback for large clips - uses simple resampling with chunked processing
+async function applyFastTimeStretchToClip(trackIndex, clipIndex, stretchRatio) {
+  console.log('Applying fast time stretch for large clip...');
+  
+  const track = tracks[trackIndex];
+  const clip = track.clips[clipIndex];
+  
+  if (!clip || !clip.audioBuffer) {
+    console.error('No audio buffer for fast stretch');
+    return;
+  }
+  
+  const originalLength = clip.audioBuffer.length;
+  const newLength = Math.floor(originalLength * stretchRatio);
+  const chunkSize = 44100; // Process 1 second chunks at 44.1kHz
+  
+  console.log(`Fast stretch processing: ${originalLength} -> ${newLength} samples (${Math.ceil(newLength / chunkSize)} chunks)`);
+  
+  // Show progress indicator
+  const progressDiv = document.createElement('div');
+  progressDiv.style.cssText = `
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.9); color: white; padding: 20px; border-radius: 8px;
+    z-index: 10000; text-align: center; min-width: 300px;
+  `;
+  progressDiv.innerHTML = `
+    <div style="margin-bottom: 10px;">Processing large clip...</div>
+    <div style="background: #333; height: 10px; border-radius: 5px; overflow: hidden;">
+      <div id="fastStretchProgress" style="background: #ff9500; height: 100%; width: 0%; transition: width 0.3s;"></div>
+    </div>
+    <div style="margin-top: 10px; font-size: 12px;">Click anywhere to cancel</div>
+  `;
+  document.body.appendChild(progressDiv);
+  
+  let cancelled = false;
+  const cancelHandler = () => {
+    cancelled = true;
+    document.body.removeChild(progressDiv);
+    console.log('Fast time stretch cancelled by user');
+  };
+  progressDiv.addEventListener('click', cancelHandler);
+  
+  try {
+    // Create new audio buffer for stretched audio
+    const stretchedBuffer = Tone.context.createBuffer(
+      clip.audioBuffer.numberOfChannels,
+      newLength,
+      clip.audioBuffer.sampleRate
+    );
+    
+    // Process each channel with chunked processing
+    for (let channel = 0; channel < clip.audioBuffer.numberOfChannels; channel++) {
+      if (cancelled) break;
+      
+      const inputData = clip.audioBuffer.getChannelData(channel);
+      const outputData = new Float32Array(newLength);
+      
+      // Process in chunks to prevent freezing
+      for (let chunkStart = 0; chunkStart < newLength; chunkStart += chunkSize) {
+        if (cancelled) break;
+        
+        const chunkEnd = Math.min(chunkStart + chunkSize, newLength);
+        const chunkLength = chunkEnd - chunkStart;
+        
+        // Simple linear interpolation for this chunk
+        for (let i = 0; i < chunkLength; i++) {
+          const outputIndex = chunkStart + i;
+          const sourceIndex = (outputIndex / newLength) * inputData.length;
+          const index1 = Math.floor(sourceIndex);
+          const index2 = Math.min(index1 + 1, inputData.length - 1);
+          const fraction = sourceIndex - index1;
+          
+          outputData[outputIndex] = inputData[index1] * (1 - fraction) + inputData[index2] * fraction;
+        }
+        
+        // Update progress
+        const progress = ((channel * newLength + chunkEnd) / (clip.audioBuffer.numberOfChannels * newLength)) * 100;
+        const progressBar = document.getElementById('fastStretchProgress');
+        if (progressBar) {
+          progressBar.style.width = progress + '%';
+        }
+        
+        // Yield to browser to prevent freezing
+        if (chunkStart % (chunkSize * 4) === 0) { // Every 4 chunks
+          await new Promise(resolve => setTimeout(resolve, 1)); // 1ms yield
+        }
+      }
+      
+      if (!cancelled) {
+        stretchedBuffer.copyToChannel(outputData, channel);
+        console.log(`Fast stretch completed for channel ${channel}`);
+      }
+    }
+    
+    // Remove progress indicator
+    if (progressDiv.parentNode) {
+      document.body.removeChild(progressDiv);
+    }
+    
+    if (cancelled) {
+      console.log('Fast time stretch was cancelled');
+      return;
+    }
+    
+    // Update clip with stretched audio
+    try {
+      const url = await bufferToBlob(stretchedBuffer);
+      
+      const originalTonePlayer = clip.tonePlayer;
+      
+      const newTonePlayer = new Tone.Player({
+        url: url,
+        playbackRate: 1.0,
+        onload: () => {
+          console.log(`Fast time-stretched clip "${clip.name}" loaded successfully`);
+          
+          clip.audioBuffer = stretchedBuffer;
+          clip.duration = newLength / stretchedBuffer.sampleRate;
+          
+          if (originalTonePlayer) {
+            originalTonePlayer.dispose();
+          }
+          
+          render();
+        },
+        onerror: (error) => {
+          console.error('Error loading fast time-stretched audio:', error);
+          alert('Error loading processed audio. Reverted to original.');
+          render();
+        }
+      }).toDestination();
+      
+      if (track.effectsChain) {
+        newTonePlayer.disconnect();
+        newTonePlayer.connect(track.effectsChain);
+      }
+      
+      clip.tonePlayer = newTonePlayer;
+      
+    } catch (blobError) {
+      console.error('Error creating blob for fast stretch:', blobError);
+      
+      // Direct buffer update fallback
+      clip.audioBuffer = stretchedBuffer;
+      clip.duration = newLength / stretchedBuffer.sampleRate;
+      render();
+    }
+    
+    console.log(`Fast time stretch complete: ${clip.duration.toFixed(2)}s (ratio: ${stretchRatio.toFixed(3)}x)`);
+    
+  } catch (error) {
+    console.error('Error in fast time stretch:', error);
+    
+    // Remove progress indicator on error
+    if (progressDiv.parentNode) {
+      document.body.removeChild(progressDiv);
+    }
+    
+    alert('Error during fast time stretch: ' + error.message);
+    throw error;
   }
 }
 
@@ -6551,5 +7035,1667 @@ async function bufferToBlob(audioBuffer) {
   
   return URL.createObjectURL(new Blob([arrayBuffer], { type: 'audio/wav' }));
 }
+
+// ===== RESIZABLE COMPONENTS SYSTEM =====
+
+class ResizableManager {
+  constructor() {
+    this.activeResize = null;
+    this.resizeState = {
+      isResizing: false,
+      startX: 0,
+      startY: 0,
+      startWidth: 0,
+      startHeight: 0,
+      element: null,
+      handle: null,
+      type: null // 'width', 'height', 'both'
+    };
+    
+    this.init();
+  }
+  
+  init() {
+    // Add global mouse event listeners
+    document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+    document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+    
+    // Initialize all resizable components
+    // this.initResizableTracks(); // DISABLED
+    // this.initResizableMixerChannels(); // DISABLED
+    this.initResizableModals();
+    // this.initResizableTrackHeaders(); // DISABLED
+  }
+  
+  // ===== TRACK RESIZING =====
+  
+  initResizableTracks() {
+    // DISABLED - Track resizing disabled by user request
+    return;
+  }
+  
+  makeTracksResizable() {
+    const trackContainers = document.querySelectorAll('.track-container');
+    trackContainers.forEach((container, index) => {
+      if (!container.classList.contains('resizable')) {
+        container.classList.add('resizable');
+        this.addTrackResizeHandles(container, index);
+      }
+    });
+  }
+  
+  addTrackResizeHandles(container, trackIndex) {
+    // Add bottom resize handle for track height
+    const bottomHandle = document.createElement('div');
+    bottomHandle.className = 'resize-handle resize-handle-bottom';
+    bottomHandle.dataset.trackIndex = trackIndex;
+    bottomHandle.dataset.resizeType = 'track-height';
+    
+    // Add resize indicator
+    const indicator = document.createElement('div');
+    indicator.className = 'track-resize-indicator';
+    indicator.textContent = '90px';
+    
+    container.appendChild(bottomHandle);
+    container.appendChild(indicator);
+    
+    // Add event listeners
+    bottomHandle.addEventListener('mousedown', this.handleTrackResizeStart.bind(this));
+  }
+  
+  handleTrackResizeStart(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const handle = e.target;
+    const trackIndex = parseInt(handle.dataset.trackIndex);
+    const container = handle.parentElement;
+    const track = container.querySelector('.track');
+    
+    this.resizeState = {
+      isResizing: true,
+      startY: e.clientY,
+      startHeight: track.offsetHeight,
+      element: track,
+      container: container,
+      handle: handle,
+      type: 'track-height',
+      trackIndex: trackIndex
+    };
+    
+    container.classList.add('resizing');
+    document.body.classList.add('resizing-ns');
+    handle.classList.add('active');
+  }
+  
+  // ===== MIXER CHANNEL RESIZING =====
+  
+  initResizableMixerChannels() {
+    // DISABLED - Mixer resizing disabled by user request
+    return;
+  }
+  
+  makeMixerChannelsResizable() {
+    const mixerChannels = document.querySelectorAll('.mixer-channel:not(.master)');
+    mixerChannels.forEach((channel, index) => {
+      if (!channel.classList.contains('resizable')) {
+        channel.classList.add('resizable');
+        this.addMixerChannelResizeHandles(channel, index);
+      }
+    });
+  }
+  
+  addMixerChannelResizeHandles(channel, channelIndex) {
+    // Add right resize handle for mixer channel width
+    const rightHandle = document.createElement('div');
+    rightHandle.className = 'resize-handle resize-handle-right';
+    rightHandle.dataset.channelIndex = channelIndex;
+    rightHandle.dataset.resizeType = 'mixer-width';
+    
+    // Add resize indicator
+    const indicator = document.createElement('div');
+    indicator.className = 'mixer-resize-indicator';
+    indicator.textContent = '120px';
+    
+    channel.appendChild(rightHandle);
+    channel.appendChild(indicator);
+    
+    // Add event listeners
+    rightHandle.addEventListener('mousedown', this.handleMixerResizeStart.bind(this));
+  }
+  
+  handleMixerResizeStart(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const handle = e.target;
+    const channelIndex = parseInt(handle.dataset.channelIndex);
+    const channel = handle.parentElement;
+    
+    this.resizeState = {
+      isResizing: true,
+      startX: e.clientX,
+      startWidth: channel.offsetWidth,
+      element: channel,
+      handle: handle,
+      type: 'mixer-width',
+      channelIndex: channelIndex
+    };
+    
+    channel.classList.add('resizing');
+    document.body.classList.add('resizing-ew');
+    handle.classList.add('active');
+  }
+  
+  // ===== MODAL DIALOG RESIZING =====
+  
+  initResizableModals() {
+    this.makeModalsResizable();
+  }
+  
+  makeModalsResizable() {
+    const modals = document.querySelectorAll('.modal-dialog');
+    modals.forEach((modal) => {
+      if (!modal.classList.contains('resizable')) {
+        modal.classList.add('resizable');
+        this.addModalResizeHandles(modal);
+      }
+    });
+  }
+  
+  addModalResizeHandles(modal) {
+    // Add corner resize handle for both width and height
+    const cornerHandle = document.createElement('div');
+    cornerHandle.className = 'resize-handle resize-handle-corner bottom-right';
+    cornerHandle.dataset.resizeType = 'modal-both';
+    
+    // Add resize indicator
+    const indicator = document.createElement('div');
+    indicator.className = 'modal-resize-indicator';
+    indicator.textContent = `${modal.offsetWidth}×${modal.offsetHeight}`;
+    
+    modal.appendChild(cornerHandle);
+    modal.appendChild(indicator);
+    
+    // Add event listeners
+    cornerHandle.addEventListener('mousedown', this.handleModalResizeStart.bind(this));
+  }
+  
+  handleModalResizeStart(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const handle = e.target;
+    const modal = handle.parentElement;
+    
+    this.resizeState = {
+      isResizing: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: modal.offsetWidth,
+      startHeight: modal.offsetHeight,
+      element: modal,
+      handle: handle,
+      type: 'modal-both'
+    };
+    
+    modal.classList.add('resizing');
+    document.body.classList.add('resizing-nw');
+    handle.classList.add('active');
+  }
+  
+  // ===== TRACK HEADER RESIZING =====
+  
+  initResizableTrackHeaders() {
+    // DISABLED - Track header resizing disabled by user request
+    return;
+  }
+  
+  makeTrackHeadersResizable() {
+    const trackHeaders = document.querySelectorAll('.track-header');
+    trackHeaders.forEach((header, index) => {
+      if (!header.classList.contains('resizable')) {
+        header.classList.add('resizable');
+        this.addTrackHeaderResizeHandles(header, index);
+      }
+    });
+  }
+  
+  addTrackHeaderResizeHandles(header, headerIndex) {
+    // Add right resize handle for track header width
+    const rightHandle = document.createElement('div');
+    rightHandle.className = 'resize-handle resize-handle-right';
+    rightHandle.dataset.headerIndex = headerIndex;
+    rightHandle.dataset.resizeType = 'header-width';
+    
+    // Add resize indicator
+    const indicator = document.createElement('div');
+    indicator.className = 'track-header-resize-indicator';
+    indicator.textContent = '200px';
+    
+    header.appendChild(rightHandle);
+    header.appendChild(indicator);
+    
+    // Add event listeners
+    rightHandle.addEventListener('mousedown', this.handleTrackHeaderResizeStart.bind(this));
+  }
+  
+  handleTrackHeaderResizeStart(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const handle = e.target;
+    const headerIndex = parseInt(handle.dataset.headerIndex);
+    const header = handle.parentElement;
+    
+    this.resizeState = {
+      isResizing: true,
+      startX: e.clientX,
+      startWidth: header.offsetWidth,
+      element: header,
+      handle: handle,
+      type: 'header-width',
+      headerIndex: headerIndex
+    };
+    
+    header.classList.add('resizing');
+    document.body.classList.add('resizing-ew');
+    handle.classList.add('active');
+  }
+  
+  // ===== GLOBAL MOUSE HANDLERS =====
+  
+  handleMouseMove(e) {
+    if (!this.resizeState.isResizing) return;
+    
+    const state = this.resizeState;
+    
+    switch (state.type) {
+      case 'track-height':
+        this.handleTrackHeightResize(e);
+        break;
+      case 'mixer-width':
+        this.handleMixerWidthResize(e);
+        break;
+      case 'modal-both':
+        this.handleModalBothResize(e);
+        break;
+      case 'header-width':
+        this.handleTrackHeaderWidthResize(e);
+        break;
+      case 'plugin-ui':
+        this.handlePluginUIResize(e);
+        break;
+    }
+  }
+  
+  handleTrackHeightResize(e) {
+    const state = this.resizeState;
+    const deltaY = e.clientY - state.startY;
+    const newHeight = Math.max(60, Math.min(300, state.startHeight + deltaY));
+    
+    state.element.style.height = newHeight + 'px';
+    
+    // Update indicator
+    const indicator = state.container.querySelector('.track-resize-indicator');
+    if (indicator) {
+      indicator.textContent = newHeight + 'px';
+    }
+    
+    // Update track height in data structure
+    if (tracks[state.trackIndex]) {
+      tracks[state.trackIndex].height = newHeight;
+    }
+  }
+  
+  handleMixerWidthResize(e) {
+    const state = this.resizeState;
+    const deltaX = e.clientX - state.startX;
+    const newWidth = Math.max(80, Math.min(200, state.startWidth + deltaX));
+    
+    state.element.style.width = newWidth + 'px';
+    
+    // Update indicator
+    const indicator = state.element.querySelector('.mixer-resize-indicator');
+    if (indicator) {
+      indicator.textContent = newWidth + 'px';
+    }
+  }
+  
+  handleModalBothResize(e) {
+    const state = this.resizeState;
+    const deltaX = e.clientX - state.startX;
+    const deltaY = e.clientY - state.startY;
+    const newWidth = Math.max(400, Math.min(window.innerWidth * 0.95, state.startWidth + deltaX));
+    const newHeight = Math.max(300, Math.min(window.innerHeight * 0.95, state.startHeight + deltaY));
+    
+    state.element.style.width = newWidth + 'px';
+    state.element.style.height = newHeight + 'px';
+    
+    // Update indicator
+    const indicator = state.element.querySelector('.modal-resize-indicator');
+    if (indicator) {
+      indicator.textContent = `${newWidth}×${newHeight}`;
+    }
+  }
+  
+  handleTrackHeaderWidthResize(e) {
+    const state = this.resizeState;
+    const deltaX = e.clientX - state.startX;
+    const newWidth = Math.max(150, Math.min(400, state.startWidth + deltaX));
+    
+    state.element.style.width = newWidth + 'px';
+    
+    // Update indicator
+    const indicator = state.element.querySelector('.track-header-resize-indicator');
+    if (indicator) {
+      indicator.textContent = newWidth + 'px';
+    }
+    
+    // Update global TRACK_HEADER_WIDTH constant and recalculate timeline
+    if (newWidth !== TRACK_HEADER_WIDTH) {
+      // Update all track headers to same width for consistency
+      document.querySelectorAll('.track-header').forEach(header => {
+        header.style.width = newWidth + 'px';
+      });
+      
+      // Update the global constant (we need to modify this)
+      window.TRACK_HEADER_WIDTH = newWidth;
+      
+      // Recalculate timeline width
+      updateTimelineWidth();
+    }
+  }
+  
+  handlePluginUIResize(e) {
+    const state = this.resizeState;
+    const deltaX = e.clientX - state.startX;
+    const deltaY = e.clientY - state.startY;
+    const newWidth = Math.max(300, Math.min(window.innerWidth * 0.9, state.startWidth + deltaX));
+    const newHeight = Math.max(200, Math.min(window.innerHeight * 0.9, state.startHeight + deltaY));
+    
+    state.element.style.width = newWidth + 'px';
+    state.element.style.height = newHeight + 'px';
+    
+    // Update indicator
+    const indicator = state.element.querySelector('.plugin-resize-indicator');
+    if (indicator) {
+      indicator.textContent = `${newWidth}×${newHeight}`;
+    }
+  }
+  
+  handleMouseUp(e) {
+    if (!this.resizeState.isResizing) return;
+    
+    const state = this.resizeState;
+    
+    // Clean up resize state
+    if (state.container) {
+      state.container.classList.remove('resizing');
+    }
+    if (state.element) {
+      state.element.classList.remove('resizing');
+    }
+    if (state.handle) {
+      state.handle.classList.remove('active');
+    }
+    
+    // Remove cursor classes
+    document.body.classList.remove('resizing-ns', 'resizing-ew', 'resizing-nw', 'resizing-ne');
+    
+    // Reset resize state
+    this.resizeState = {
+      isResizing: false,
+      startX: 0,
+      startY: 0,
+      startWidth: 0,
+      startHeight: 0,
+      element: null,
+      handle: null,
+      type: null
+    };
+    
+    // Trigger any necessary updates
+    this.onResizeComplete(state);
+  }
+  
+  onResizeComplete(state) {
+    switch (state.type) {
+      case 'track-height':
+        // Re-render track if needed
+        renderTracks();
+        break;
+      case 'mixer-width':
+        // Update mixer layout if needed
+        break;
+      case 'modal-both':
+        // Trigger modal content reflow
+        const event = new Event('resize');
+        state.element.dispatchEvent(event);
+        break;
+      case 'header-width':
+        // Update timeline and track positioning
+        break;
+      case 'plugin-ui':
+        // Trigger plugin UI content reflow
+        const pluginEvent = new Event('resize');
+        state.element.dispatchEvent(pluginEvent);
+        break;
+    }
+  }
+  
+  // ===== PLUGIN UI RESIZING =====
+  
+  makePluginUIResizable(container) {
+    if (!container.classList.contains('resizable')) {
+      container.classList.add('resizable');
+      container.classList.add('plugin-ui-container');
+      
+      // Add corner resize handle
+      const cornerHandle = document.createElement('div');
+      cornerHandle.className = 'resize-handle resize-handle-corner bottom-right';
+      cornerHandle.dataset.resizeType = 'plugin-ui';
+      
+      // Add resize indicator
+      const indicator = document.createElement('div');
+      indicator.className = 'plugin-resize-indicator';
+      indicator.textContent = `${container.offsetWidth}×${container.offsetHeight}`;
+      
+      container.appendChild(cornerHandle);
+      container.appendChild(indicator);
+      
+      // Add event listeners
+      cornerHandle.addEventListener('mousedown', this.handlePluginUIResizeStart.bind(this));
+    }
+  }
+  
+  handlePluginUIResizeStart(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const handle = e.target;
+    const container = handle.parentElement;
+    
+    this.resizeState = {
+      isResizing: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: container.offsetWidth,
+      startHeight: container.offsetHeight,
+      element: container,
+      handle: handle,
+      type: 'plugin-ui'
+    };
+    
+    container.classList.add('resizing');
+    document.body.classList.add('resizing-nw');
+    handle.classList.add('active');
+  }
+  
+  // ===== UTILITY METHODS =====
+  
+  refreshResizableComponents() {
+    // Re-initialize all resizable components (call after DOM changes)
+    this.initResizableTracks();
+    this.initResizableMixerChannels();
+    this.initResizableModals();
+    this.initResizableTrackHeaders();
+  }
+  
+  removeResizeHandles(element) {
+    // Remove all resize handles from an element
+    const handles = element.querySelectorAll('.resize-handle');
+    const indicators = element.querySelectorAll('[class*="resize-indicator"]');
+    
+    handles.forEach(handle => handle.remove());
+    indicators.forEach(indicator => indicator.remove());
+    
+    element.classList.remove('resizable', 'resizing');
+  }
+}
+
+// Initialize the resizable manager
+let resizableManager;
+
+// Initialize resizable components when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  resizableManager = new ResizableManager();
+});
+
+// Re-initialize resizable components after track/mixer updates
+function refreshResizableComponents() {
+  if (resizableManager) {
+    resizableManager.refreshResizableComponents();
+  }
+}
+
+// ===== FEATURES GUIDE DIALOG =====
+
+class FeaturesGuideDialog {
+  constructor() {
+    this.overlay = null;
+    this.dialog = null;
+    this.isOpen = false;
+    this.animationQueue = [];
+    this.currentAnimationIndex = 0;
+    this.animationDelay = 120; // ms between text reveals
+    this.animationStartDelay = 600; // ms before starting animations
+    
+    this.init();
+  }
+  
+  init() {
+    this.overlay = document.getElementById('featuresOverlay');
+    this.dialog = document.getElementById('featuresDialog');
+    
+    if (!this.overlay || !this.dialog) {
+      console.warn('Features Guide Dialog elements not found');
+      return;
+    }
+    
+    // Set up event listeners
+    this.setupEventListeners();
+    
+    // Collect all animated text elements
+    this.collectAnimatedElements();
+  }
+  
+  setupEventListeners() {
+    // Logo click handler
+    const logoContainer = document.querySelector('.audioverse-logo-container');
+    if (logoContainer) {
+      logoContainer.addEventListener('click', () => this.open());
+    }
+    
+    // Close button handlers
+    const closeButtons = [
+      document.getElementById('featuresClose'),
+      document.getElementById('featuresCloseFooter')
+    ];
+    
+    closeButtons.forEach(btn => {
+      if (btn) {
+        btn.addEventListener('click', () => this.close());
+      }
+    });
+    
+    // Start button
+    const startBtn = document.getElementById('featuresStart');
+    if (startBtn) {
+      startBtn.addEventListener('click', () => {
+        this.close();
+        this.celebrateStart();
+      });
+    }
+    
+    // Close on overlay click (but not dialog click)
+    this.overlay.addEventListener('click', (e) => {
+      if (e.target === this.overlay) {
+        this.close();
+      }
+    });
+    
+    // Escape key to close
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.isOpen) {
+        this.close();
+      }
+    });
+    
+    // Make dialog resizable
+    if (resizableManager) {
+      setTimeout(() => {
+        resizableManager.makeModalResizable(this.dialog);
+      }, 100);
+    }
+  }
+  
+  collectAnimatedElements() {
+    this.animationQueue = Array.from(this.dialog.querySelectorAll('.animated-text'));
+    this.resetAnimations();
+  }
+  
+  resetAnimations() {
+    this.currentAnimationIndex = 0;
+    this.animationQueue.forEach(element => {
+      element.classList.remove('revealed');
+    });
+  }
+  
+  open() {
+    if (this.isOpen) return;
+    
+    this.isOpen = true;
+    this.overlay.classList.remove('hidden');
+    
+    // Reset and start animations
+    this.resetAnimations();
+    setTimeout(() => {
+      this.startTextAnimations();
+    }, this.animationStartDelay);
+    
+    // Focus management for accessibility
+    this.dialog.focus();
+    
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
+    
+    console.log('Features Guide Dialog opened');
+  }
+  
+  close() {
+    if (!this.isOpen) return;
+    
+    this.isOpen = false;
+    this.overlay.classList.add('hidden');
+    
+    // Reset animations for next time
+    this.resetAnimations();
+    
+    // Restore body scroll
+    document.body.style.overflow = '';
+    
+    console.log('Features Guide Dialog closed');
+  }
+  
+  startTextAnimations() {
+    if (this.currentAnimationIndex >= this.animationQueue.length) {
+      this.onAnimationsComplete();
+      return;
+    }
+    
+    const element = this.animationQueue[this.currentAnimationIndex];
+    
+    // Add revealed class with staggered timing
+    setTimeout(() => {
+      element.classList.add('revealed');
+      this.currentAnimationIndex++;
+      
+      // Continue to next element
+      if (this.currentAnimationIndex < this.animationQueue.length) {
+        // Variable delay based on element type
+        let delay = this.animationDelay;
+        
+        if (element.classList.contains('category-title')) {
+          delay = 250; // Longer pause after category headers
+        } else if (element.classList.contains('welcome-text')) {
+          delay = 400; // Longer pause after welcome text
+        } else if (element.classList.contains('cta-text')) {
+          delay = 350; // Pause before CTA
+        }
+        
+        setTimeout(() => this.startTextAnimations(), delay);
+      } else {
+        this.onAnimationsComplete();
+      }
+    }, 60);
+  }
+  
+  onAnimationsComplete() {
+    console.log('All text animations completed');
+    
+    // Add subtle completion effect
+    this.dialog.style.transform = 'scale(1.02)';
+    setTimeout(() => {
+      this.dialog.style.transform = '';
+    }, 200);
+    
+    // Play completion sound
+    this.playCompletionSound();
+  }
+  
+  playCompletionSound() {
+    // Create a cheerful audio feedback
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Play a nice chord progression
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.1);
+      oscillator.frequency.exponentialRampToValueAtTime(1000, audioContext.currentTime + 0.2);
+      
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.08, audioContext.currentTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+      console.log('Audio feedback not available');
+    }
+  }
+  
+  celebrateStart() {
+    // Enhanced celebration effect
+    const logoContainer = document.querySelector('.audioverse-logo-container');
+    if (logoContainer) {
+      // Add a special celebration class
+      logoContainer.classList.add('celebrating');
+      
+      // Remove it after animation
+      setTimeout(() => {
+        logoContainer.classList.remove('celebrating');
+      }, 2000);
+    }
+    
+    // Show welcome message
+    this.showWelcomeMessage();
+    
+    // Add some sparkle effects
+    this.createSparkleEffects();
+  }
+  
+  showWelcomeMessage() {
+    const message = document.createElement('div');
+    message.innerHTML = `
+      <div style="
+        position: fixed;
+        top: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #ff9500, #1de9b6);
+        color: white;
+        padding: 16px 32px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        z-index: 10000;
+        box-shadow: 0 8px 30px rgba(255, 149, 0, 0.5);
+        animation: celebrationSlide 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        text-align: center;
+      ">
+        � Awesome! Let's make some music! 🎵
+        <div style="font-size: 0.9rem; margin-top: 4px; opacity: 0.9;">
+          Try uploading an audio file or adding a track! 🚀
+        </div>
+      </div>
+    `;
+    
+    // Add celebration animation styles
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes celebrationSlide {
+        0% { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(0.8); }
+        60% { opacity: 1; transform: translateX(-50%) translateY(5px) scale(1.05); }
+        100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+      }
+      @keyframes celebrationOut {
+        0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+        100% { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(0.9); }
+      }
+      .celebrating {
+        animation: logoOverjoy 2s ease-in-out !important;
+      }
+      @keyframes logoOverjoy {
+        0%, 100% { transform: scale(1) rotate(0deg); }
+        25% { transform: scale(1.2) rotate(5deg); }
+        50% { transform: scale(1.15) rotate(-3deg); }
+        75% { transform: scale(1.25) rotate(3deg); }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(message);
+    
+    // Remove message after 4 seconds
+    setTimeout(() => {
+      message.firstElementChild.style.animation = 'celebrationOut 0.5s ease-in';
+      setTimeout(() => {
+        if (document.body.contains(message)) {
+          document.body.removeChild(message);
+        }
+        if (document.head.contains(style)) {
+          document.head.removeChild(style);
+        }
+      }, 500);
+    }, 4000);
+  }
+  
+  createSparkleEffects() {
+    // Create sparkle particles around the logo
+    const logoContainer = document.querySelector('.audioverse-logo-container');
+    if (!logoContainer) return;
+    
+    const rect = logoContainer.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    for (let i = 0; i < 8; i++) {
+      setTimeout(() => {
+        this.createSparkle(centerX, centerY);
+      }, i * 100);
+    }
+  }
+  
+  createSparkle(x, y) {
+    const sparkle = document.createElement('div');
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 50 + Math.random() * 50;
+    const endX = x + Math.cos(angle) * distance;
+    const endY = y + Math.sin(angle) * distance;
+    
+    sparkle.innerHTML = ['✨', '⭐', '🌟', '💫'][Math.floor(Math.random() * 4)];
+    sparkle.style.cssText = `
+      position: fixed;
+      left: ${x}px;
+      top: ${y}px;
+      font-size: 20px;
+      pointer-events: none;
+      z-index: 10001;
+      animation: sparkleFloat 1.5s ease-out forwards;
+    `;
+    
+    const sparkleStyle = document.createElement('style');
+    sparkleStyle.textContent = `
+      @keyframes sparkleFloat {
+        0% {
+          opacity: 1;
+          transform: translate(0, 0) scale(0.5);
+        }
+        50% {
+          opacity: 1;
+          transform: translate(${endX - x}px, ${endY - y}px) scale(1.2);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(${endX - x}px, ${endY - y}px) scale(0.3);
+        }
+      }
+    `;
+    
+    document.head.appendChild(sparkleStyle);
+    document.body.appendChild(sparkle);
+    
+    // Cleanup
+    setTimeout(() => {
+      if (document.body.contains(sparkle)) {
+        document.body.removeChild(sparkle);
+      }
+      if (document.head.contains(sparkleStyle)) {
+        document.head.removeChild(sparkleStyle);
+      }
+    }, 1500);
+  }
+}
+
+// Initialize Features Guide Dialog
+let featuresGuideDialog;
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    featuresGuideDialog = new FeaturesGuideDialog();
+  }, 150);
+});
+
+// ===== TRACK VOLUME AUTOMATION SYSTEM =====
+
+class TrackAutomationManager {
+  constructor() {
+    this.overlay = null;
+    this.dialog = null;
+    this.canvas = null;
+    this.ctx = null;
+    this.currentTrackIndex = -1;
+    this.selectedPointIndex = -1;
+    this.isDragging = false;
+    this.dragOffset = { x: 0, y: 0 };
+    this.timeScale = 1; // pixels per second
+    this.volumeScale = 1; // pixels per volume unit
+    
+    this.init();
+  }
+  
+  init() {
+    this.overlay = document.getElementById('trackAutomationOverlay');
+    this.dialog = document.getElementById('trackAutomationDialog');
+    this.canvas = document.getElementById('automationCanvas');
+    
+    if (!this.canvas) {
+      console.warn('Automation canvas not found');
+      return;
+    }
+    
+    this.ctx = this.canvas.getContext('2d');
+    this.setupEventListeners();
+    this.setupCanvas();
+  }
+  
+  setupEventListeners() {
+    // Close buttons
+    document.getElementById('trackAutomationClose')?.addEventListener('click', () => this.close());
+    document.getElementById('automationCancel')?.addEventListener('click', () => this.close());
+    
+    // Save button
+    document.getElementById('automationSave')?.addEventListener('click', () => this.saveAutomation());
+    
+    // Preview button
+    document.getElementById('automationPreview')?.addEventListener('click', () => this.previewAutomation());
+    
+    // Control buttons
+    document.getElementById('automationAddPoint')?.addEventListener('click', () => this.addPoint());
+    document.getElementById('automationDeletePoint')?.addEventListener('click', () => this.deleteSelectedPoint());
+    document.getElementById('automationClearAll')?.addEventListener('click', () => this.clearAllPoints());
+    
+    // Volume range sliders
+    document.getElementById('automationMinVolume')?.addEventListener('input', (e) => {
+      this.updateVolumeRange();
+      this.redraw();
+    });
+    document.getElementById('automationMaxVolume')?.addEventListener('input', (e) => {
+      this.updateVolumeRange();
+      this.redraw();
+    });
+    
+    // Canvas events
+    this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+    this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+    this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
+    this.canvas.addEventListener('dblclick', (e) => this.onDoubleClick(e));
+    this.canvas.addEventListener('mouseleave', (e) => this.onMouseLeave(e));
+    
+    // Close on overlay click
+    this.overlay?.addEventListener('click', (e) => {
+      if (e.target === this.overlay) {
+        this.close();
+      }
+    });
+    
+    // Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.isOpen()) {
+        this.close();
+      }
+    });
+  }
+  
+  setupCanvas() {
+    if (!this.canvas) return;
+    
+    const resizeCanvas = () => {
+      const rect = this.canvas.getBoundingClientRect();
+      this.canvas.width = rect.width;
+      this.canvas.height = rect.height;
+      
+      // Update scales
+      this.timeScale = this.canvas.width / this.getTrackDuration();
+      this.volumeScale = this.canvas.height;
+      
+      this.redraw();
+    };
+    
+    // Initial resize
+    setTimeout(resizeCanvas, 100);
+    
+    // Resize observer
+    if (window.ResizeObserver) {
+      const resizeObserver = new ResizeObserver(resizeCanvas);
+      resizeObserver.observe(this.canvas.parentElement);
+    }
+    
+    window.addEventListener('resize', resizeCanvas);
+  }
+  
+  open(trackIndex) {
+    if (trackIndex < 0 || trackIndex >= tracks.length) {
+      console.warn('Invalid track index:', trackIndex);
+      return;
+    }
+    
+    this.currentTrackIndex = trackIndex;
+    const track = tracks[trackIndex];
+    
+    // Update dialog title
+    const titleElement = document.getElementById('automationTrackTitle');
+    if (titleElement) {
+      titleElement.textContent = `${track.label} - Volume Automation`;
+    }
+    
+    // Initialize volume range sliders
+    const minSlider = document.getElementById('automationMinVolume');
+    const maxSlider = document.getElementById('automationMaxVolume');
+    if (minSlider && maxSlider) {
+      minSlider.value = Math.round(track.volumeAuto.points[0]?.value * 100) || 0;
+      maxSlider.value = Math.round(Math.max(...track.volumeAuto.points.map(p => p.value)) * 100) || 100;
+    }
+    
+    this.updateVolumeRange();
+    this.updateTrackInfo();
+    
+    // Show dialog
+    this.overlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    // Setup canvas and redraw
+    setTimeout(() => {
+      this.setupCanvas();
+      this.generateTimeline();
+      this.redraw();
+    }, 100);
+    
+    console.log('Track automation opened for track:', trackIndex);
+  }
+  
+  close() {
+    this.overlay.classList.add('hidden');
+    document.body.style.overflow = '';
+    this.selectedPointIndex = -1;
+    this.isDragging = false;
+    this.currentTrackIndex = -1;
+  }
+  
+  isOpen() {
+    return !this.overlay.classList.contains('hidden');
+  }
+  
+  getTrackDuration() {
+    if (this.currentTrackIndex < 0) return 10; // default 10 seconds
+    
+    const track = tracks[this.currentTrackIndex];
+    let maxDuration = 10; // minimum 10 seconds
+    
+    track.clips.forEach(clip => {
+      const clipEnd = clip.startTime + clip.duration;
+      if (clipEnd > maxDuration) {
+        maxDuration = clipEnd;
+      }
+    });
+    
+    return Math.max(maxDuration, 10);
+  }
+  
+  generateTimeline() {
+    const timeline = document.getElementById('automationTimeline');
+    if (!timeline) return;
+    
+    timeline.innerHTML = '';
+    const duration = this.getTrackDuration();
+    const timelineWidth = timeline.clientWidth;
+    const secondWidth = timelineWidth / duration;
+    
+    // Generate time markers
+    for (let i = 0; i <= duration; i++) {
+      const marker = document.createElement('div');
+      marker.className = 'timeline-marker' + (i % 4 === 0 ? ' bar' : '');
+      marker.style.left = (i * secondWidth) + 'px';
+      timeline.appendChild(marker);
+      
+      if (i % 4 === 0) {
+        const label = document.createElement('div');
+        label.className = 'timeline-label';
+        label.style.left = (i * secondWidth) + 'px';
+        label.textContent = this.formatTime(i);
+        timeline.appendChild(label);
+      }
+    }
+  }
+  
+  formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+  
+  updateVolumeRange() {
+    const minSlider = document.getElementById('automationMinVolume');
+    const maxSlider = document.getElementById('automationMaxVolume');
+    const minLabel = document.getElementById('minVolumeLabel');
+    const maxLabel = document.getElementById('maxVolumeLabel');
+    
+    if (minSlider && maxSlider && minLabel && maxLabel) {
+      minLabel.textContent = minSlider.value + '%';
+      maxLabel.textContent = maxSlider.value + '%';
+      
+      // Ensure min <= max
+      if (parseInt(minSlider.value) > parseInt(maxSlider.value)) {
+        minSlider.value = maxSlider.value;
+        minLabel.textContent = minSlider.value + '%';
+      }
+    }
+  }
+  
+  updateTrackInfo() {
+    const track = tracks[this.currentTrackIndex];
+    if (!track) return;
+    
+    const durationInfo = document.getElementById('trackDurationInfo');
+    const pointCountInfo = document.getElementById('automationPointCount');
+    
+    if (durationInfo) {
+      durationInfo.textContent = this.formatTime(this.getTrackDuration());
+    }
+    
+    if (pointCountInfo) {
+      pointCountInfo.textContent = track.volumeAuto.points.length.toString();
+    }
+  }
+  
+  updateSelectedPointInfo() {
+    const selectedInfo = document.getElementById('selectedPointInfo');
+    const deleteBtn = document.getElementById('automationDeletePoint');
+    
+    if (this.selectedPointIndex >= 0) {
+      const track = tracks[this.currentTrackIndex];
+      const point = track.volumeAuto.points[this.selectedPointIndex];
+      
+      if (selectedInfo && point) {
+        selectedInfo.textContent = `Time: ${this.formatTime(point.time)}, Volume: ${Math.round(point.value * 100)}%`;
+      }
+      
+      if (deleteBtn) {
+        deleteBtn.disabled = false;
+      }
+    } else {
+      if (selectedInfo) {
+        selectedInfo.textContent = 'None';
+      }
+      if (deleteBtn) {
+        deleteBtn.disabled = true;
+      }
+    }
+  }
+  
+  redraw() {
+    if (!this.ctx || this.currentTrackIndex < 0) return;
+    
+    const track = tracks[this.currentTrackIndex];
+    const canvasWidth = this.canvas.width;
+    const canvasHeight = this.canvas.height;
+    
+    // Clear canvas
+    this.ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    
+    // Draw background grid
+    this.drawGrid();
+    
+    // Draw track audio clips as background
+    this.drawTrackClips();
+    
+    // Draw automation curve
+    this.drawAutomationCurve();
+    
+    // Draw automation points
+    this.drawAutomationPoints();
+  }
+  
+  drawGrid() {
+    const canvasWidth = this.canvas.width;
+    const canvasHeight = this.canvas.height;
+    
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    this.ctx.lineWidth = 1;
+    
+    // Vertical lines (time)
+    const duration = this.getTrackDuration();
+    for (let i = 0; i <= duration; i++) {
+      const x = (i / duration) * canvasWidth;
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, 0);
+      this.ctx.lineTo(x, canvasHeight);
+      this.ctx.stroke();
+    }
+    
+    // Horizontal lines (volume)
+    for (let i = 0; i <= 4; i++) {
+      const y = (i / 4) * canvasHeight;
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, y);
+      this.ctx.lineTo(canvasWidth, y);
+      this.ctx.stroke();
+    }
+  }
+  
+  drawTrackClips() {
+    if (this.currentTrackIndex < 0) return;
+    
+    const track = tracks[this.currentTrackIndex];
+    const canvasWidth = this.canvas.width;
+    const canvasHeight = this.canvas.height;
+    const duration = this.getTrackDuration();
+    
+    this.ctx.fillStyle = 'rgba(29, 233, 182, 0.1)';
+    
+    track.clips.forEach(clip => {
+      const startX = (clip.startTime / duration) * canvasWidth;
+      const width = (clip.duration / duration) * canvasWidth;
+      
+      this.ctx.fillRect(startX, 0, width, canvasHeight);
+      
+      // Draw clip outline
+      this.ctx.strokeStyle = 'rgba(29, 233, 182, 0.3)';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(startX, 0, width, canvasHeight);
+    });
+  }
+  
+  drawAutomationCurve() {
+    if (this.currentTrackIndex < 0) return;
+    
+    const track = tracks[this.currentTrackIndex];
+    const points = track.volumeAuto.points;
+    if (points.length < 2) return;
+    
+    const canvasWidth = this.canvas.width;
+    const canvasHeight = this.canvas.height;
+    const duration = this.getTrackDuration();
+    
+    this.ctx.strokeStyle = '#ff9500';
+    this.ctx.lineWidth = 3;
+    this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'round';
+    
+    // Add glow effect
+    this.ctx.shadowColor = '#ff9500';
+    this.ctx.shadowBlur = 8;
+    
+    this.ctx.beginPath();
+    
+    // Sort points by time
+    const sortedPoints = [...points].sort((a, b) => a.time - b.time);
+    
+    sortedPoints.forEach((point, index) => {
+      const x = (point.time / duration) * canvasWidth;
+      const y = canvasHeight - (point.value * canvasHeight);
+      
+      if (index === 0) {
+        this.ctx.moveTo(x, y);
+      } else {
+        this.ctx.lineTo(x, y);
+      }
+    });
+    
+    this.ctx.stroke();
+    
+    // Reset shadow
+    this.ctx.shadowColor = 'transparent';
+    this.ctx.shadowBlur = 0;
+  }
+  
+  drawAutomationPoints() {
+    if (this.currentTrackIndex < 0) return;
+    
+    const track = tracks[this.currentTrackIndex];
+    const points = track.volumeAuto.points;
+    const canvasWidth = this.canvas.width;
+    const canvasHeight = this.canvas.height;
+    const duration = this.getTrackDuration();
+    
+    points.forEach((point, index) => {
+      const x = (point.time / duration) * canvasWidth;
+      const y = canvasHeight - (point.value * canvasHeight);
+      const isSelected = index === this.selectedPointIndex;
+      
+      // Draw point
+      this.ctx.fillStyle = isSelected ? '#1de9b6' : '#ff9500';
+      this.ctx.strokeStyle = 'white';
+      this.ctx.lineWidth = 2;
+      
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, isSelected ? 8 : 6, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.stroke();
+      
+      // Draw selection highlight
+      if (isSelected) {
+        this.ctx.strokeStyle = '#ff9500';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, 12, 0, Math.PI * 2);
+        this.ctx.stroke();
+      }
+    });
+  }
+  
+  onMouseDown(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Check if clicking on an existing point
+    const clickedPointIndex = this.findPointAtPosition(x, y);
+    
+    if (clickedPointIndex >= 0) {
+      // Select and prepare to drag existing point
+      this.selectedPointIndex = clickedPointIndex;
+      this.isDragging = true;
+      
+      const track = tracks[this.currentTrackIndex];
+      const point = track.volumeAuto.points[clickedPointIndex];
+      const duration = this.getTrackDuration();
+      
+      const pointX = (point.time / duration) * this.canvas.width;
+      const pointY = this.canvas.height - (point.value * this.canvas.height);
+      
+      this.dragOffset = {
+        x: x - pointX,
+        y: y - pointY
+      };
+      
+      // Change cursor and visual feedback
+      this.canvas.style.cursor = 'grabbing';
+      
+      // Prevent default to avoid text selection
+      e.preventDefault();
+    } else {
+      // Create new point
+      this.createPointAtPosition(x, y);
+    }
+    
+    this.updateSelectedPointInfo();
+    this.redraw();
+  }
+  
+  onMouseMove(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    if (this.isDragging && this.selectedPointIndex >= 0) {
+      // Dragging a point
+      const adjustedX = x - this.dragOffset.x;
+      const adjustedY = y - this.dragOffset.y;
+      
+      this.updatePointPosition(this.selectedPointIndex, adjustedX, adjustedY);
+      this.updateSelectedPointInfo();
+      this.redraw();
+      e.preventDefault();
+    } else {
+      // Check for hover over points for cursor change
+      const hoveredPointIndex = this.findPointAtPosition(x, y);
+      if (hoveredPointIndex >= 0) {
+        this.canvas.style.cursor = 'grab';
+      } else {
+        this.canvas.style.cursor = 'crosshair';
+      }
+    }
+  }
+  
+  onMouseUp(e) {
+    if (this.isDragging) {
+      this.isDragging = false;
+      this.dragOffset = { x: 0, y: 0 };
+      
+      // Reset cursor
+      const rect = this.canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const hoveredPointIndex = this.findPointAtPosition(x, y);
+      
+      this.canvas.style.cursor = hoveredPointIndex >= 0 ? 'grab' : 'crosshair';
+      
+      // Sort points after drag to maintain time order
+      if (this.currentTrackIndex >= 0) {
+        const track = tracks[this.currentTrackIndex];
+        const selectedPoint = track.volumeAuto.points[this.selectedPointIndex];
+        track.volumeAuto.points.sort((a, b) => a.time - b.time);
+        
+        // Update selected index after sorting
+        if (selectedPoint) {
+          this.selectedPointIndex = track.volumeAuto.points.findIndex(p => 
+            Math.abs(p.time - selectedPoint.time) < 0.01 && 
+            Math.abs(p.value - selectedPoint.value) < 0.01
+          );
+        }
+        
+        this.updateSelectedPointInfo();
+        this.redraw();
+      }
+    }
+  }
+  
+  onDoubleClick(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const clickedPointIndex = this.findPointAtPosition(x, y);
+    if (clickedPointIndex >= 0) {
+      this.deletePoint(clickedPointIndex);
+    }
+  }
+  
+  onMouseLeave(e) {
+    // Reset cursor and stop dragging if mouse leaves canvas
+    this.canvas.style.cursor = 'crosshair';
+    if (this.isDragging) {
+      this.isDragging = false;
+      this.dragOffset = { x: 0, y: 0 };
+      
+      // Sort points after drag to maintain time order
+      if (this.currentTrackIndex >= 0) {
+        const track = tracks[this.currentTrackIndex];
+        const selectedPoint = track.volumeAuto.points[this.selectedPointIndex];
+        track.volumeAuto.points.sort((a, b) => a.time - b.time);
+        
+        // Update selected index after sorting
+        if (selectedPoint) {
+          this.selectedPointIndex = track.volumeAuto.points.findIndex(p => 
+            Math.abs(p.time - selectedPoint.time) < 0.01 && 
+            Math.abs(p.value - selectedPoint.value) < 0.01
+          );
+        }
+        
+        this.updateSelectedPointInfo();
+        this.redraw();
+      }
+    }
+  }
+  
+  findPointAtPosition(x, y) {
+    if (this.currentTrackIndex < 0) return -1;
+    
+    const track = tracks[this.currentTrackIndex];
+    const duration = this.getTrackDuration();
+    const threshold = 20; // Increased hit area for better usability
+    
+    // Find closest point within threshold
+    let closestIndex = -1;
+    let closestDistance = threshold + 1;
+    
+    for (let i = 0; i < track.volumeAuto.points.length; i++) {
+      const point = track.volumeAuto.points[i];
+      const pointX = (point.time / duration) * this.canvas.width;
+      const pointY = this.canvas.height - (point.value * this.canvas.height);
+      
+      const distance = Math.sqrt((x - pointX) ** 2 + (y - pointY) ** 2);
+      if (distance <= threshold && distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = i;
+      }
+    }
+    
+    return closestIndex;
+  }
+  
+  createPointAtPosition(x, y) {
+    if (this.currentTrackIndex < 0) return;
+    
+    const duration = this.getTrackDuration();
+    const time = Math.max(0, Math.min(duration, (x / this.canvas.width) * duration));
+    const value = Math.max(0, Math.min(1, 1 - (y / this.canvas.height)));
+    
+    const track = tracks[this.currentTrackIndex];
+    const newPoint = { time, value };
+    
+    // Insert point in correct time order
+    let insertIndex = track.volumeAuto.points.length;
+    for (let i = 0; i < track.volumeAuto.points.length; i++) {
+      if (track.volumeAuto.points[i].time > time) {
+        insertIndex = i;
+        break;
+      }
+    }
+    
+    track.volumeAuto.points.splice(insertIndex, 0, newPoint);
+    this.selectedPointIndex = insertIndex;
+    
+    this.updateTrackInfo();
+    console.log('Created automation point:', newPoint);
+  }
+  
+  updatePointPosition(pointIndex, x, y) {
+    if (this.currentTrackIndex < 0 || pointIndex < 0) return;
+    
+    const track = tracks[this.currentTrackIndex];
+    const point = track.volumeAuto.points[pointIndex];
+    if (!point) return;
+    
+    const duration = this.getTrackDuration();
+    let newTime = Math.max(0, Math.min(duration, (x / this.canvas.width) * duration));
+    let newValue = Math.max(0, Math.min(1, 1 - (y / this.canvas.height)));
+    
+    // Snap to grid if close (optional - makes it easier to align)
+    const timeSnapThreshold = duration / this.canvas.width * 5; // 5 pixel snap
+    const valueSnapThreshold = 1 / this.canvas.height * 5; // 5 pixel snap
+    
+    // Snap to quarter beats for time
+    const quarterBeat = 0.25;
+    const nearestQuarter = Math.round(newTime / quarterBeat) * quarterBeat;
+    if (Math.abs(newTime - nearestQuarter) < timeSnapThreshold) {
+      newTime = nearestQuarter;
+    }
+    
+    // Snap to 10% increments for volume
+    const volumeIncrement = 0.1;
+    const nearestVolume = Math.round(newValue / volumeIncrement) * volumeIncrement;
+    if (Math.abs(newValue - nearestVolume) < valueSnapThreshold) {
+      newValue = nearestVolume;
+    }
+    
+    // Prevent overlapping points at the same time
+    const existingAtTime = track.volumeAuto.points.find((p, i) => 
+      i !== pointIndex && Math.abs(p.time - newTime) < 0.01
+    );
+    if (existingAtTime) {
+      newTime = point.time; // Keep original time if would overlap
+    }
+    
+    point.time = newTime;
+    point.value = Math.max(0, Math.min(1, newValue));
+  }
+  
+  addPoint() {
+    // Add point at center of canvas
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 2;
+    this.createPointAtPosition(centerX, centerY);
+    this.redraw();
+  }
+  
+  deleteSelectedPoint() {
+    this.deletePoint(this.selectedPointIndex);
+  }
+  
+  deletePoint(pointIndex) {
+    if (this.currentTrackIndex < 0 || pointIndex < 0) return;
+    
+    const track = tracks[this.currentTrackIndex];
+    if (track.volumeAuto.points.length <= 2) {
+      alert('Cannot delete - automation needs at least 2 points');
+      return;
+    }
+    
+    track.volumeAuto.points.splice(pointIndex, 1);
+    this.selectedPointIndex = -1;
+    
+    this.updateTrackInfo();
+    this.updateSelectedPointInfo();
+    this.redraw();
+    
+    console.log('Deleted automation point at index:', pointIndex);
+  }
+  
+  clearAllPoints() {
+    if (!confirm('Clear all automation points? This cannot be undone.')) {
+      return;
+    }
+    
+    if (this.currentTrackIndex < 0) return;
+    
+    const track = tracks[this.currentTrackIndex];
+    const duration = this.getTrackDuration();
+    
+    // Reset to basic 2-point automation
+    track.volumeAuto.points = [
+      { time: 0, value: 0.8 },
+      { time: duration, value: 0.8 }
+    ];
+    
+    this.selectedPointIndex = -1;
+    this.updateTrackInfo();
+    this.updateSelectedPointInfo();
+    this.redraw();
+  }
+  
+  previewAutomation() {
+    if (this.currentTrackIndex < 0) return;
+    
+    console.log('Preview automation for track:', this.currentTrackIndex);
+    // This would integrate with the audio playback system
+    // For now, just log the automation data
+    const track = tracks[this.currentTrackIndex];
+    console.log('Automation points:', track.volumeAuto.points);
+  }
+  
+  saveAutomation() {
+    if (this.currentTrackIndex < 0) return;
+    
+    const track = tracks[this.currentTrackIndex];
+    
+    // Enable automation for this track
+    track.volumeAuto.enabled = true;
+    
+    // Update the automation button state
+    this.updateAutomationButtonState();
+    
+    // Save the project state
+    saveState();
+    
+    // Re-render tracks to show updated button state
+    renderTracks();
+    
+    console.log('Saved automation for track:', this.currentTrackIndex);
+    console.log('Automation points:', track.volumeAuto.points);
+    
+    this.close();
+  }
+  
+  updateAutomationButtonState() {
+    const track = tracks[this.currentTrackIndex];
+    const trackHeader = document.querySelector(`[data-track="${this.currentTrackIndex}"].track-header`);
+    if (trackHeader) {
+      const automationBtn = trackHeader.querySelector('.automation-btn');
+      if (automationBtn) {
+        if (track.volumeAuto.enabled) {
+          automationBtn.classList.add('active');
+        } else {
+          automationBtn.classList.remove('active');
+        }
+      }
+    }
+  }
+}
+
+// Initialize Track Automation Manager
+let trackAutomationManager;
+
+// Function to open track automation (called from track button)
+function openTrackAutomation(trackIndex) {
+  if (!trackAutomationManager) {
+    trackAutomationManager = new TrackAutomationManager();
+  }
+  trackAutomationManager.open(trackIndex);
+}
+
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    trackAutomationManager = new TrackAutomationManager();
+  }, 200);
+});
 
 

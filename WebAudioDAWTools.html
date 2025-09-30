@@ -2,108 +2,313 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Web Audio Tools</title>
+  <title>AudioVerse Universe - Solar System of Audio Tools</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap" rel="stylesheet">
   <style>
     body {
-      background: #18181b;
+      background: radial-gradient(ellipse at center, #0f0f23 0%, #020024 50%, #000000 100%);
       color: #e4e4e7;
       font-family: 'Inter', sans-serif;
       min-height: 100vh;
       margin: 0;
+      overflow-x: hidden;
+      position: relative;
+    }
+    
+    /* Animated starfield background */
+    .starfield {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+    
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle 3s infinite;
+    }
+    
+    .star.small {
+      width: 1px;
+      height: 1px;
+      opacity: 0.7;
+    }
+    
+    .star.medium {
+      width: 2px;
+      height: 2px;
+      opacity: 0.8;
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+    }
+    
+    .star.large {
+      width: 3px;
+      height: 3px;
+      opacity: 0.9;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.9);
+    }
+    
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+    
+    /* Main container */
+    .universe-container {
+      position: relative;
+      z-index: 1;
+      width: 100vw;
+      height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
     }
     h1 {
-      font-size: 2.5rem;
+      font-size: 3rem;
       font-weight: 700;
-      margin-top: 3rem;
       margin-bottom: 2rem;
-      color: #facc15;
+      color: #ff9500;
       letter-spacing: 0.04em;
-      text-shadow: 0 2px 16px #000a;
+      text-shadow: 0 0 30px #ff9500, 0 0 60px #ff950080;
+      text-align: center;
+      animation: pulse-glow 3s infinite alternate;
     }
-    .tools-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 1rem;
-      max-width: 1100px;
-      margin: 0 auto;
+    
+    /* Solar System Container */
+    .solar-system {
+      position: relative;
+      width: 60vw;
+      height: 80vh;
+      max-width: 1200px;
+      max-height: 800px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    @media (max-width: 1100px) {
-      .tools-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-      }
+    
+    /* Central Sun - AudioVerse DAW */
+    .sun {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      z-index: 10;
+      transform: translate(-50%, -50%);
+      left: 50%;
+      top: 50%;
     }
-    @media (max-width: 700px) {
-      .tools-grid {
-        grid-template-columns: 1fr;
-        gap: 0.75rem;
-      }
+    
+    /* Orbit paths (visual guides) */
+    .orbit {
+      position: absolute;
+      border: 1px solid rgba(255, 149, 0, 0.2);
+      border-radius: 50%;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    .orbit.orbit-1 { width: 350px; height: 350px; }
+    .orbit.orbit-2 { width: 450px; height: 450px; }
+    .orbit.orbit-3 { width: 550px; height: 550px; }
+    .orbit.orbit-4 { width: 650px; height: 650px; }
+    .orbit.orbit-5 { width: 750px; height: 750px; }
+    .orbit.orbit-6 { width: 850px; height: 850px; }
+    
+    /* Planet containers for orbiting */
+    .planet-orbit {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 20;
+      pointer-events: none;
+    }
+    
+    .planet-orbit.orbit-1 { 
+      width: 350px; 
+      height: 350px; 
+      animation: orbit 20s linear infinite;
+    }
+    .planet-orbit.orbit-2 { 
+      width: 450px; 
+      height: 450px; 
+      animation: orbit 25s linear infinite;
+    }
+    .planet-orbit.orbit-3 { 
+      width: 550px; 
+      height: 550px; 
+      animation: orbit 30s linear infinite;
+    }
+    .planet-orbit.orbit-4 { 
+      width: 650px; 
+      height: 650px; 
+      animation: orbit 35s linear infinite;
+    }
+    .planet-orbit.orbit-5 { 
+      width: 750px; 
+      height: 750px; 
+      animation: orbit 40s linear infinite;
+    }
+    .planet-orbit.orbit-6 { 
+      width: 850px; 
+      height: 850px; 
+      animation: orbit 45s linear infinite;
+    }
+    
+    @keyframes orbit {
+      from { transform: translate(-50%, -50%) rotate(0deg); }
+      to { transform: translate(-50%, -50%) rotate(360deg); }
     }
     .tool-btn {
-      background: linear-gradient(135deg, #27272a 60%, #1e293b 100%);
-      border: none;
-      border-radius: 1rem;
-      box-shadow: 0 2px 16px #0005, 0 1px 0 #3b82f6 inset;
-      padding: 1rem 0.5rem 0.75rem 0.5rem;
+      background: radial-gradient(circle at 30% 30%, #4a5568 0%, #2d3748 50%, #1a202c 100%);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      box-shadow: 
+        0 0 20px rgba(0, 0, 0, 0.8),
+        inset 0 0 20px rgba(255, 255, 255, 0.1),
+        0 0 40px rgba(59, 130, 246, 0.3);
+      padding: 1rem;
       color: #e4e4e7;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       cursor: pointer;
-      transition: transform 0.18s cubic-bezier(.4,2,.6,1), box-shadow 0.18s, background 0.18s;
+      transition: all 0.3s ease;
       outline: none;
-      position: relative;
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      text-align: center;
       overflow: hidden;
-      min-width: 120px;
-      max-width: 170px;
-      min-height: 170px;
+      z-index: 30;
+      pointer-events: auto;
     }
+    
+    /* Sun (AudioVerse DAW) special styling */
+    .tool-btn.sun-daw {
+      background: radial-gradient(circle at 30% 30%, #ff9500 0%, #ff6b00 30%, #ff4500 70%, #cc3700 100%);
+      border: 3px solid #ffaa00;
+      box-shadow: 
+        0 0 60px #ff950080,
+        0 0 120px #ff950040,
+        inset 0 0 30px rgba(255, 255, 255, 0.3);
+      width: 200px;
+      height: 200px;
+      animation: sun-pulse 4s ease-in-out infinite alternate;
+    }
+    
+    @keyframes sun-pulse {
+      0% { 
+        box-shadow: 
+          0 0 60px #ff950080,
+          0 0 120px #ff950040,
+          inset 0 0 30px rgba(255, 255, 255, 0.3);
+      }
+      100% { 
+        box-shadow: 
+          0 0 80px #ff9500aa,
+          0 0 160px #ff950060,
+          inset 0 0 40px rgba(255, 255, 255, 0.4);
+      }
+    }
+    
+    /* Planet positioning */
+    .planet {
+      position: absolute;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 25;
+      pointer-events: auto;
+    }
+    
     .tool-btn:hover, .tool-btn:focus {
-      transform: translateY(-6px) scale(1.035);
-      background: linear-gradient(135deg, #334155 60%, #0ea5e9 100%);
-      box-shadow: 0 8px 40px #0ea5e9aa, 0 2px 0 #facc15 inset;
-      color: #fff;
+      transform: translateX(-50%) scale(1.1);
+      box-shadow: 
+        0 0 30px rgba(0, 0, 0, 0.8),
+        inset 0 0 30px rgba(255, 255, 255, 0.2),
+        0 0 60px rgba(59, 130, 246, 0.6);
+      border-color: rgba(255, 255, 255, 0.4);
+      z-index: 35;
+    }
+    
+    .tool-btn.sun-daw:hover {
+      transform: scale(1.05);
+      animation: sun-pulse 2s ease-in-out infinite alternate;
     }
     .tool-btn svg {
-      width: 2.1rem;
-      height: 2.1rem;
-      margin-bottom: 0.6rem;
-      fill: #facc15;
-      transition: fill 0.18s;
-      filter: drop-shadow(0 2px 8px #0008);
+      width: 2.5rem;
+      height: 2.5rem;
+      margin-bottom: 0.5rem;
+      fill: #ffffff;
+      transition: all 0.3s;
+      filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
     }
+    
+    .tool-btn.sun-daw svg {
+      width: 4rem;
+      height: 4rem;
+      fill: #ffffff;
+      filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.8));
+    }
+    
     .tool-btn:hover svg, .tool-btn:focus svg {
       fill: #fff;
-      filter: drop-shadow(0 0 16px #0ea5e9cc);
+      filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.9));
+      transform: scale(1.1);
     }
+    
     .tool-title {
-      font-size: 1rem;
+      font-size: 0.9rem;
       font-weight: 600;
       margin-bottom: 0.25rem;
-      color: #facc15;
+      color: #ffffff;
       letter-spacing: 0.01em;
-      text-shadow: 0 1px 8px #000a;
-      transition: color 0.18s;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+      transition: all 0.3s;
+      line-height: 1.2;
     }
+    
+    .tool-btn.sun-daw .tool-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #ffffff;
+      text-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+    }
+    
     .tool-btn:hover .tool-title, .tool-btn:focus .tool-title {
       color: #fff;
+      text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
     }
+    
     .tool-desc {
-      font-size: 0.85rem;
-      color: #a1a1aa;
+      font-size: 0.75rem;
+      color: #d1d5db;
       text-align: center;
-      line-height: 1.4;
+      line-height: 1.3;
       margin-bottom: 0;
-      transition: color 0.18s;
+      transition: all 0.3s;
+      text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
     }
+    
+    .tool-btn.sun-daw .tool-desc {
+      font-size: 0.9rem;
+      color: #f9fafb;
+    }
+    
     .tool-btn:hover .tool-desc, .tool-btn:focus .tool-desc {
-      color: #e0e7ef;
+      color: #f9fafb;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
     }
     .tool-btn:active {
       transform: scale(0.98);
@@ -116,172 +321,457 @@
       letter-spacing: 0.02em;
     }
     @keyframes pulse-glow {
-      0% { text-shadow: 0 2px 12px #000a, 0 0 0 #facc15; }
-      100% { text-shadow: 0 2px 24px #facc15cc, 0 0 16px #facc1599; }
+      0% { 
+        text-shadow: 0 0 30px #ff9500, 0 0 60px #ff950080;
+      }
+      100% { 
+        text-shadow: 0 0 50px #ff9500, 0 0 100px #ff9500aa;
+      }
+    }
+    
+    /* Responsive design for smaller screens */
+    @media (max-width: 1200px) {
+      .solar-system {
+        width: 95vw;
+        height: 70vh;
+      }
+      
+      .orbit.orbit-1 { width: 300px; height: 300px; }
+      .orbit.orbit-2 { width: 380px; height: 380px; }
+      .orbit.orbit-3 { width: 460px; height: 460px; }
+      .orbit.orbit-4 { width: 540px; height: 540px; }
+      .orbit.orbit-5 { width: 620px; height: 620px; }
+      .orbit.orbit-6 { width: 700px; height: 700px; }
+      
+      .planet-orbit.orbit-1 { width: 300px; height: 300px; }
+      .planet-orbit.orbit-2 { width: 380px; height: 380px; }
+      .planet-orbit.orbit-3 { width: 460px; height: 460px; }
+      .planet-orbit.orbit-4 { width: 540px; height: 540px; }
+      .planet-orbit.orbit-5 { width: 620px; height: 620px; }
+      .planet-orbit.orbit-6 { width: 700px; height: 700px; }
+      
+      .sun {
+        width: 160px;
+        height: 160px;
+      }
+      
+      .tool-btn.sun-daw {
+        width: 160px;
+        height: 160px;
+      }
+      
+      .tool-btn {
+        width: 100px;
+        height: 100px;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2.2rem;
+      }
+      
+      .solar-system {
+        width: 98vw;
+        height: 60vh;
+      }
+      
+      .orbit.orbit-1 { width: 220px; height: 220px; }
+      .orbit.orbit-2 { width: 280px; height: 280px; }
+      .orbit.orbit-3 { width: 340px; height: 340px; }
+      .orbit.orbit-4 { width: 400px; height: 400px; }
+      .orbit.orbit-5 { width: 460px; height: 460px; }
+      .orbit.orbit-6 { width: 520px; height: 520px; }
+      
+      .planet-orbit.orbit-1 { width: 220px; height: 220px; }
+      .planet-orbit.orbit-2 { width: 280px; height: 280px; }
+      .planet-orbit.orbit-3 { width: 340px; height: 340px; }
+      .planet-orbit.orbit-4 { width: 400px; height: 400px; }
+      .planet-orbit.orbit-5 { width: 460px; height: 460px; }
+      .planet-orbit.orbit-6 { width: 520px; height: 520px; }
+      
+      .sun {
+        width: 120px;
+        height: 120px;
+      }
+      
+      .tool-btn.sun-daw {
+        width: 120px;
+        height: 120px;
+      }
+      
+      .tool-btn.sun-daw .tool-title {
+        font-size: 1.1rem;
+      }
+      
+      .tool-btn.sun-daw .tool-desc {
+        font-size: 0.75rem;
+      }
+      
+      .tool-btn {
+        width: 80px;
+        height: 80px;
+      }
+      
+      .tool-title {
+        font-size: 0.75rem;
+      }
+      
+      .tool-desc {
+        font-size: 0.65rem;
+      }
+    }
+    
+    /* Add some cosmic particle effects */
+    .cosmic-particle {
+      position: absolute;
+      background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: float 10s infinite linear;
+    }
+    
+    @keyframes float {
+      0% { transform: translateY(100vh) translateX(0px); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(-100px) translateX(50px); opacity: 0; }
     }
   </style>
 </head>
 <body>
-  <h1>Web Audio Tools</h1>
-  <div class="tools-grid">
-    <!-- Chromebook DAW -->
-    <a class="tool-btn" href="Chromebook_DAW/chromebook_daw.html" tabindex="0">
-      <!-- Multitrack SVG -->
-      <svg viewBox="0 0 48 48">
-        <rect x="4" y="8" width="40" height="32" rx="8" fill="#18181b" stroke="#facc15" stroke-width="2"/>
-        <rect x="10" y="14" width="28" height="4" rx="2" fill="#3b82f6"/>
-        <rect x="10" y="22" width="20" height="4" rx="2" fill="#a3e635"/>
-        <rect x="10" y="30" width="16" height="4" rx="2" fill="#f472b6"/>
-        <circle cx="38" cy="16" r="2" fill="#facc15"/>
-        <circle cx="32" cy="24" r="2" fill="#facc15"/>
-        <circle cx="28" cy="32" r="2" fill="#facc15"/>
-      </svg>
-      <span class="tool-title">Web Browser DAW</span>
-      <span class="tool-desc">Multitrack audio recording, editing, and mixing. Chromebook-friendly, no install needed.</span>
-    </a>
-    <!-- MIDI DAW -->
-    <a class="tool-btn" href="MIDI_Daw_With_Ideas.html" tabindex="0">
-      <!-- Piano roll SVG -->
-      <svg viewBox="0 0 48 48">
-        <rect x="3" y="8" width="42" height="32" rx="6" fill="#18181b" stroke="#facc15" stroke-width="2"/>
-        <rect x="7" y="14" width="8" height="20" rx="2" fill="#3b82f6"/>
-        <rect x="17" y="18" width="6" height="16" rx="2" fill="#a3e635"/>
-        <rect x="25" y="22" width="6" height="12" rx="2" fill="#f472b6"/>
-        <rect x="33" y="26" width="6" height="8" rx="2" fill="#facc15"/>
-        <rect x="7" y="14" width="32" height="20" rx="2" fill="none" stroke="#fff" stroke-width="1"/>
-      </svg>
-      <span class="tool-title">MIDI DAW</span>
-      <span class="tool-desc">Piano roll, MIDI editing, playback, and export. Upload and edit MIDI files in-browser.</span>
-    </a>
-    <!-- Parameter Audio Editor -->
-    <a class="tool-btn" href="ParameterAudioEditor.html" tabindex="0">
-      <!-- Waveform + sliders SVG -->
-      <svg viewBox="0 0 48 48">
-        <rect x="4" y="8" width="40" height="32" rx="8" fill="#18181b" stroke="#facc15" stroke-width="2"/>
-        <polyline points="8,32 12,24 16,28 20,18 24,34 28,14 32,30 36,22 40,32" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
-        <rect x="10" y="12" width="2.5" height="8" rx="1" fill="#facc15"/>
-        <rect x="22" y="20" width="2.5" height="8" rx="1" fill="#a3e635"/>
-        <rect x="34" y="16" width="2.5" height="8" rx="1" fill="#f472b6"/>
-      </svg>
-      <span class="tool-title">Parameter Audio Editor</span>
-      <span class="tool-desc">Upload audio, visualize, tweak EQ, envelope, and pitch. Export your edits as WAV.</span>
-    </a>
-    <!-- Wavetable Synth -->
-    <a class="tool-btn" href="Wavetable_Synth.html" tabindex="0">
-      <!-- Synth waveform SVG -->
-      <svg viewBox="0 0 48 48">
-        <rect x="4" y="8" width="40" height="32" rx="8" fill="#18181b" stroke="#facc15" stroke-width="2"/>
-        <polyline points="8,32 14,18 20,30 26,14 32,34 38,20" fill="none" stroke="#0ea5e9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="14" cy="18" r="2.2" fill="#facc15"/>
-        <circle cx="26" cy="14" r="2.2" fill="#a3e635"/>
-        <circle cx="32" cy="34" r="2.2" fill="#f472b6"/>
-      </svg>
-      <span class="tool-title">Wavetable Synth</span>
-      <span class="tool-desc">Play and design sounds with a modern wavetable synthesizer. Export your creations as WAV.</span>
-    </a>
-    <!-- EQ Tool -->
-    <a class="tool-btn" href="EQ.html" tabindex="0">
-      <!-- EQ SVG -->
-      <svg viewBox="0 0 48 48">
-        <rect x="4" y="8" width="40" height="32" rx="8" fill="#18181b" stroke="#facc15" stroke-width="2"/>
-        <rect x="12" y="28" width="4" height="8" rx="2" fill="#3b82f6"/>
-        <rect x="20" y="20" width="4" height="16" rx="2" fill="#a3e635"/>
-        <rect x="28" y="14" width="4" height="22" rx="2" fill="#f472b6"/>
-        <rect x="36" y="24" width="4" height="12" rx="2" fill="#facc15"/>
-        <rect x="12" y="14" width="28" height="20" rx="2" fill="none" stroke="#fff" stroke-width="1"/>
-      </svg>
-      <span class="tool-title">EQ Tool</span>
-      <span class="tool-desc">Visualize and adjust audio frequencies with a simple equalizer. Export your EQ'd audio.</span>
-    </a>
-    <!-- Draw Audio -->
-    <a class="tool-btn" href="DrawAudio.html" tabindex="0">
-      <!-- Draw waveform SVG -->
-      <svg viewBox="0 0 48 48">
-        <rect x="4" y="8" width="40" height="32" rx="8" fill="#18181b" stroke="#facc15" stroke-width="2"/>
-        <polyline points="8,32 12,24 16,28 20,18 24,34 28,14 32,30 36,22 40,32" fill="none" stroke="#0ea5e9" stroke-width="2.5" stroke-linecap="round"/>
-        <circle cx="24" cy="24" r="2.5" fill="#facc15"/>
-      </svg>
-      <span class="tool-title">Draw Audio</span>
-      <span class="tool-desc">Draw your own waveform and hear it instantly. Export as WAV for creative sound design.</span>
-    </a>
-    <!-- Sound API Explorer -->
-    <a class="tool-btn" href="WebAudioAPIDemo/SoundAPI.html" tabindex="0">
-      <!-- API waveform SVG -->
-      <svg viewBox="0 0 48 48">
-        <rect x="4" y="8" width="40" height="32" rx="8" fill="#18181b" stroke="#facc15" stroke-width="2"/>
-        <rect x="10" y="28" width="6" height="8" rx="2" fill="#3b82f6"/>
-        <rect x="20" y="18" width="6" height="18" rx="2" fill="#a3e635"/>
-        <rect x="30" y="14" width="6" height="22" rx="2" fill="#f472b6"/>
-        <circle cx="38" cy="16" r="2" fill="#facc15"/>
-      </svg>
-      <span class="tool-title">Sound API Explorer</span>
-      <span class="tool-desc">Experiment with Web Audio API nodes and effects. Build and test audio chains visually.</span>
-    </a>
-    <!-- Placeholder 1 -->
-    <a class="tool-btn" href="#" tabindex="-1" style="pointer-events:none;opacity:0.5;">
-      <svg viewBox="0 0 48 48">
-        <rect x="4" y="8" width="40" height="32" rx="8" fill="#23272f" stroke="#3b82f6" stroke-width="2"/>
-        <text x="24" y="30" text-anchor="middle" fill="#a1a1aa" font-size="16" font-family="sans-serif">?</text>
-      </svg>
-      <span class="tool-title">Coming Soon</span>
-      <span class="tool-desc">New creative tool in development.</span>
-    </a>
-    <!-- Placeholder 2 -->
-    <a class="tool-btn" href="#" tabindex="-1" style="pointer-events:none;opacity:0.5;">
-      <svg viewBox="0 0 48 48">
-        <rect x="4" y="8" width="40" height="32" rx="8" fill="#23272f" stroke="#3b82f6" stroke-width="2"/>
-        <text x="24" y="30" text-anchor="middle" fill="#a1a1aa" font-size="16" font-family="sans-serif">?</text>
-      </svg>
-      <span class="tool-title">Coming Soon</span>
-      <span class="tool-desc">More audio utilities on the way.</span>
-    </a>
-    <!-- Placeholder 3 -->
-    <a class="tool-btn" href="#" tabindex="-1" style="pointer-events:none;opacity:0.5;">
-      <svg viewBox="0 0 48 48">
-        <rect x="4" y="8" width="40" height="32" rx="8" fill="#23272f" stroke="#3b82f6" stroke-width="2"/>
-        <text x="24" y="30" text-anchor="middle" fill="#a1a1aa" font-size="16" font-family="sans-serif">?</text>
-      </svg>
-      <span class="tool-title">Coming Soon</span>
-      <span class="tool-desc">Stay tuned for updates.</span>
-    </a>
+  <!-- Animated starfield -->
+  <div class="starfield" id="starfield"></div>
+  
+  <div class="universe-container">
+    <h1>AudioVerse Universe</h1>
+    
+    <div class="solar-system">
+      <!-- Orbit visualization circles -->
+      <div class="orbit orbit-1"></div>
+      <div class="orbit orbit-2"></div>
+      <div class="orbit orbit-3"></div>
+      <div class="orbit orbit-4"></div>
+      <div class="orbit orbit-5"></div>
+      <div class="orbit orbit-6"></div>
+      
+      <!-- Central Sun - AudioVerse DAW -->
+      <div class="sun">
+        <a class="tool-btn sun-daw" href="AudioVerse/AudioVerse.html" tabindex="0">
+          <!-- AudioVerse Universe Logo SVG -->
+          <svg viewBox="0 0 80 40">
+            <defs>
+              <radialGradient id="cosmicGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ff9500" stop-opacity="0.8"/>
+                <stop offset="50%" stop-color="#1de9b6" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="#000" stop-opacity="0.1"/>
+              </radialGradient>
+              <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="50%" stop-color="#ffff00"/>
+                <stop offset="100%" stop-color="#ffffff"/>
+              </linearGradient>
+            </defs>
+            <circle cx="40" cy="20" r="35" fill="url(#cosmicGlow)" opacity="0.6"/>
+            <!-- Central orb -->
+            <circle cx="40" cy="20" r="8" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.8"/>
+            <circle cx="40" cy="20" r="5" fill="#ffffff" opacity="0.6"/>
+            <!-- Audio waveform -->
+            <path d="M5 20 L10 18 L15 22 L20 16 L25 24 L30 14 L35 26 L40 20 L45 14 L50 26 L55 16 L60 22 L65 18 L70 20 L75 22" 
+                  stroke="url(#waveGradient)" stroke-width="2" fill="none" opacity="0.9"/>
+          </svg>
+          <span class="tool-title">AudioVerse DAW</span>
+          <span class="tool-desc">The Heart of Audio Creation</span>
+        </a>
+      </div>
+      
+      <!-- Orbiting Planets -->
+      <div class="planet-orbit orbit-1">
+        <div class="planet">
+          <a class="tool-btn" href="MIDI_Daw_With_Ideas.html" tabindex="0">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="#4f46e5" opacity="0.8"/>
+              <rect x="12" y="16" width="24" height="16" rx="2" fill="#ffffff" opacity="0.9"/>
+              <rect x="14" y="18" width="6" height="12" rx="1" fill="#4f46e5"/>
+              <rect x="22" y="20" width="4" height="10" rx="1" fill="#4f46e5"/>
+              <rect x="28" y="22" width="4" height="8" rx="1" fill="#4f46e5"/>
+            </svg>
+            <span class="tool-title">MIDI Planet</span>
+            <span class="tool-desc">Piano Roll & MIDI Editing</span>
+          </a>
+        </div>
+      </div>
+      
+      <div class="planet-orbit orbit-2">
+        <div class="planet">
+          <a class="tool-btn" href="ParameterAudioEditor.html" tabindex="0">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="#059669" opacity="0.8"/>
+              <rect x="8" y="16" width="32" height="16" rx="4" fill="#ffffff" opacity="0.9"/>
+              <polyline points="12,28 16,20 20,24 24,18 28,30 32,16 36,26" fill="none" stroke="#059669" stroke-width="2"/>
+              <rect x="14" y="12" width="2" height="6" rx="1" fill="#059669"/>
+              <rect x="22" y="14" width="2" height="6" rx="1" fill="#059669"/>
+              <rect x="30" y="10" width="2" height="6" rx="1" fill="#059669"/>
+            </svg>
+            <span class="tool-title">Audio Editor</span>
+            <span class="tool-desc">Parameter Control & Effects</span>
+          </a>
+        </div>
+      </div>
+      
+      <div class="planet-orbit orbit-3">
+        <div class="planet">
+          <a class="tool-btn" href="Wavetable_Synth.html" tabindex="0">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="#7c3aed" opacity="0.8"/>
+              <rect x="8" y="16" width="32" height="16" rx="4" fill="#ffffff" opacity="0.9"/>
+              <polyline points="12,28 18,16 24,30 30,14 36,26" fill="none" stroke="#7c3aed" stroke-width="3"/>
+              <circle cx="18" cy="16" r="2" fill="#7c3aed"/>
+              <circle cx="30" cy="14" r="2" fill="#7c3aed"/>
+            </svg>
+            <span class="tool-title">Synth World</span>
+            <span class="tool-desc">Wavetable Synthesis</span>
+          </a>
+        </div>
+      </div>
+      
+      <div class="planet-orbit orbit-4">
+        <div class="planet">
+          <a class="tool-btn" href="EQ.html" tabindex="0">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="#dc2626" opacity="0.8"/>
+              <rect x="8" y="16" width="32" height="16" rx="4" fill="#ffffff" opacity="0.9"/>
+              <rect x="14" y="26" width="3" height="6" rx="1" fill="#dc2626"/>
+              <rect x="20" y="22" width="3" height="10" rx="1" fill="#dc2626"/>
+              <rect x="26" y="18" width="3" height="14" rx="1" fill="#dc2626"/>
+              <rect x="32" y="24" width="3" height="8" rx="1" fill="#dc2626"/>
+            </svg>
+            <span class="tool-title">EQ Station</span>
+            <span class="tool-desc">Frequency Control</span>
+          </a>
+        </div>
+      </div>
+      
+      <div class="planet-orbit orbit-5">
+        <div class="planet">
+          <a class="tool-btn" href="DrawAudio.html" tabindex="0">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="#0891b2" opacity="0.8"/>
+              <rect x="8" y="16" width="32" height="16" rx="4" fill="#ffffff" opacity="0.9"/>
+              <polyline points="12,28 16,20 20,24 24,18 28,30 32,16 36,26" fill="none" stroke="#0891b2" stroke-width="2"/>
+              <circle cx="24" cy="20" r="2" fill="#0891b2"/>
+            </svg>
+            <span class="tool-title">Wave Drawer</span>
+            <span class="tool-desc">Custom Waveforms</span>
+          </a>
+        </div>
+      </div>
+      
+      <div class="planet-orbit orbit-6">
+        <div class="planet">
+          <a class="tool-btn" href="soundfont-player/SoundfontPlayer.html" tabindex="0">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="#ea580c" opacity="0.8"/>
+              <rect x="8" y="16" width="32" height="16" rx="4" fill="#ffffff" opacity="0.9"/>
+              <rect x="14" y="24" width="4" height="6" rx="1" fill="#ea580c"/>
+              <rect x="22" y="20" width="4" height="10" rx="1" fill="#ea580c"/>
+              <rect x="30" y="18" width="4" height="12" rx="1" fill="#ea580c"/>
+              <circle cx="36" cy="18" r="1.5" fill="#ea580c"/>
+            </svg>
+            <span class="tool-title">SoundFont Player</span>
+            <span class="tool-desc">MIDI Instrument Library</span>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Additional distant planets/asteroids for more tools -->
+      <div class="planet-orbit" style="width: 950px; height: 950px; animation: orbit 50s linear infinite;">
+        <div class="planet">
+          <a class="tool-btn" href="ConvolutionReverb.html" tabindex="0" style="width: 80px; height: 80px;">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="18" fill="#8b5cf6" opacity="0.8"/>
+              <rect x="10" y="18" width="28" height="12" rx="6" fill="#ffffff" opacity="0.9"/>
+              <path d="M12 24 Q18 18, 24 24 Q30 30, 36 24" stroke="#8b5cf6" stroke-width="2" fill="none"/>
+              <circle cx="15" cy="21" r="1" fill="#8b5cf6"/>
+              <circle cx="33" cy="27" r="1" fill="#8b5cf6"/>
+            </svg>
+            <span class="tool-title">Convolution Reverb</span>
+            <span class="tool-desc">Upload your own IRs</span>
+          </a>
+        </div>
+      </div>
+      
+      <div class="planet-orbit" style="width: 1050px; height: 1050px; animation: orbit 55s linear infinite reverse;">
+        <div class="planet">
+          <a class="tool-btn" href="reverb-collection.html" tabindex="0" style="width: 75px; height: 75px;">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="17" fill="#10b981" opacity="0.8"/>
+              <rect x="12" y="20" width="24" height="8" rx="4" fill="#ffffff" opacity="0.9"/>
+              <circle cx="18" cy="24" r="2" fill="#10b981"/>
+              <circle cx="24" cy="24" r="2" fill="#10b981"/>
+              <circle cx="30" cy="24" r="2" fill="#10b981"/>
+            </svg>
+            <span class="tool-title">Reverb Collection</span>
+            <span class="tool-desc">Echo Chambers</span>
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="footer">
-    &copy; 2024 Web Audio Tools &mdash; All in-browser, no data leaves your device.
+  
+  <div class="footer" style="
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85rem;
+    text-align: center;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+  ">
+    &copy; 2024 AudioVerse Universe &mdash; Explore the cosmos of audio creation
   </div>
-  <div class="coming-soon" style="
-    margin: 3rem auto 2rem auto;
-    padding: 2rem 2.5rem;
-    max-width: 480px;
-    background: linear-gradient(90deg, #23272f 60%, #18181b 100%);
-    border-radius: 1.5rem;
-    box-shadow: 0 4px 32px #0007;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    border: 1.5px solid #3b82f6;
-    position: relative;
-    overflow: hidden;
-    ">
-    <svg width="48" height="48" viewBox="0 0 48 48" style="margin-bottom:1rem;">
-      <circle cx="24" cy="24" r="20" fill="#18181b" stroke="#facc15" stroke-width="2"/>
-      <path d="M24 14v10" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
-      <circle cx="24" cy="32" r="2.5" fill="#facc15"/>
-      <path d="M16 38c2-2 6-4 8-4s6 2 8 4" stroke="#a3e635" stroke-width="2" fill="none" stroke-linecap="round"/>
-    </svg>
-    <span style="
-      font-size: 1.35rem;
-      font-weight: 700;
-      color: #facc15;
-      letter-spacing: 0.03em;
-      margin-bottom: 0.5rem;
-      text-shadow: 0 2px 12px #000a;
-      animation: pulse-glow 2.2s infinite alternate cubic-bezier(.4,0,.6,1);
-    ">
-      More tools coming soon
-    </span>
-    <span style="color:#a1a1aa;font-size:1rem;text-align:center;max-width:340px;">
-      Stay tuned for new creative audio utilities and features!
-    </span>
-  </div>
+  
+  <script>
+    // Create animated starfield
+    function createStarfield() {
+      const starfield = document.getElementById('starfield');
+      const numStars = 300;
+      
+      for (let i = 0; i < numStars; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        
+        // Random size class
+        const sizes = ['small', 'medium', 'large'];
+        const sizeWeights = [0.7, 0.25, 0.05]; // More small stars
+        let randomValue = Math.random();
+        let sizeClass = 'small';
+        let cumulative = 0;
+        
+        for (let j = 0; j < sizes.length; j++) {
+          cumulative += sizeWeights[j];
+          if (randomValue <= cumulative) {
+            sizeClass = sizes[j];
+            break;
+          }
+        }
+        
+        star.classList.add(sizeClass);
+        
+        // Random position
+        star.style.left = Math.random() * 100 + '%';
+        star.style.top = Math.random() * 100 + '%';
+        
+        // Random animation delay and duration
+        star.style.animationDelay = Math.random() * 3 + 's';
+        star.style.animationDuration = (2 + Math.random() * 2) + 's';
+        
+        starfield.appendChild(star);
+      }
+    }
+    
+    // Create floating cosmic particles
+    function createCosmicParticles() {
+      setInterval(() => {
+        if (Math.random() < 0.3) { // 30% chance every interval
+          const particle = document.createElement('div');
+          particle.className = 'cosmic-particle';
+          particle.style.left = Math.random() * 100 + '%';
+          particle.style.width = (1 + Math.random() * 3) + 'px';
+          particle.style.height = particle.style.width;
+          particle.style.animationDuration = (8 + Math.random() * 4) + 's';
+          
+          document.body.appendChild(particle);
+          
+          // Remove particle after animation
+          setTimeout(() => {
+            if (particle.parentNode) {
+              particle.parentNode.removeChild(particle);
+            }
+          }, 12000);
+        }
+      }, 2000);
+    }
+    
+    // Add interactive effects
+    function addInteractiveEffects() {
+      const planets = document.querySelectorAll('.tool-btn:not(.sun-daw)');
+      const sun = document.querySelector('.sun-daw');
+      
+      // Debug: Log found planets
+      console.log('Found planets:', planets.length);
+      
+      // Ensure all planets are clickable
+      planets.forEach((planet, index) => {
+        planet.style.pointerEvents = 'auto';
+        planet.style.zIndex = '30';
+        console.log(`Planet ${index + 1}:`, planet.href, 'clickable:', planet.style.pointerEvents);
+      });
+      
+      // Planet hover and click effects
+      planets.forEach((planet, index) => {
+        // Hover effects
+        planet.addEventListener('mouseenter', () => {
+          planet.style.animationPlayState = 'paused';
+          planet.parentNode.parentNode.style.animationPlayState = 'paused';
+        });
+        
+        planet.addEventListener('mouseleave', () => {
+          planet.style.animationPlayState = 'running';
+          planet.parentNode.parentNode.style.animationPlayState = 'running';
+        });
+        
+        // Ensure clicks work
+        planet.addEventListener('click', (e) => {
+          console.log(`Planet ${index + 1} clicked:`, planet.href);
+          // Let the default link behavior handle navigation
+        });
+        
+        // Add visual feedback for debugging
+        planet.addEventListener('mousedown', () => {
+          planet.style.transform = 'translateX(-50%) scale(0.95)';
+        });
+        
+        planet.addEventListener('mouseup', () => {
+          planet.style.transform = 'translateX(-50%) scale(1.1)';
+        });
+      });
+      
+      // Sun special effects
+      if (sun) {
+        sun.addEventListener('mouseenter', () => {
+          sun.style.animationDuration = '2s';
+        });
+        
+        sun.addEventListener('mouseleave', () => {
+          sun.style.animationDuration = '4s';
+        });
+      }
+    }
+    
+    // Initialize everything when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      createStarfield();
+      createCosmicParticles();
+      addInteractiveEffects();
+      
+      // Add some random twinkling to orbit lines
+      const orbits = document.querySelectorAll('.orbit');
+      orbits.forEach((orbit, index) => {
+        setInterval(() => {
+          orbit.style.opacity = 0.1 + Math.random() * 0.3;
+        }, 2000 + index * 500);
+      });
+    });
+    
+    // Add keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && document.activeElement.classList.contains('tool-btn')) {
+        document.activeElement.click();
+      }
+    });
+  </script>
 </body>
 </html>

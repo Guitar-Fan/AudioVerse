@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioVerse SoundFont Player</title>
+    <meta name="description" content="Advanced SoundFont player for AudioVerse, featuring SF2/DLS support and MIDI playback inspired by SpessaSynth">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/player-styles.css">
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1><i class="fas fa-music"></i> AudioVerse SoundFont Player</h1>
+            <p>Advanced MIDI playback with SoundFont support • Inspired by SpessaSynth</p>
+        </header>
+
+        <main class="main-content">
+            <!-- File Upload Section -->
+            <section class="upload-section">
+                <!-- SoundFont Upload -->
+                <div class="upload-card" id="sf-upload-card">
+                    <h3><i class="fas fa-file-audio"></i> Load SoundFont</h3>
+                    <p>Drop a SoundFont (.sf2, .sf3) or DLS file here, or click to browse.</p>
+                    <input type="file" id="sf-file-input" class="file-input" accept=".sf2,.sf3,.dls">
+                    <button type="button" class="upload-button" onclick="document.getElementById('sf-file-input').click()">
+                        <i class="fas fa-upload"></i> Choose SoundFont
+                    </button>
+                    <div class="file-info" id="sf-file-info">
+                        <i class="fas fa-info-circle"></i> <span id="sf-file-details">No file selected</span>
+                    </div>
+                </div>
+
+                <!-- MIDI Upload -->
+                <div class="upload-card" id="midi-upload-card">
+                    <h3><i class="fas fa-file-musical-note"></i> Load MIDI</h3>
+                    <p>Drop a MIDI file (.mid, .midi) here, or click to browse.</p>
+                    <input type="file" id="midi-file-input" class="file-input" accept=".mid,.midi,.kar,.rmi">
+                    <button type="button" class="upload-button" onclick="document.getElementById('midi-file-input').click()">
+                        <i class="fas fa-upload"></i> Choose MIDI
+                    </button>
+                    <div class="file-info" id="midi-file-info">
+                        <i class="fas fa-info-circle"></i> <span id="midi-file-details">No file selected</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Player Controls Section -->
+            <section class="player-section">
+                <h3><i class="fas fa-play-circle"></i> Playback Controls</h3>
+                
+                <!-- Progress Bar -->
+                <div class="progress-section">
+                    <div class="progress-bar" id="progress-bar" data-tooltip="Click to seek">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <div class="time-display">
+                        <span id="current-time">0:00</span>
+                        <span id="total-time">0:00</span>
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="player-controls">
+                    <button class="control-button play tooltip" id="play-btn" data-tooltip="Play" disabled>
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="control-button tooltip" id="pause-btn" data-tooltip="Pause" disabled>
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button class="control-button tooltip" id="stop-btn" data-tooltip="Stop" disabled>
+                        <i class="fas fa-stop"></i>
+                    </button>
+                    <button class="control-button tooltip" id="rewind-btn" data-tooltip="Rewind" disabled>
+                        <i class="fas fa-backward"></i>
+                    </button>
+                    
+                    <!-- Volume Control -->
+                    <div class="volume-control">
+                        <i class="fas fa-volume-down"></i>
+                        <input type="range" class="volume-slider tooltip" id="volume-slider" 
+                               min="0" max="100" value="70" data-tooltip="Volume">
+                        <i class="fas fa-volume-up"></i>
+                        <span id="volume-display">70%</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Status Display -->
+            <section class="status-section">
+                <h3><i class="fas fa-info-circle"></i> Status</h3>
+                <div class="status-display" id="status-display">
+AudioVerse SoundFont Player initialized.
+Ready to load SoundFont and MIDI files.
+
+Features:
+• SoundFont (.sf2, .sf3) and DLS support
+• Full MIDI playback with real-time visualization
+• Web MIDI API integration for external controllers
+• Advanced synthesis engine inspired by SpessaSynth
+• Virtual keyboard for live playing
+
+Instructions:
+1. Load a SoundFont file (required for audio synthesis)
+2. Load a MIDI file to play back
+3. Use the playback controls to start/stop/seek
+4. Adjust volume and use the virtual keyboard for live input
+                </div>
+            </section>
+
+            <!-- Virtual Keyboard -->
+            <section class="keyboard-section">
+                <h3><i class="fas fa-keyboard"></i> Virtual Keyboard</h3>
+                <div class="keyboard" id="virtual-keyboard">
+                    <!-- Keyboard keys will be generated by JavaScript -->
+                </div>
+                <div style="text-align: center; margin-top: 15px; color: var(--text-secondary);">
+                    <small>Click keys to play notes • Supports computer keyboard input (A-K for white keys, W-I for black keys)</small>
+                </div>
+            </section>
+
+            <!-- Advanced Settings -->
+            <section class="player-section">
+                <h3><i class="fas fa-cog"></i> Settings</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                    <div>
+                        <label for="voice-limit">Max Voices:</label>
+                        <input type="range" id="voice-limit" min="32" max="512" value="256" style="width: 100%; margin-top: 5px;">
+                        <small id="voice-limit-display">256 voices</small>
+                    </div>
+                    <div>
+                        <label for="reverb-level">Reverb:</label>
+                        <input type="range" id="reverb-level" min="0" max="100" value="40" style="width: 100%; margin-top: 5px;">
+                        <small id="reverb-display">40%</small>
+                    </div>
+                    <div>
+                        <label for="chorus-level">Chorus:</label>
+                        <input type="range" id="chorus-level" min="0" max="100" value="20" style="width: 100%; margin-top: 5px;">
+                        <small id="chorus-display">20%</small>
+                    </div>
+                    <div>
+                        <button class="upload-button" id="reset-btn" style="width: 100%;">
+                            <i class="fas fa-undo"></i> Reset Settings
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- CDN Libraries -->
+    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+    <script src="https://unpkg.com/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
+    
+    <!-- Scripts -->
+    <script src="js/soundfont-player.js"></script>
+    <script src="js/tonejs-soundfont-player.js"></script>
+    <script src="js/advanced-player.js"></script>
+    <script src="js/preset-manager.js"></script>
+    <script src="js/ui-controller.js"></script>
+    <script src="js/keyboard.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
+    <script>
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                // Initialize the UI controller which will set up everything
+                window.playerUI = new SoundFontPlayerUI();
+                console.log('AudioVerse SoundFont Player initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize SoundFont Player:', error);
+                document.getElementById('status-display').textContent = 
+                    'Error: Failed to initialize player. Please check console for details.';
+            }
+        });
+
+        // Handle page visibility changes to pause audio when page is hidden
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && window.playerUI && window.playerUI.player && 
+                window.playerUI.player.isPlaying) {
+                window.playerUI.player.pause();
+            }
+        });
+
+        // Prevent default drag behaviors
+        window.addEventListener('dragover', e => e.preventDefault());
+        window.addEventListener('drop', e => e.preventDefault());
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+</body>
+</html>

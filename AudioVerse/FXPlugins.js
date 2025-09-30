@@ -27,6 +27,7 @@
         { id: 'wet', name: 'Wet', type: 'range', min: 0, max: 1, step: 0.01 },
         { id: 'tone', name: 'Tone', type: 'range', min: 500, max: 8000, step: 10 }
       ],
+      customUI: true,
       create: (ctx) => {
         const input = ctx.createGain();
         const splitter = ctx.createChannelSplitter(2);
@@ -72,6 +73,258 @@
           getParams(){ return { ...params }; }
         };
         return { input, output: out, nodes: [input, splitter, merger, dl, dr, fbL, fbR, wet, dry, lpL, lpR, out], api };
+      },
+      
+      renderUI: (containerId, instance) => {
+        const container = document.getElementById(containerId);
+        if (!container || !instance?.api) return;
+        
+        const params = instance.api.getParams();
+        
+        container.innerHTML = `
+          <div class="stereo-delay-panel" style="
+            background: linear-gradient(135deg, #2a2d38, #1e2028);
+            border-radius: 8px;
+            padding: 20px;
+            color: #e5e5e5;
+            font-family: 'Segoe UI', sans-serif;
+            border: 1px solid #3a3f4b;
+          ">
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: 20px; border-bottom: 1px solid #3a3f4b; padding-bottom: 15px;">
+              <h3 style="margin: 0; color: #ff6b6b; font-size: 1.2em; text-shadow: 0 0 10px rgba(255, 107, 107, 0.3);">Stereo Delay</h3>
+              <p style="margin-top: 5px; font-size: 0.8em; opacity: 0.7;">Ping-pong delay with independent L/R timing</p>
+            </div>
+
+            <!-- Main Controls -->
+            <div style="display: flex; justify-content: space-around; align-items: flex-start; flex-wrap: wrap; gap: 15px; padding: 20px; background-color: #1a1d24; border-radius: 6px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+              ${[
+                { id: 'timeL', name: 'Time L (s)', value: params.timeL, min: 0.02, max: 1.2, step: 0.01, color: '#ff6b6b' },
+                { id: 'timeR', name: 'Time R (s)', value: params.timeR, min: 0.02, max: 1.2, step: 0.01, color: '#4ecdc4' },
+                { id: 'feedback', name: 'Feedback', value: params.feedback, min: 0, max: 0.95, step: 0.01, color: '#45b7d1' },
+                { id: 'wet', name: 'Wet/Dry', value: params.wet, min: 0, max: 1, step: 0.01, color: '#96ceb4' },
+                { id: 'tone', name: 'Tone (Hz)', value: params.tone, min: 500, max: 8000, step: 10, color: '#feca57' }
+              ].map(param => `
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; flex-basis: 100px;">
+                  <div class="delay-knob" data-param="${param.id}" data-min="${param.min}" data-max="${param.max}" data-step="${param.step}" data-color="${param.color}" style="
+                    width: 80px;
+                    height: 80px;
+                    border-radius: 50%;
+                    position: relative;
+                    cursor: pointer;
+                    background: radial-gradient(circle at 30% 30%, #3a3f4b, #1a1d24);
+                    border: 3px solid ${param.color};
+                    box-shadow: 0 0 15px rgba(${param.color === '#ff6b6b' ? '255, 107, 107' : param.color === '#4ecdc4' ? '78, 205, 196' : param.color === '#45b7d1' ? '69, 183, 209' : param.color === '#96ceb4' ? '150, 206, 180' : '254, 202, 87'}, 0.3);
+                  ">
+                    <canvas width="80" height="80" style="border-radius: 50%;"></canvas>
+                  </div>
+                  <input type="text" class="delay-knob-value" data-param="${param.id}" value="${param.value}" style="
+                    width: 60px;
+                    text-align: center;
+                    background-color: #0f1117;
+                    border: 1px solid ${param.color};
+                    color: ${param.color};
+                    border-radius: 3px;
+                    font-size: 0.8em;
+                    padding: 3px;
+                  ">
+                  <label style="font-size: 0.9em; font-weight: bold; text-align: center; color: ${param.color};">${param.name}</label>
+                </div>
+              `).join('')}
+            </div>
+            
+            <!-- Visualization -->
+            <div style="margin-top: 20px; padding: 15px; background-color: #0f1117; border-radius: 6px; border: 1px solid #3a3f4b;">
+              <canvas id="delay-viz-${containerId}" width="400" height="60" style="width: 100%; height: 60px; background: transparent;"></canvas>
+            </div>
+          </div>
+        `;
+        
+        // Add knob functionality
+        const knobs = container.querySelectorAll('.delay-knob');
+        const valueInputs = container.querySelectorAll('.delay-knob-value');
+        
+        knobs.forEach(knob => {
+          const canvas = knob.querySelector('canvas');
+          const ctx = canvas.getContext('2d');
+          const paramId = knob.dataset.param;
+          const min = parseFloat(knob.dataset.min);
+          const max = parseFloat(knob.dataset.max);
+          const step = parseFloat(knob.dataset.step);
+          const color = knob.dataset.color;
+          
+          function drawKnob(value) {
+            const angle = -135 + ((value - min) / (max - min)) * 270;
+            
+            ctx.clearRect(0, 0, 80, 80);
+            
+            // Background arc
+            ctx.beginPath();
+            ctx.arc(40, 40, 30, (-135 - 10) * Math.PI / 180, (-135 + 270 + 10) * Math.PI / 180);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#2a2d38';
+            ctx.stroke();
+            
+            // Value arc
+            ctx.beginPath();
+            ctx.arc(40, 40, 30, -135 * Math.PI / 180, angle * Math.PI / 180);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = color;
+            ctx.stroke();
+            
+            // Center dot
+            ctx.beginPath();
+            ctx.arc(40, 40, 3, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
+            
+            // Indicator line
+            ctx.save();
+            ctx.translate(40, 40);
+            ctx.rotate(angle * Math.PI / 180);
+            ctx.beginPath();
+            ctx.moveTo(0, -20);
+            ctx.lineTo(0, -30);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#fff';
+            ctx.stroke();
+            ctx.restore();
+          }
+          
+          function updateValue(val) {
+            val = Math.round(val / step) * step;
+            val = Math.max(min, Math.min(max, val));
+            val = Number.isInteger(step) ? parseInt(val) : parseFloat(val.toFixed(3));
+            
+            instance.api.setParam(paramId, val);
+            drawKnob(val);
+            
+            const input = container.querySelector(`.delay-knob-value[data-param="${paramId}"]`);
+            if (input) input.value = val;
+          }
+          
+          // Initial draw
+          drawKnob(instance.api.getParam(paramId));
+          
+          // Mouse interaction
+          let isDragging = false;
+          let startY, startVal;
+          
+          knob.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            startVal = instance.api.getParam(paramId);
+            e.preventDefault();
+          });
+          
+          document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const deltaY = startY - e.clientY;
+            const range = max - min;
+            const newVal = startVal + (deltaY / 100) * range;
+            updateValue(newVal);
+          });
+          
+          document.addEventListener('mouseup', () => {
+            isDragging = false;
+          });
+        });
+        
+        // Add text input functionality
+        valueInputs.forEach(input => {
+          input.addEventListener('change', () => {
+            const paramId = input.dataset.param;
+            const value = parseFloat(input.value);
+            if (!isNaN(value)) {
+              instance.api.setParam(paramId, value);
+              const knob = container.querySelector(`.delay-knob[data-param="${paramId}"]`);
+              if (knob) {
+                const canvas = knob.querySelector('canvas');
+                const ctx = canvas.getContext('2d');
+                const min = parseFloat(knob.dataset.min);
+                const max = parseFloat(knob.dataset.max);
+                const color = knob.dataset.color;
+                
+                const angle = -135 + ((value - min) / (max - min)) * 270;
+                ctx.clearRect(0, 0, 80, 80);
+                
+                ctx.beginPath();
+                ctx.arc(40, 40, 30, (-135 - 10) * Math.PI / 180, (-135 + 270 + 10) * Math.PI / 180);
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#2a2d38';
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(40, 40, 30, -135 * Math.PI / 180, angle * Math.PI / 180);
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = color;
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(40, 40, 3, 0, 2 * Math.PI);
+                ctx.fillStyle = color;
+                ctx.fill();
+                
+                ctx.save();
+                ctx.translate(40, 40);
+                ctx.rotate(angle * Math.PI / 180);
+                ctx.beginPath();
+                ctx.moveTo(0, -20);
+                ctx.lineTo(0, -30);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#fff';
+                ctx.stroke();
+                ctx.restore();
+              }
+            }
+          });
+        });
+        
+        // Add delay visualization
+        function drawVisualization() {
+          const canvas = container.querySelector(`#delay-viz-${containerId}`);
+          if (!canvas) return;
+          
+          const ctx = canvas.getContext('2d');
+          const currentParams = instance.api.getParams();
+          
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw delay taps visualization
+          const timeL = currentParams.timeL;
+          const timeR = currentParams.timeR;
+          const maxTime = Math.max(timeL, timeR, 1.2);
+          
+          // Left delay
+          const leftX = (timeL / maxTime) * (canvas.width - 40) + 20;
+          ctx.fillStyle = '#ff6b6b';
+          ctx.beginPath();
+          ctx.arc(leftX, 20, 8, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.fillText('L', leftX - 4, 45);
+          
+          // Right delay
+          const rightX = (timeR / maxTime) * (canvas.width - 40) + 20;
+          ctx.fillStyle = '#4ecdc4';
+          ctx.beginPath();
+          ctx.arc(rightX, 20, 8, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.fillText('R', rightX - 4, 45);
+          
+          // Timeline
+          ctx.strokeStyle = '#3a3f4b';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(20, 30);
+          ctx.lineTo(canvas.width - 20, 30);
+          ctx.stroke();
+        }
+        
+        drawVisualization();
+        
+        // Update visualization when parameters change
+        container.addEventListener('input', drawVisualization);
       }
     },
     chorus: {
@@ -83,6 +336,7 @@
         { id: 'depth', name: 'Depth', type: 'range', min: 0, max: 0.02, step: 0.0001 },
         { id: 'mix', name: 'Mix', type: 'range', min: 0, max: 1, step: 0.01 }
       ],
+      customUI: true,
       create: (ctx) => {
         const input = ctx.createGain();
         const delay = ctx.createDelay(0.05);
@@ -114,6 +368,260 @@
           getParams(){ return { ...params }; }
         };
         return { input, output: out, nodes: [input, delay, lfo, lfoGain, wet, dry, out], api };
+      },
+      
+      renderUI: (containerId, instance) => {
+        const container = document.getElementById(containerId);
+        if (!container || !instance?.api) return;
+        
+        const params = instance.api.getParams();
+        
+        container.innerHTML = `
+          <div class="chorus-panel" style="
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 8px;
+            padding: 20px;
+            color: #ffffff;
+            font-family: 'Segoe UI', sans-serif;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+          ">
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.2); padding-bottom: 15px;">
+              <h3 style="margin: 0; font-size: 1.4em; text-shadow: 0 2px 4px rgba(0,0,0,0.3); letter-spacing: 1px;">✨ VINTAGE CHORUS ✨</h3>
+              <p style="margin-top: 5px; font-size: 0.8em; opacity: 0.8;">Modulated delay with LFO sweep</p>
+            </div>
+
+            <!-- Main Controls -->
+            <div style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 20px; padding: 25px; background-color: rgba(255,255,255,0.1); border-radius: 10px; backdrop-filter: blur(10px);">
+              ${[
+                { id: 'rate', name: 'Rate (Hz)', value: params.rate, min: 0.05, max: 5, step: 0.01, icon: '🌊' },
+                { id: 'depth', name: 'Depth', value: params.depth, min: 0, max: 0.02, step: 0.0001, icon: '🎭' },
+                { id: 'mix', name: 'Mix', value: params.mix, min: 0, max: 1, step: 0.01, icon: '🎚️' }
+              ].map(param => `
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; flex-basis: 120px;">
+                  <div style="font-size: 2em; margin-bottom: 5px;">${param.icon}</div>
+                  <div class="chorus-knob" data-param="${param.id}" data-min="${param.min}" data-max="${param.max}" data-step="${param.step}" style="
+                    width: 90px;
+                    height: 90px;
+                    border-radius: 50%;
+                    position: relative;
+                    cursor: pointer;
+                    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), rgba(255,255,255,0.1));
+                    border: 3px solid rgba(255,255,255,0.4);
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.2), inset 0 2px 4px rgba(255,255,255,0.1);
+                  ">
+                    <canvas width="90" height="90" style="border-radius: 50%;"></canvas>
+                  </div>
+                  <input type="text" class="chorus-knob-value" data-param="${param.id}" value="${param.value.toFixed(param.step < 0.001 ? 4 : 2)}" style="
+                    width: 70px;
+                    text-align: center;
+                    background-color: rgba(255,255,255,0.2);
+                    border: 1px solid rgba(255,255,255,0.3);
+                    color: #ffffff;
+                    border-radius: 5px;
+                    font-size: 0.9em;
+                    padding: 5px;
+                  ">
+                  <label style="font-size: 1em; font-weight: bold; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">${param.name}</label>
+                </div>
+              `).join('')}
+            </div>
+            
+            <!-- LFO Visualization -->
+            <div style="margin-top: 20px; padding: 15px; background-color: rgba(255,255,255,0.1); border-radius: 8px; backdrop-filter: blur(5px);">
+              <h4 style="margin-top: 0; text-align: center; opacity: 0.9;">LFO Waveform</h4>
+              <canvas id="chorus-lfo-${containerId}" width="400" height="80" style="width: 100%; height: 80px; background: rgba(255,255,255,0.1); border-radius: 5px;"></canvas>
+            </div>
+          </div>
+        `;
+        
+        // Add knob functionality
+        const knobs = container.querySelectorAll('.chorus-knob');
+        const valueInputs = container.querySelectorAll('.chorus-knob-value');
+        
+        knobs.forEach(knob => {
+          const canvas = knob.querySelector('canvas');
+          const ctx = canvas.getContext('2d');
+          const paramId = knob.dataset.param;
+          const min = parseFloat(knob.dataset.min);
+          const max = parseFloat(knob.dataset.max);
+          const step = parseFloat(knob.dataset.step);
+          
+          function drawKnob(value) {
+            const angle = -140 + ((value - min) / (max - min)) * 280;
+            
+            ctx.clearRect(0, 0, 90, 90);
+            
+            // Outer ring
+            ctx.beginPath();
+            ctx.arc(45, 45, 35, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Value arc
+            ctx.beginPath();
+            ctx.arc(45, 45, 32, -140 * Math.PI / 180, angle * Math.PI / 180);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+            ctx.stroke();
+            
+            // Center dot
+            ctx.beginPath();
+            ctx.arc(45, 45, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.fill();
+            
+            // Indicator line
+            ctx.save();
+            ctx.translate(45, 45);
+            ctx.rotate(angle * Math.PI / 180);
+            ctx.beginPath();
+            ctx.moveTo(0, -25);
+            ctx.lineTo(0, -32);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+            ctx.restore();
+          }
+          
+          function updateValue(val) {
+            val = Math.round(val / step) * step;
+            val = Math.max(min, Math.min(max, val));
+            val = step < 0.001 ? parseFloat(val.toFixed(4)) : parseFloat(val.toFixed(2));
+            
+            instance.api.setParam(paramId, val);
+            drawKnob(val);
+            
+            const input = container.querySelector(`.chorus-knob-value[data-param="${paramId}"]`);
+            if (input) input.value = val;
+          }
+          
+          // Initial draw
+          drawKnob(instance.api.getParam(paramId));
+          
+          // Mouse interaction
+          let isDragging = false;
+          let startY, startVal;
+          
+          knob.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            startVal = instance.api.getParam(paramId);
+            e.preventDefault();
+          });
+          
+          document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const deltaY = startY - e.clientY;
+            const range = max - min;
+            const sensitivity = paramId === 'depth' ? 0.5 : 1;
+            const newVal = startVal + (deltaY / 100) * range * sensitivity;
+            updateValue(newVal);
+          });
+          
+          document.addEventListener('mouseup', () => {
+            isDragging = false;
+          });
+        });
+        
+        // Add text input functionality
+        valueInputs.forEach(input => {
+          input.addEventListener('change', () => {
+            const paramId = input.dataset.param;
+            const value = parseFloat(input.value);
+            if (!isNaN(value)) {
+              instance.api.setParam(paramId, value);
+              const knob = container.querySelector(`.chorus-knob[data-param="${paramId}"]`);
+              if (knob) {
+                const canvas = knob.querySelector('canvas');
+                const ctx = canvas.getContext('2d');
+                const min = parseFloat(knob.dataset.min);
+                const max = parseFloat(knob.dataset.max);
+                
+                const angle = -140 + ((value - min) / (max - min)) * 280;
+                ctx.clearRect(0, 0, 90, 90);
+                
+                ctx.beginPath();
+                ctx.arc(45, 45, 35, 0, 2 * Math.PI);
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(45, 45, 32, -140 * Math.PI / 180, angle * Math.PI / 180);
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(45, 45, 4, 0, 2 * Math.PI);
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.fill();
+                
+                ctx.save();
+                ctx.translate(45, 45);
+                ctx.rotate(angle * Math.PI / 180);
+                ctx.beginPath();
+                ctx.moveTo(0, -25);
+                ctx.lineTo(0, -32);
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+                ctx.restore();
+              }
+            }
+          });
+        });
+        
+        // Add LFO visualization
+        function drawLFOVisualization() {
+          const canvas = container.querySelector(`#chorus-lfo-${containerId}`);
+          if (!canvas) return;
+          
+          const ctx = canvas.getContext('2d');
+          const currentParams = instance.api.getParams();
+          
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw LFO waveform
+          const rate = currentParams.rate;
+          const depth = currentParams.depth * 10000; // Scale for visualization
+          
+          ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          
+          for (let x = 0; x < canvas.width; x++) {
+            const time = (x / canvas.width) * 4; // 4 cycles
+            const lfoValue = Math.sin(2 * Math.PI * rate * time);
+            const y = (canvas.height / 2) + lfoValue * depth * (canvas.height / 4);
+            
+            if (x === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+          
+          ctx.stroke();
+          
+          // Center line
+          ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          ctx.moveTo(0, canvas.height / 2);
+          ctx.lineTo(canvas.width, canvas.height / 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        
+        drawLFOVisualization();
+        
+        // Update visualization when parameters change
+        container.addEventListener('input', drawLFOVisualization);
       }
     },
     distortion: {
@@ -125,6 +633,7 @@
         { id: 'tone', name: 'Tone', type: 'range', min: 500, max: 8000, step: 10 },
         { id: 'mix', name: 'Mix', type: 'range', min: 0, max: 1, step: 0.01 }
       ],
+      customUI: true,
       create: (ctx) => {
         const input = ctx.createGain();
         const shaper = ctx.createWaveShaper();
@@ -157,6 +666,288 @@
           getParams(){ return { ...params }; }
         };
         return { input, output: out, nodes: [input, shaper, lp, wet, dry, out], api };
+      },
+      
+      renderUI: (containerId, instance) => {
+        const container = document.getElementById(containerId);
+        if (!container || !instance?.api) return;
+        
+        const params = instance.api.getParams();
+        
+        container.innerHTML = `
+          <div class="distortion-panel" style="
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            border-radius: 8px;
+            padding: 20px;
+            color: #ffffff;
+            font-family: 'Segoe UI', sans-serif;
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+            border: 1px solid rgba(255,255,255,0.2);
+          ">
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.3); padding-bottom: 15px;">
+              <h3 style="margin: 0; font-size: 1.4em; text-shadow: 0 2px 4px rgba(0,0,0,0.3); letter-spacing: 1px;">🔥 DISTORTION 🔥</h3>
+              <p style="margin-top: 5px; font-size: 0.8em; opacity: 0.9;">Waveshaper with tone filtering</p>
+            </div>
+
+            <!-- Main Controls -->
+            <div style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 25px; padding: 25px; background-color: rgba(0,0,0,0.2); border-radius: 10px;">
+              ${[
+                { id: 'drive', name: 'Drive', value: params.drive, min: 0, max: 1, step: 0.01, icon: '⚡', color: '#ff4757' },
+                { id: 'tone', name: 'Tone (Hz)', value: params.tone, min: 500, max: 8000, step: 10, icon: '🎛️', color: '#ffa502' },
+                { id: 'mix', name: 'Mix', value: params.mix, min: 0, max: 1, step: 0.01, icon: '🎚️', color: '#ff6348' }
+              ].map(param => `
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; flex-basis: 120px;">
+                  <div style="font-size: 2.2em; margin-bottom: 5px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">${param.icon}</div>
+                  <div class="distortion-knob" data-param="${param.id}" data-min="${param.min}" data-max="${param.max}" data-step="${param.step}" style="
+                    width: 95px;
+                    height: 95px;
+                    border-radius: 50%;
+                    position: relative;
+                    cursor: pointer;
+                    background: radial-gradient(circle at 25% 25%, ${param.color}, rgba(0,0,0,0.4));
+                    border: 4px solid rgba(255,255,255,0.6);
+                    box-shadow: 0 6px 20px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2);
+                  ">
+                    <canvas width="95" height="95" style="border-radius: 50%;"></canvas>
+                  </div>
+                  <input type="text" class="distortion-knob-value" data-param="${param.id}" value="${param.value}" style="
+                    width: 70px;
+                    text-align: center;
+                    background-color: rgba(0,0,0,0.3);
+                    border: 2px solid rgba(255,255,255,0.4);
+                    color: #ffffff;
+                    border-radius: 5px;
+                    font-size: 0.9em;
+                    padding: 5px;
+                    font-weight: bold;
+                  ">
+                  <label style="font-size: 1em; font-weight: bold; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${param.name}</label>
+                </div>
+              `).join('')}
+            </div>
+            
+            <!-- Waveshaper Visualization -->
+            <div style="margin-top: 20px; padding: 15px; background-color: rgba(0,0,0,0.2); border-radius: 8px;">
+              <h4 style="margin-top: 0; text-align: center; opacity: 0.9;">Waveshaper Curve</h4>
+              <canvas id="distortion-curve-${containerId}" width="400" height="100" style="width: 100%; height: 100px; background: rgba(255,255,255,0.1); border-radius: 5px;"></canvas>
+            </div>
+          </div>
+        `;
+        
+        // Add knob functionality
+        const knobs = container.querySelectorAll('.distortion-knob');
+        const valueInputs = container.querySelectorAll('.distortion-knob-value');
+        
+        knobs.forEach(knob => {
+          const canvas = knob.querySelector('canvas');
+          const ctx = canvas.getContext('2d');
+          const paramId = knob.dataset.param;
+          const min = parseFloat(knob.dataset.min);
+          const max = parseFloat(knob.dataset.max);
+          const step = parseFloat(knob.dataset.step);
+          
+          function drawKnob(value) {
+            const angle = -140 + ((value - min) / (max - min)) * 280;
+            
+            ctx.clearRect(0, 0, 95, 95);
+            
+            // Outer glow
+            ctx.shadowColor = 'rgba(255,255,255,0.5)';
+            ctx.shadowBlur = 4;
+            ctx.beginPath();
+            ctx.arc(47.5, 47.5, 38, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            
+            // Value arc
+            ctx.beginPath();
+            ctx.arc(47.5, 47.5, 35, -140 * Math.PI / 180, angle * Math.PI / 180);
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+            ctx.stroke();
+            
+            // Center circle
+            ctx.beginPath();
+            ctx.arc(47.5, 47.5, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255,255,255,0.95)';
+            ctx.fill();
+            
+            // Indicator line
+            ctx.save();
+            ctx.translate(47.5, 47.5);
+            ctx.rotate(angle * Math.PI / 180);
+            ctx.beginPath();
+            ctx.moveTo(0, -28);
+            ctx.lineTo(0, -35);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#333';
+            ctx.stroke();
+            ctx.restore();
+          }
+          
+          function updateValue(val) {
+            val = Math.round(val / step) * step;
+            val = Math.max(min, Math.min(max, val));
+            val = Number.isInteger(step) ? parseInt(val) : parseFloat(val.toFixed(3));
+            
+            instance.api.setParam(paramId, val);
+            drawKnob(val);
+            
+            const input = container.querySelector(`.distortion-knob-value[data-param="${paramId}"]`);
+            if (input) input.value = val;
+          }
+          
+          // Initial draw
+          drawKnob(instance.api.getParam(paramId));
+          
+          // Mouse interaction
+          let isDragging = false;
+          let startY, startVal;
+          
+          knob.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            startVal = instance.api.getParam(paramId);
+            e.preventDefault();
+          });
+          
+          document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const deltaY = startY - e.clientY;
+            const range = max - min;
+            const sensitivity = paramId === 'tone' ? 0.5 : 1;
+            const newVal = startVal + (deltaY / 100) * range * sensitivity;
+            updateValue(newVal);
+          });
+          
+          document.addEventListener('mouseup', () => {
+            isDragging = false;
+          });
+        });
+        
+        // Add text input functionality
+        valueInputs.forEach(input => {
+          input.addEventListener('change', () => {
+            const paramId = input.dataset.param;
+            const value = parseFloat(input.value);
+            if (!isNaN(value)) {
+              instance.api.setParam(paramId, value);
+              const knob = container.querySelector(`.distortion-knob[data-param="${paramId}"]`);
+              if (knob) {
+                const canvas = knob.querySelector('canvas');
+                const ctx = canvas.getContext('2d');
+                const min = parseFloat(knob.dataset.min);
+                const max = parseFloat(knob.dataset.max);
+                
+                const angle = -140 + ((value - min) / (max - min)) * 280;
+                ctx.clearRect(0, 0, 95, 95);
+                
+                ctx.shadowColor = 'rgba(255,255,255,0.5)';
+                ctx.shadowBlur = 4;
+                ctx.beginPath();
+                ctx.arc(47.5, 47.5, 38, 0, 2 * Math.PI);
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                
+                ctx.beginPath();
+                ctx.arc(47.5, 47.5, 35, -140 * Math.PI / 180, angle * Math.PI / 180);
+                ctx.lineWidth = 8;
+                ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(47.5, 47.5, 6, 0, 2 * Math.PI);
+                ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                ctx.fill();
+                
+                ctx.save();
+                ctx.translate(47.5, 47.5);
+                ctx.rotate(angle * Math.PI / 180);
+                ctx.beginPath();
+                ctx.moveTo(0, -28);
+                ctx.lineTo(0, -35);
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#333';
+                ctx.stroke();
+                ctx.restore();
+              }
+            }
+          });
+        });
+        
+        // Add waveshaper curve visualization
+        function drawWaveshaperCurve() {
+          const canvas = container.querySelector(`#distortion-curve-${containerId}`);
+          if (!canvas) return;
+          
+          const ctx = canvas.getContext('2d');
+          const currentParams = instance.api.getParams();
+          
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // Grid
+          ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([2, 2]);
+          for (let i = 0; i <= 4; i++) {
+            const y = (i / 4) * canvas.height;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+          }
+          for (let i = 0; i <= 4; i++) {
+            const x = (i / 4) * canvas.width;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+          }
+          ctx.setLineDash([]);
+          
+          // Waveshaper curve
+          const drive = currentParams.drive;
+          const k = drive * 100;
+          
+          ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          
+          for (let x = 0; x < canvas.width; x++) {
+            const inputVal = ((x / canvas.width) * 2) - 1; // -1 to 1
+            const outputVal = ((1 + k) * inputVal) / (1 + k * Math.abs(inputVal));
+            const y = ((1 - outputVal) / 2) * canvas.height; // Flip and scale to canvas
+            
+            if (x === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+          
+          ctx.stroke();
+          
+          // Center lines
+          ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(0, canvas.height / 2);
+          ctx.lineTo(canvas.width, canvas.height / 2);
+          ctx.moveTo(canvas.width / 2, 0);
+          ctx.lineTo(canvas.width / 2, canvas.height);
+          ctx.stroke();
+        }
+        
+        drawWaveshaperCurve();
+        
+        // Update curve when parameters change
+        container.addEventListener('input', drawWaveshaperCurve);
       }
     },
     lexicon480L: {
@@ -594,42 +1385,299 @@
         });
       }
     },
-    reverb: {
-      id: 'reverb',
-      name: 'Reverb',
-      description: 'Simple convolver reverb',
+    parametricEQ: {
+      id: 'parametricEQ',
+      name: 'Parametric EQ',
+      description: 'Professional 6-band parametric equalizer with spectrum visualization',
       params: [
-        { id: 'wet', name: 'Wet', type: 'range', min: 0, max: 1, step: 0.01, unit: '' },
-        { id: 'time', name: 'Time', type: 'range', min: 0.2, max: 5, step: 0.1, unit: 's' },
-        { id: 'decay', name: 'Decay', type: 'range', min: 0.5, max: 4, step: 0.1, unit: '' }
+        { id: 'band1_freq', name: 'Band 1 Freq', type: 'range', min: 40, max: 20000, step: 1, unit: ' Hz' },
+        { id: 'band1_gain', name: 'Band 1 Gain', type: 'range', min: -60, max: 12, step: 0.1, unit: ' dB' },
+        { id: 'band1_q', name: 'Band 1 Q', type: 'range', min: 0.1, max: 10, step: 0.01, unit: '' },
+        { id: 'band2_freq', name: 'Band 2 Freq', type: 'range', min: 40, max: 20000, step: 1, unit: ' Hz' },
+        { id: 'band2_gain', name: 'Band 2 Gain', type: 'range', min: -60, max: 12, step: 0.1, unit: ' dB' },
+        { id: 'band2_q', name: 'Band 2 Q', type: 'range', min: 0.1, max: 10, step: 0.01, unit: '' },
+        { id: 'band3_freq', name: 'Band 3 Freq', type: 'range', min: 40, max: 20000, step: 1, unit: ' Hz' },
+        { id: 'band3_gain', name: 'Band 3 Gain', type: 'range', min: -60, max: 12, step: 0.1, unit: ' dB' },
+        { id: 'band3_q', name: 'Band 3 Q', type: 'range', min: 0.1, max: 10, step: 0.01, unit: '' },
+        { id: 'band4_freq', name: 'Band 4 Freq', type: 'range', min: 40, max: 20000, step: 1, unit: ' Hz' },
+        { id: 'band4_gain', name: 'Band 4 Gain', type: 'range', min: -60, max: 12, step: 0.1, unit: ' dB' },
+        { id: 'band4_q', name: 'Band 4 Q', type: 'range', min: 0.1, max: 10, step: 0.01, unit: '' },
+        { id: 'band5_freq', name: 'Band 5 Freq', type: 'range', min: 40, max: 20000, step: 1, unit: ' Hz' },
+        { id: 'band5_gain', name: 'Band 5 Gain', type: 'range', min: -60, max: 12, step: 0.1, unit: ' dB' },
+        { id: 'band5_q', name: 'Band 5 Q', type: 'range', min: 0.1, max: 10, step: 0.01, unit: '' },
+        { id: 'band6_freq', name: 'Band 6 Freq', type: 'range', min: 40, max: 20000, step: 1, unit: ' Hz' },
+        { id: 'band6_gain', name: 'Band 6 Gain', type: 'range', min: -60, max: 12, step: 0.1, unit: ' dB' },
+        { id: 'band6_q', name: 'Band 6 Q', type: 'range', min: 0.1, max: 10, step: 0.01, unit: '' }
       ],
+      customUI: true,
       create: (ctx) => {
         const input = ctx.createGain();
-        const convolver = ctx.createConvolver();
-        let params = { wet: 0.35, time: 1.8, decay: 2.5 };
-        convolver.buffer = generateImpulseResponse(ctx, params.time, params.decay);
-        const wetGain = ctx.createGain();
-        wetGain.gain.value = params.wet;
-        const dryGain = ctx.createGain();
-        dryGain.gain.value = 1.0;
-
-        // routing: input -> [dry] -> merge; input -> convolver -> wet -> merge
-        const merger = ctx.createGain();
-        input.connect(dryGain).connect(merger);
-        input.connect(convolver).connect(wetGain).connect(merger);
-
+        
+        // Initialize EQ bands with default values from EQ.html
+        const eqBands = [
+          { freq: 60, gain: 0, q: 1.0, type: "peaking" },
+          { freq: 170, gain: 0, q: 1.0, type: "peaking" },
+          { freq: 350, gain: 0, q: 1.0, type: "peaking" },
+          { freq: 1000, gain: 0, q: 1.0, type: "peaking" },
+          { freq: 3500, gain: 0, q: 1.0, type: "peaking" },
+          { freq: 10000, gain: 0, q: 1.0, type: "peaking" }
+        ];
+        
+        // Create biquad filters for each band
+        const filters = eqBands.map(band => {
+          const filter = ctx.createBiquadFilter();
+          filter.type = band.type;
+          filter.frequency.value = band.freq;
+          filter.gain.value = band.gain;
+          filter.Q.value = band.q;
+          return filter;
+        });
+        
+        // Chain filters together
+        let currentNode = input;
+        filters.forEach(filter => {
+          currentNode.connect(filter);
+          currentNode = filter;
+        });
+        
+        // Parameters object for easy access
+        let params = {};
+        eqBands.forEach((band, i) => {
+          params[`band${i+1}_freq`] = band.freq;
+          params[`band${i+1}_gain`] = band.gain;
+          params[`band${i+1}_q`] = band.q;
+        });
+        
         const api = {
           setParam(id, value) {
-            switch(id){
-              case 'wet': params.wet = value; wetGain.gain.value = value; break;
-              case 'time': params.time = value; convolver.buffer = generateImpulseResponse(ctx, params.time, params.decay); break;
-              case 'decay': params.decay = value; convolver.buffer = generateImpulseResponse(ctx, params.time, params.decay); break;
+            const match = id.match(/band(\d+)_(\w+)/);
+            if (match) {
+              const bandIndex = parseInt(match[1]) - 1;
+              const paramType = match[2];
+              
+              if (bandIndex >= 0 && bandIndex < eqBands.length) {
+                params[id] = value;
+                
+                switch(paramType) {
+                  case 'freq':
+                    eqBands[bandIndex].freq = value;
+                    filters[bandIndex].frequency.value = value;
+                    break;
+                  case 'gain':
+                    eqBands[bandIndex].gain = value;
+                    filters[bandIndex].gain.value = value;
+                    break;
+                  case 'q':
+                    eqBands[bandIndex].q = value;
+                    filters[bandIndex].Q.value = value;
+                    break;
+                }
+              }
             }
           },
           getParam(id) { return params[id]; },
-          getParams() { return { ...params }; }
+          getParams() { return { ...params }; },
+          
+          // Additional methods for EQ visualization
+          getBands() { return [...eqBands]; },
+          setBandType(bandIndex, type) {
+            if (bandIndex >= 0 && bandIndex < eqBands.length) {
+              eqBands[bandIndex].type = type;
+              filters[bandIndex].type = type;
+            }
+          },
+          addBand(freq, gain, q) {
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'peaking';
+            filter.frequency.value = freq;
+            filter.gain.value = gain;
+            filter.Q.value = q;
+            
+            // Disconnect last filter from output and connect through new filter
+            const lastFilter = filters[filters.length - 1];
+            lastFilter.disconnect();
+            lastFilter.connect(filter);
+            
+            filters.push(filter);
+            eqBands.push({ freq, gain, q, type: 'peaking' });
+            
+            // Update params
+            const bandIndex = eqBands.length;
+            params[`band${bandIndex}_freq`] = freq;
+            params[`band${bandIndex}_gain`] = gain;
+            params[`band${bandIndex}_q`] = q;
+            
+            return filter;
+          },
+          removeBand(bandIndex) {
+            if (bandIndex >= 0 && bandIndex < eqBands.length && eqBands.length > 1) {
+              const filterToRemove = filters[bandIndex];
+              
+              // Reconnect audio chain
+              if (bandIndex === 0) {
+                input.disconnect(filterToRemove);
+                if (filters.length > 1) {
+                  input.connect(filters[1]);
+                }
+              } else if (bandIndex === filters.length - 1) {
+                filters[bandIndex - 1].disconnect(filterToRemove);
+              } else {
+                filters[bandIndex - 1].disconnect(filterToRemove);
+                filters[bandIndex - 1].connect(filters[bandIndex + 1]);
+              }
+              
+              filterToRemove.disconnect();
+              filters.splice(bandIndex, 1);
+              eqBands.splice(bandIndex, 1);
+              
+              // Update params
+              params = {};
+              eqBands.forEach((band, i) => {
+                params[`band${i+1}_freq`] = band.freq;
+                params[`band${i+1}_gain`] = band.gain;
+                params[`band${i+1}_q`] = band.q;
+              });
+            }
+          }
         };
-        return { input, output: merger, nodes: [input, convolver, wetGain, dryGain, merger], api };
+        
+        return { 
+          input, 
+          output: currentNode, 
+          nodes: [input, ...filters], 
+          api,
+          eqBands,
+          filters
+        };
+      },
+      
+      renderUI: (containerId, instance) => {
+        const container = document.getElementById(containerId);
+        if (!container || !instance?.api) return;
+        
+        const params = instance.api.getParams();
+        const eqBands = instance.api.getBands();
+        
+        container.innerHTML = `
+          <div class="parametric-eq-panel" style="
+            background: linear-gradient(135deg, #181818, #232323);
+            border-radius: 12px;
+            padding: 24px;
+            color: #eee;
+            font-family: 'Segoe UI', sans-serif;
+            border: 1px solid #3a3f4b;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.5);
+          ">
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: 20px; border-bottom: 1px solid #3a3f4b; padding-bottom: 15px;">
+              <h3 style="margin: 0; color: #ffe066; font-size: 1.3em; text-shadow: 0 0 10px rgba(255, 224, 102, 0.3);">Parametric EQ</h3>
+              <p style="margin-top: 5px; font-size: 0.85em; opacity: 0.7;">Professional 6-band parametric equalizer</p>
+            </div>
+
+            <!-- EQ Spectrum Display -->
+            <div style="margin-bottom: 24px; background: #111; border-radius: 8px; padding: 16px;">
+              <svg id="eq-spectrum-${containerId}" width="600" height="200" style="
+                display: block; 
+                margin: 0 auto; 
+                background: linear-gradient(to bottom, #0a0a0a, #1a1a1a); 
+                border-radius: 8px;
+                cursor: crosshair;
+              ">
+                <!-- Spectrum visualization will be drawn here -->
+              </svg>
+            </div>
+
+            <!-- Band Controls -->
+            <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px;">
+              ${[1,2,3,4,5,6].map(bandNum => `
+                <div class="eq-band-control" style="
+                  background: linear-gradient(135deg, #2a2d38, #1e2028);
+                  border-radius: 8px;
+                  padding: 12px;
+                  text-align: center;
+                  border: 1px solid #3a3f4b;
+                ">
+                  <div style="color: #ffe066; font-size: 0.8em; margin-bottom: 8px; font-weight: bold;">Band ${bandNum}</div>
+                  
+                  <div style="margin-bottom: 8px;">
+                    <label style="font-size: 0.7em; color: #aaa;">Freq (Hz)</label>
+                    <input type="range" 
+                           id="band${bandNum}_freq_${containerId}" 
+                           min="40" max="20000" 
+                           value="${params[`band${bandNum}_freq`] || (bandNum === 1 ? 60 : bandNum === 2 ? 170 : bandNum === 3 ? 350 : bandNum === 4 ? 1000 : bandNum === 5 ? 3500 : 10000)}"
+                           style="width: 100%; accent-color: #ffe066;">
+                    <div id="band${bandNum}_freq_value_${containerId}" style="font-size: 0.7em; color: #ffe066; margin-top: 2px;">
+                      ${Math.round(params[`band${bandNum}_freq`] || (bandNum === 1 ? 60 : bandNum === 2 ? 170 : bandNum === 3 ? 350 : bandNum === 4 ? 1000 : bandNum === 5 ? 3500 : 10000))} Hz
+                    </div>
+                  </div>
+                  
+                  <div style="margin-bottom: 8px;">
+                    <label style="font-size: 0.7em; color: #aaa;">Gain (dB)</label>
+                    <input type="range" 
+                           id="band${bandNum}_gain_${containerId}" 
+                           min="-60" max="12" step="0.1"
+                           value="${params[`band${bandNum}_gain`] || 0}"
+                           style="width: 100%; accent-color: #ff6b6b;">
+                    <div id="band${bandNum}_gain_value_${containerId}" style="font-size: 0.7em; color: #ff6b6b; margin-top: 2px;">
+                      ${(params[`band${bandNum}_gain`] || 0).toFixed(1)} dB
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label style="font-size: 0.7em; color: #aaa;">Q</label>
+                    <input type="range" 
+                           id="band${bandNum}_q_${containerId}" 
+                           min="0.1" max="10" step="0.01"
+                           value="${params[`band${bandNum}_q`] || 1.0}"
+                           style="width: 100%; accent-color: #4ecdc4;">
+                    <div id="band${bandNum}_q_value_${containerId}" style="font-size: 0.7em; color: #4ecdc4; margin-top: 2px;">
+                      ${(params[`band${bandNum}_q`] || 1.0).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Control Panel for Selected Band -->
+            <div id="band-panel-${containerId}" class="band-control-panel" style="
+              position: relative;
+              background: linear-gradient(90deg, #ffe066 0%, #ffb700 100%);
+              border-radius: 18px;
+              padding: 18px 32px 12px 32px;
+              display: flex;
+              gap: 32px;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 8px 32px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.1) inset;
+              opacity: 0.9;
+              margin-top: 16px;
+            ">
+              <div style="display: flex; flex-direction: column; align-items: center; min-width: 90px;">
+                <div style="color: #232323; font-size: 1em; margin-bottom: 6px; letter-spacing: 1px; text-shadow: 0 1px 2px rgba(255,255,255,0.5);">Frequency</div>
+                <input type="range" id="freq-dial-${containerId}" min="40" max="20000" step="1" 
+                       style="width: 80px; accent-color: #ff0; margin: 0; border-radius: 8px; background: #fff;">
+                <div id="freq-value-${containerId}" style="margin-top: 4px; color: #232323; font-size: 1.1em; font-family: monospace; text-shadow: 0 1px 2px rgba(255,255,255,0.5);">1000 Hz</div>
+              </div>
+              
+              <div style="display: flex; flex-direction: column; align-items: center; min-width: 90px;">
+                <div style="color: #232323; font-size: 1em; margin-bottom: 6px; letter-spacing: 1px; text-shadow: 0 1px 2px rgba(255,255,255,0.5);">Gain</div>
+                <input type="range" id="gain-dial-${containerId}" min="-60" max="12" step="0.1"
+                       style="width: 80px; accent-color: #ff0; margin: 0; border-radius: 8px; background: #fff;">
+                <div id="gain-value-${containerId}" style="margin-top: 4px; color: #232323; font-size: 1.1em; font-family: monospace; text-shadow: 0 1px 2px rgba(255,255,255,0.5);">0.0 dB</div>
+              </div>
+              
+              <div style="display: flex; flex-direction: column; align-items: center; min-width: 90px;">
+                <div style="color: #232323; font-size: 1em; margin-bottom: 6px; letter-spacing: 1px; text-shadow: 0 1px 2px rgba(255,255,255,0.5);">Q Factor</div>
+                <input type="range" id="q-dial-${containerId}" min="0.1" max="10" step="0.01"
+                       style="width: 80px; accent-color: #ff0; margin: 0; border-radius: 8px; background: #fff;">
+                <div id="q-value-${containerId}" style="margin-top: 4px; color: #232323; font-size: 1.1em; font-family: monospace; text-shadow: 0 1px 2px rgba(255,255,255,0.5);">1.00</div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Initialize EQ visualization and controls
+        initializeEQControls(containerId, instance);
       }
     },
     eq3: {
@@ -643,6 +1691,7 @@
         { id: 'midQ', name: 'Mid Q', type: 'range', min: 0.2, max: 4, step: 0.1, unit: '' },
         { id: 'highGain', name: 'High Gain', type: 'range', min: -12, max: 12, step: 0.5, unit: ' dB' }
       ],
+      customUI: true,
       create: (ctx) => {
         const input = ctx.createGain();
         const low = ctx.createBiquadFilter();
@@ -688,6 +1737,7 @@
         { id: 'release', name: 'Release', type: 'range', min: 0, max: 1, step: 0.005, unit: ' s' },
         { id: 'knee', name: 'Knee', type: 'range', min: 0, max: 40, step: 1, unit: ' dB' }
       ],
+      customUI: true,
       create: (ctx) => {
         const input = ctx.createGain();
         const comp = ctx.createDynamicsCompressor();
@@ -1557,6 +2607,393 @@
     }
   };
 
+  // Initialize EQ controls and visualization
+  function initializeEQControls(containerId, instance) {
+    const svg = document.getElementById(`eq-spectrum-${containerId}`);
+    const bandPanel = document.getElementById(`band-panel-${containerId}`);
+    const freqDial = document.getElementById(`freq-dial-${containerId}`);
+    const gainDial = document.getElementById(`gain-dial-${containerId}`);
+    const qDial = document.getElementById(`q-dial-${containerId}`);
+    const freqValue = document.getElementById(`freq-value-${containerId}`);
+    const gainValue = document.getElementById(`gain-value-${containerId}`);
+    const qValue = document.getElementById(`q-value-${containerId}`);
+    
+    if (!svg || !instance?.api) return;
+    
+    let selectedBandIndex = null;
+    let eqBands = instance.api.getBands();
+    let isDragging = false;
+    let dragOffset = {};
+    
+    // Utility functions for coordinate conversion
+    function freqToX(freq, width) {
+      const minF = 40, maxF = 20000;
+      const logMin = Math.log10(minF), logMax = Math.log10(maxF);
+      return ((Math.log10(freq) - logMin) / (logMax - logMin)) * width;
+    }
+    
+    function xToFreq(x, width) {
+      const minF = 40, maxF = 20000;
+      const logMin = Math.log10(minF), logMax = Math.log10(maxF);
+      return Math.pow(10, logMin + (x / width) * (logMax - logMin));
+    }
+    
+    function gainToY(gain, height) {
+      return ((12 - gain) / 72) * (height - 30) + 10;
+    }
+    
+    function yToGain(y, height) {
+      return 12 - ((y - 10) / (height - 30)) * 72;
+    }
+    
+    // Calculate band gain at specific frequency (simplified version)
+    function getBandGainAtFreq(band, freq) {
+      const f0 = band.freq;
+      const Q = band.q || 1.0;
+      const G = band.gain;
+      
+      if (band.type === "lowshelf") {
+        const x = Math.log2(freq / f0) * 4;
+        return G / (1 + Math.exp(x));
+      } else if (band.type === "highshelf") {
+        const x = Math.log2(freq / f0) * 4;
+        return G / (1 + Math.exp(-x));
+      } else {
+        // Peaking
+        const w = freq / f0;
+        return G / (1 + Math.pow((w - 1) / Q, 2));
+      }
+    }
+    
+    // Update band panel with selected band info
+    function updateBandPanel() {
+      if (selectedBandIndex === null || !eqBands[selectedBandIndex]) {
+        return;
+      }
+      
+      const band = eqBands[selectedBandIndex];
+      freqDial.value = band.freq;
+      gainDial.value = band.gain;
+      qDial.value = band.q;
+      freqValue.textContent = Math.round(band.freq) + " Hz";
+      gainValue.textContent = (band.gain > 0 ? "+" : "") + band.gain.toFixed(1) + " dB";
+      qValue.textContent = band.q.toFixed(2);
+    }
+    
+    // Draw EQ spectrum visualization
+    function drawSpectrum() {
+      const width = svg.width.baseVal.value;
+      const height = svg.height.baseVal.value;
+      
+      // Clear SVG
+      svg.innerHTML = '';
+      
+      // Create gradient for EQ curve
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+      grad.setAttribute('id', `eq-gradient-${containerId}`);
+      grad.setAttribute('x1', '0%'); grad.setAttribute('x2', '100%');
+      grad.setAttribute('y1', '0%'); grad.setAttribute('y2', '0%');
+      grad.innerHTML = `
+        <stop offset="0%" stop-color="#ffe066"/>
+        <stop offset="50%" stop-color="#ffb700"/>
+        <stop offset="100%" stop-color="#ffe066"/>
+      `;
+      defs.appendChild(grad);
+      svg.appendChild(defs);
+      
+      // Draw grid lines
+      drawGrid(width, height);
+      
+      // Draw EQ response curve
+      const eqPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      let path = '';
+      for (let x = 0; x < width; x++) {
+        const freq = xToFreq(x, width);
+        let totalGain = 0;
+        eqBands.forEach(band => {
+          totalGain += getBandGainAtFreq(band, freq);
+        });
+        const y = gainToY(Math.max(-60, Math.min(12, totalGain)), height);
+        path += (x === 0 ? 'M' : 'L') + x + ',' + y + ' ';
+      }
+      eqPath.setAttribute('d', path);
+      eqPath.setAttribute('stroke', `url(#eq-gradient-${containerId})`);
+      eqPath.setAttribute('stroke-width', '3');
+      eqPath.setAttribute('fill', 'none');
+      eqPath.setAttribute('filter', 'drop-shadow(0 0 6px rgba(255, 224, 102, 0.4))');
+      svg.appendChild(eqPath);
+      
+      // Draw EQ band dots
+      eqBands.forEach((band, i) => {
+        const x = freqToX(band.freq, width);
+        const y = gainToY(band.gain, height);
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', x);
+        dot.setAttribute('cy', y);
+        dot.setAttribute('r', selectedBandIndex === i ? '12' : '8');
+        dot.setAttribute('fill', band.type === "lowshelf" ? "#0af" : band.type === "highshelf" ? "#fa0" : "#f44");
+        dot.setAttribute('stroke', selectedBandIndex === i ? '#ffe066' : '#fff');
+        dot.setAttribute('stroke-width', selectedBandIndex === i ? '3' : '2');
+        dot.style.cursor = "pointer";
+        dot.setAttribute('data-idx', i);
+        dot.setAttribute('filter', 'drop-shadow(0 0 8px rgba(255,255,255,0.5))');
+        
+        // Click handler for band selection
+        dot.addEventListener('mousedown', (e) => {
+          selectedBandIndex = i;
+          updateBandPanel();
+          drawSpectrum();
+          
+          // Start dragging
+          isDragging = true;
+          const rect = svg.getBoundingClientRect();
+          dragOffset = {
+            dx: x - (e.clientX - rect.left),
+            dy: y - (e.clientY - rect.top)
+          };
+        });
+        
+        svg.appendChild(dot);
+        
+        // Band label
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', x + 14);
+        label.setAttribute('y', y - 12);
+        label.setAttribute('fill', '#fff');
+        label.setAttribute('font-size', '12');
+        label.setAttribute('font-weight', 'bold');
+        label.textContent = `B${i+1}`;
+        svg.appendChild(label);
+      });
+    }
+    
+    // Draw grid and axes
+    function drawGrid(width, height) {
+      const svgNS = "http://www.w3.org/2000/svg";
+      
+      // X axis (frequency)
+      const xAxis = document.createElementNS(svgNS, 'line');
+      xAxis.setAttribute('x1', 0);
+      xAxis.setAttribute('y1', height - 10);
+      xAxis.setAttribute('x2', width);
+      xAxis.setAttribute('y2', height - 10);
+      xAxis.setAttribute('stroke', '#444');
+      xAxis.setAttribute('stroke-width', '1');
+      svg.appendChild(xAxis);
+      
+      // Y axis (gain)
+      const yAxis = document.createElementNS(svgNS, 'line');
+      yAxis.setAttribute('x1', 0);
+      yAxis.setAttribute('y1', 10);
+      yAxis.setAttribute('x2', 0);
+      yAxis.setAttribute('y2', height - 10);
+      yAxis.setAttribute('stroke', '#444');
+      yAxis.setAttribute('stroke-width', '1');
+      svg.appendChild(yAxis);
+      
+      // Frequency labels
+      const freqs = [40, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+      freqs.forEach(f => {
+        const x = freqToX(f, width);
+        const label = document.createElementNS(svgNS, 'text');
+        label.setAttribute('x', x);
+        label.setAttribute('y', height - 2);
+        label.setAttribute('fill', '#888');
+        label.setAttribute('font-size', '10');
+        label.setAttribute('text-anchor', 'middle');
+        label.textContent = f >= 1000 ? (f/1000) + "k" : f;
+        svg.appendChild(label);
+        
+        // Tick
+        const tick = document.createElementNS(svgNS, 'line');
+        tick.setAttribute('x1', x);
+        tick.setAttribute('y1', height - 10);
+        tick.setAttribute('x2', x);
+        tick.setAttribute('y2', height - 15);
+        tick.setAttribute('stroke', '#666');
+        tick.setAttribute('stroke-width', '1');
+        svg.appendChild(tick);
+      });
+      
+      // Gain labels
+      const gains = [12, 6, 0, -12, -24, -36, -48, -60];
+      gains.forEach(g => {
+        const y = gainToY(g, height);
+        const label = document.createElementNS(svgNS, 'text');
+        label.setAttribute('x', 5);
+        label.setAttribute('y', y + 3);
+        label.setAttribute('fill', '#888');
+        label.setAttribute('font-size', '10');
+        label.textContent = g + "dB";
+        svg.appendChild(label);
+        
+        // Tick
+        const tick = document.createElementNS(svgNS, 'line');
+        tick.setAttribute('x1', 0);
+        tick.setAttribute('y1', y);
+        tick.setAttribute('x2', 8);
+        tick.setAttribute('y2', y);
+        tick.setAttribute('stroke', '#666');
+        tick.setAttribute('stroke-width', '1');
+        svg.appendChild(tick);
+      });
+    }
+    
+    // Mouse interaction handlers
+    svg.addEventListener('mousemove', (e) => {
+      if (!isDragging || selectedBandIndex === null) return;
+      
+      const rect = svg.getBoundingClientRect();
+      const width = svg.width.baseVal.value;
+      const height = svg.height.baseVal.value;
+      
+      let x = (e.clientX - rect.left) + dragOffset.dx;
+      let y = (e.clientY - rect.top) + dragOffset.dy;
+      
+      x = Math.max(0, Math.min(width, x));
+      y = Math.max(10, Math.min(height - 10, y));
+      
+      const newFreq = Math.max(40, Math.min(20000, xToFreq(x, width)));
+      const newGain = Math.max(-60, Math.min(12, yToGain(y, height)));
+      
+      eqBands[selectedBandIndex].freq = newFreq;
+      eqBands[selectedBandIndex].gain = newGain;
+      
+      // Update audio parameters
+      instance.api.setParam(`band${selectedBandIndex + 1}_freq`, newFreq);
+      instance.api.setParam(`band${selectedBandIndex + 1}_gain`, newGain);
+      
+      updateBandPanel();
+      drawSpectrum();
+    });
+    
+    svg.addEventListener('mouseup', () => {
+      isDragging = false;
+      dragOffset = {};
+    });
+    
+    svg.addEventListener('mouseleave', () => {
+      isDragging = false;
+      dragOffset = {};
+    });
+    
+    // Band panel dial handlers
+    freqDial.addEventListener('input', () => {
+      if (selectedBandIndex !== null) {
+        const freq = parseFloat(freqDial.value);
+        eqBands[selectedBandIndex].freq = freq;
+        instance.api.setParam(`band${selectedBandIndex + 1}_freq`, freq);
+        updateBandPanel();
+        drawSpectrum();
+      }
+    });
+    
+    gainDial.addEventListener('input', () => {
+      if (selectedBandIndex !== null) {
+        const gain = parseFloat(gainDial.value);
+        eqBands[selectedBandIndex].gain = gain;
+        instance.api.setParam(`band${selectedBandIndex + 1}_gain`, gain);
+        updateBandPanel();
+        drawSpectrum();
+      }
+    });
+    
+    qDial.addEventListener('input', () => {
+      if (selectedBandIndex !== null) {
+        const q = parseFloat(qDial.value);
+        eqBands[selectedBandIndex].q = q;
+        instance.api.setParam(`band${selectedBandIndex + 1}_q`, q);
+        updateBandPanel();
+        drawSpectrum();
+      }
+    });
+    
+    // Individual band controls
+    for (let i = 1; i <= 6; i++) {
+      const freqControl = document.getElementById(`band${i}_freq_${containerId}`);
+      const gainControl = document.getElementById(`band${i}_gain_${containerId}`);
+      const qControl = document.getElementById(`band${i}_q_${containerId}`);
+      const freqValueDisplay = document.getElementById(`band${i}_freq_value_${containerId}`);
+      const gainValueDisplay = document.getElementById(`band${i}_gain_value_${containerId}`);
+      const qValueDisplay = document.getElementById(`band${i}_q_value_${containerId}`);
+      
+      if (freqControl) {
+        freqControl.addEventListener('input', () => {
+          const freq = parseFloat(freqControl.value);
+          eqBands[i-1].freq = freq;
+          instance.api.setParam(`band${i}_freq`, freq);
+          if (freqValueDisplay) freqValueDisplay.textContent = Math.round(freq) + " Hz";
+          drawSpectrum();
+        });
+      }
+      
+      if (gainControl) {
+        gainControl.addEventListener('input', () => {
+          const gain = parseFloat(gainControl.value);
+          eqBands[i-1].gain = gain;
+          instance.api.setParam(`band${i}_gain`, gain);
+          if (gainValueDisplay) gainValueDisplay.textContent = gain.toFixed(1) + " dB";
+          drawSpectrum();
+        });
+      }
+      
+      if (qControl) {
+        qControl.addEventListener('input', () => {
+          const q = parseFloat(qControl.value);
+          eqBands[i-1].q = q;
+          instance.api.setParam(`band${i}_q`, q);
+          if (qValueDisplay) qValueDisplay.textContent = q.toFixed(2);
+          drawSpectrum();
+        });
+      }
+    }
+    
+    // Initial draw
+    selectedBandIndex = 0; // Select first band by default
+    updateBandPanel();
+    drawSpectrum();
+  }
+
+  // Helper function to make plugin UIs resizable
+  function makePluginUIResizable(containerId) {
+    const container = document.getElementById(containerId);
+    if (container && window.resizableManager) {
+      // Add a wrapper div for the plugin content
+      if (!container.querySelector('.plugin-ui-wrapper')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'plugin-ui-wrapper';
+        wrapper.style.width = '100%';
+        wrapper.style.height = '100%';
+        wrapper.style.overflow = 'auto';
+        
+        // Move all existing content into the wrapper
+        while (container.firstChild) {
+          wrapper.appendChild(container.firstChild);
+        }
+        
+        container.appendChild(wrapper);
+      }
+      
+      // Make the container resizable
+      window.resizableManager.makePluginUIResizable(container);
+    }
+  }
+  
+  // Enhanced renderUI helper that adds resizable functionality
+  function renderResizablePluginUI(pluginId, containerId, instance, renderFunction) {
+    // Call the original render function
+    renderFunction(containerId, instance);
+    
+    // Make the UI resizable after a short delay to ensure DOM is ready
+    setTimeout(() => {
+      makePluginUIResizable(containerId);
+    }, 100);
+  }
+
   global.FX_PLUGINS = FX_PLUGINS;
   global.FXPlugins = FXPlugins;
+  global.initializeEQControls = initializeEQControls;
+  global.makePluginUIResizable = makePluginUIResizable;
+  global.renderResizablePluginUI = renderResizablePluginUI;
 })(window);

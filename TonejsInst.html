@@ -265,6 +265,7 @@
                 <button class="preset-btn" data-preset="metalSynth">Metal Synth</button>
                 <button class="preset-btn" data-preset="pluckSynth">Pluck Synth</button>
             </div>
+            <div class="preset-selector" id="musicalPresetSelector" style="margin-top:0.5rem;"></div>
             
             <div class="keyboard" id="keyboard"></div>
             
@@ -466,10 +467,68 @@
             octaves: 1.5
         });
 
-        // Initialize synthesizer
-        function initSynth(type = 'polySynth') {
+        // Musical presets for each synth type
+        const synthPresets = {
+            polySynth: {
+                'Warm Pad': { envelope: { attack: 0.5, decay: 0.3, sustain: 0.7, release: 2 } },
+                'Bright Keys': { envelope: { attack: 0.01, decay: 0.1, sustain: 0.4, release: 0.5 } },
+                'Soft Pluck': { envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.3 } },
+                'Organ': { envelope: { attack: 0.02, decay: 0.1, sustain: 0.9, release: 1.2 } }
+            },
+            fmSynth: {
+                'Electric Piano': { envelope: { attack: 0.02, decay: 0.2, sustain: 0.5, release: 1.2 } },
+                'FM Bass': { envelope: { attack: 0.01, decay: 0.15, sustain: 0.3, release: 0.7 } },
+                'Bells': { envelope: { attack: 0.01, decay: 1.2, sustain: 0.1, release: 2.5 } }
+            },
+            amSynth: {
+                'Soft Lead': { envelope: { attack: 0.05, decay: 0.2, sustain: 0.5, release: 0.8 } },
+                'Chiff': { envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.3 } }
+            },
+            monoSynth: {
+                'Bass': { envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.5 }, filterEnvelope: { baseFrequency: 200 } },
+                'Acid': { envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 0.2 }, filterEnvelope: { baseFrequency: 1200 } },
+                'Classic Lead': { envelope: { attack: 0.01, decay: 0.2, sustain: 0.7, release: 0.8 }, filterEnvelope: { baseFrequency: 800 } }
+            },
+            duoSynth: {
+                'Wide Lead': { envelope: { attack: 0.01, decay: 0.2, sustain: 0.7, release: 1.2 }, filterEnvelope: { baseFrequency: 1000 } },
+                'Brass': { envelope: { attack: 0.02, decay: 0.15, sustain: 0.6, release: 0.7 }, filterEnvelope: { baseFrequency: 700 } }
+            },
+            membraneSynth: {
+                'Kick': { envelope: { attack: 0.01, decay: 0.4, sustain: 0.1, release: 1.2 } },
+                'Tom': { envelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.8 } }
+            },
+            metalSynth: {
+                'Cymbal': { envelope: { attack: 0.001, decay: 1.4, release: 0.2 } },
+                'Bell': { envelope: { attack: 0.01, decay: 1.2, release: 2.5 } }
+            },
+            pluckSynth: {
+                'Pluck': { envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.3 } },
+                'Muted Pluck': { envelope: { attack: 0.01, decay: 0.1, sustain: 0.05, release: 0.1 } }
+            }
+        };
+
+        let currentSynthType = 'polySynth';
+        let currentMusicalPreset = null;
+
+        function initSynth(type = 'polySynth', presetName = null) {
             if (currentSynth) {
                 currentSynth.dispose();
+            }
+            currentSynthType = type;
+            let preset = null;
+            if (presetName && synthPresets[type] && synthPresets[type][presetName]) {
+                preset = synthPresets[type][presetName];
+                currentMusicalPreset = presetName;
+            } else {
+                // Default to first preset if available
+                const presetNames = synthPresets[type] ? Object.keys(synthPresets[type]) : [];
+                if (presetNames.length > 0) {
+                    preset = synthPresets[type][presetNames[0]];
+                    currentMusicalPreset = presetNames[0];
+                } else {
+                    preset = null;
+                    currentMusicalPreset = null;
+                }
             }
 
             switch (type) {
@@ -499,7 +558,19 @@
                     break;
             }
 
-            updateParameterControls(type);
+            // Apply preset if available
+            if (preset && currentSynth) {
+                for (const group in preset) {
+                    if (currentSynth[group]) {
+                        Object.assign(currentSynth[group], preset[group]);
+                    } else {
+                        currentSynth[group] = preset[group];
+                    }
+                }
+            }
+
+            updateParameterControls(type, preset);
+            updateMusicalPresetSelector(type);
         }
 
         // Create keyboard
@@ -546,61 +617,61 @@
         }
 
         // Parameter controls
-        function updateParameterControls(synthType) {
+        function updateParameterControls(synthType, preset = null) {
             const paramsContainer = document.getElementById('synthParams');
             paramsContainer.innerHTML = '';
 
             let parameters = {};
-
+            // Use preset values if available, otherwise defaults
             switch (synthType) {
                 case 'polySynth':
                 case 'fmSynth':
                 case 'amSynth':
                     parameters = {
-                        'Attack': { param: 'envelope.attack', min: 0, max: 2, step: 0.01, value: 0.01 },
-                        'Decay': { param: 'envelope.decay', min: 0, max: 2, step: 0.01, value: 0.1 },
-                        'Sustain': { param: 'envelope.sustain', min: 0, max: 1, step: 0.01, value: 0.3 },
-                        'Release': { param: 'envelope.release', min: 0, max: 5, step: 0.01, value: 1 }
+                        'Attack': { param: 'envelope.attack', min: 0, max: 2, step: 0.01, value: preset?.envelope?.attack ?? 0.01 },
+                        'Decay': { param: 'envelope.decay', min: 0, max: 2, step: 0.01, value: preset?.envelope?.decay ?? 0.1 },
+                        'Sustain': { param: 'envelope.sustain', min: 0, max: 1, step: 0.01, value: preset?.envelope?.sustain ?? 0.3 },
+                        'Release': { param: 'envelope.release', min: 0, max: 5, step: 0.01, value: preset?.envelope?.release ?? 1 }
                     };
                     break;
                 case 'monoSynth':
                 case 'duoSynth':
                     parameters = {
-                        'Attack': { param: 'envelope.attack', min: 0, max: 2, step: 0.01, value: 0.005 },
-                        'Decay': { param: 'envelope.decay', min: 0, max: 2, step: 0.01, value: 0.1 },
-                        'Sustain': { param: 'envelope.sustain', min: 0, max: 1, step: 0.01, value: 0.9 },
-                        'Release': { param: 'envelope.release', min: 0, max: 5, step: 0.01, value: 1 },
-                        'Filter Freq': { param: 'filterEnvelope.baseFrequency', min: 50, max: 5000, step: 10, value: 1000 }
+                        'Attack': { param: 'envelope.attack', min: 0, max: 2, step: 0.01, value: preset?.envelope?.attack ?? 0.005 },
+                        'Decay': { param: 'envelope.decay', min: 0, max: 2, step: 0.01, value: preset?.envelope?.decay ?? 0.1 },
+                        'Sustain': { param: 'envelope.sustain', min: 0, max: 1, step: 0.01, value: preset?.envelope?.sustain ?? 0.9 },
+                        'Release': { param: 'envelope.release', min: 0, max: 5, step: 0.01, value: preset?.envelope?.release ?? 1 },
+                        'Filter Freq': { param: 'filterEnvelope.baseFrequency', min: 50, max: 5000, step: 10, value: preset?.filterEnvelope?.baseFrequency ?? 1000 }
                     };
                     break;
                 default:
                     parameters = {
-                        'Attack': { param: 'envelope.attack', min: 0, max: 2, step: 0.01, value: 0.01 },
-                        'Decay': { param: 'envelope.decay', min: 0, max: 2, step: 0.01, value: 0.4 },
-                        'Sustain': { param: 'envelope.sustain', min: 0, max: 1, step: 0.01, value: 0.1 },
-                        'Release': { param: 'envelope.release', min: 0, max: 5, step: 0.01, value: 1.4 }
+                        'Attack': { param: 'envelope.attack', min: 0, max: 2, step: 0.01, value: preset?.envelope?.attack ?? 0.01 },
+                        'Decay': { param: 'envelope.decay', min: 0, max: 2, step: 0.01, value: preset?.envelope?.decay ?? 0.4 },
+                        'Sustain': { param: 'envelope.sustain', min: 0, max: 1, step: 0.01, value: preset?.envelope?.sustain ?? 0.1 },
+                        'Release': { param: 'envelope.release', min: 0, max: 5, step: 0.01, value: preset?.envelope?.release ?? 1.4 }
                     };
             }
 
             Object.entries(parameters).forEach(([name, param]) => {
                 const control = document.createElement('div');
                 control.className = 'parameter-control';
-                
+
                 const label = document.createElement('label');
                 label.innerHTML = `${name} <span class="value-display" id="${name.toLowerCase().replace(' ', '')}">${param.value}</span>`;
-                
+
                 const slider = document.createElement('input');
                 slider.type = 'range';
                 slider.min = param.min;
                 slider.max = param.max;
                 slider.step = param.step;
                 slider.value = param.value;
-                
+
                 slider.addEventListener('input', (e) => {
                     const value = parseFloat(e.target.value);
-                    document.getElementById(name.toLowerCase().replace(' ', '')).textContent = 
+                    document.getElementById(name.toLowerCase().replace(' ', '')).textContent =
                         name.includes('Freq') ? `${Math.round(value)}Hz` : value.toFixed(2);
-                    
+
                     if (currentSynth) {
                         const paramPath = param.param.split('.');
                         if (paramPath.length === 2) {
@@ -610,10 +681,28 @@
                         }
                     }
                 });
-                
+
                 control.appendChild(label);
                 control.appendChild(slider);
                 paramsContainer.appendChild(control);
+            });
+        }
+
+        // Update musical preset selector UI
+        function updateMusicalPresetSelector(synthType) {
+            const selector = document.getElementById('musicalPresetSelector');
+            selector.innerHTML = '';
+            const presets = synthPresets[synthType] ? Object.keys(synthPresets[synthType]) : [];
+            presets.forEach(presetName => {
+                const btn = document.createElement('button');
+                btn.className = 'preset-btn' + (presetName === currentMusicalPreset ? ' active' : '');
+                btn.textContent = presetName;
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#musicalPresetSelector .preset-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    initSynth(currentSynthType, presetName);
+                });
+                selector.appendChild(btn);
             });
         }
 
@@ -837,12 +926,10 @@
             setupEffectControls();
             setupTransportControls();
             setupPresetSelection();
-            
             // Set some default patterns
             kickPattern[0] = kickPattern[4] = kickPattern[8] = kickPattern[12] = true;
             snarePattern[4] = snarePattern[12] = true;
             hihatPattern[2] = hihatPattern[6] = hihatPattern[10] = hihatPattern[14] = true;
-            
             // Update UI
             document.querySelectorAll('.step').forEach((step, idx) => {
                 const drum = step.dataset.drum;
