@@ -1,12 +1,77 @@
-Emscripten command:
-source /usr/local/emsdk/emsdk_env.sh
+A collection of web-based super super sick audio tools
 
-Make buttons one colors, text other
+To Do List:
+-Polish UI of Audioverse DAW
+-Utilize Tone.js to its full extent, with tons of instruments
+-Use Webassembly C++ to make Web Reaper work
+-Audio Analyzing tools
+For Main DAW specifically
+-UI, perhaps switch framework to use no emojis and only custom graphics
+    +In depth audio visualization tool
+    +Automation
+-Redesign DAW to use Tone.js and add virtual instrument support
 
-Make buttons size proportional to importance
+But first use Tone.js in a web app.
+Will use a React framework research 
 
-title
+humanize the writing of the readme
 
-Icons professional
+decide which framework from Graphics.md is the best for creating a desktop'
+graphics quality daw fully supported on website
 
-Window Control
+I want to create a completely new web application completely seperate and not
+referencing any other files in this repository, for now. It will be Virtual instrument DAW and will use a completely different framework (mantime). 
+I need your help deciding the complete set library dependcies that are best for creating 
+this web application to be desktop quality. Put your suggestions in a md file called
+plan.md.
+
+A common downfall when using all these libraries and dependcies is using
+wrong syntax or commands that don't exist in that library. In plan.md,
+state method of obtaining depencies(e.g. cdn link or installing or cloning from repo),
+put links to reference official documentation of each library
+and be throughly grounded with documentation. Search up latest stable version of each library
+if neccessary
+
+Reorganize everything in home folder of repo into a 
+folder so that nothing except md and txt files are in home folder exposed.
+Pack the rest of the files into existing or new subdirectory
+
+Objective of this prompt: Start Virtual Instrument DAW in organized folder and file structure
+-Fetch dependencies for Virtual Instrument DAW
+-Look at plan.md to reference
+
+Objective of this prompt: rename folder and main file for new mantime app (now called Open Musician)
+-name main html file openmusicianhtml, not index.html
+-no generic names
+-always check problems panel in vs code after done with goals for future reference
+
+should i use rolldown-vite (experimental)?
+
+It works now, time for the big guns: Making expansive first draft plan in new plan.md file of Open Musician
+-Throughly dig and utilize the full extent of tone.js and other sound libraries included and
+make Open Musician fully functional
+    +Piano roll view similar to FL Studio with well-thought out, intiuitive user interaction (mouse controls, selection, etc...)
+    +Primarily track workflow, window workflow (track view, mixer view, step sequencer view, perhaps score editing view like Noteflight)
+    +Midi support and triggers
+    +Clip based workflow (clip as in a chunk of midi notes with visual boundaries), copy and pastable, split, merge clips, etc...
+    +Tons of official Tone.js instruments ready at track header, with features to throughly tweak the instruments in a cool plugin looking environment
+    +Tons of official Tone.js audio effects ready to apply to any track, and master track
+    +Smooth and sleak User interaction experience (if user wants to drag something, web app shouldn't select text, make text unselectable), auto-scrolling
+    vertical and manual scrolling should feel smooth,
+    +Virtual midi keyboard and musical typing with computer keyboard, to manually trigger virtual instruments.
+    +Transport controls are standard DAW grade
+    +Timeline and timing system is robust and user interaction is smooth, code features for tempo changes and metronome feature
+    +Accurate and high resolution Audio visualization of tracks, export audio and midi files features
+    +Audio Clip upload and playback support, no recording audio
+-Flex the capabilities of the graphics and animation libraries installed
+ by creating the dyanmic UI being "super super sick" desktop quality
+    +UI is so good that, User should experience surprise that the UI created in this project was even possible on a website
+    +UI should look desktop like (resizable windows and elements, multiple movable windows, etc...)
+    +Standard Cascading Menu to find every feature on there
+    +Symbols/pictures used in app should be custom drawn/coded no emojis
+    +Button and element postions should make sense and be intiuitive
+    +Include smooth animation logic for actions for smooth experience such as drag and drop clip, sliding clips horizontally across track area
+    +Timeline marker lines going all the way down, no stop, dark color so hard to see, 
+    +Zooming in and out of piano roll, multitrack area, audio visualization areas, everywhere neccessary
+
+prepare to debug your 

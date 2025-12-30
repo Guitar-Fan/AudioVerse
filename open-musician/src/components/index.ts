@@ -1,0 +1,7 @@
+export { TransportControls } from './Transport/TransportControls'
+export { MixerPanel } from './Mixer/MixerPanel'
+export { PianoRollEditor } from './PianoRoll/PianoRollEditor'
+export { ArrangeView } from './Sequencer/ArrangeView'
+export { ResourceBrowser } from './Browser/ResourceBrowser'
+export { InstrumentsPanel } from './Instruments/InstrumentsPanel'
+export { EffectsRack } from './Effects/EffectsRack'
