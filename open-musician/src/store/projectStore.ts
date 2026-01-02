@@ -98,10 +98,20 @@ type ProjectState = {
   clips: Clip[]
   markers: TimelineMarker[]
   selectedTrackId?: string
+  selectedClipId?: string
   zoom: number
   viewMode: SequencerViewMode
   setTracks: (tracks: Track[]) => void
   selectTrack: (trackId: string) => void
+  selectClip: (clipId?: string) => void
+  setTrackVolume: (trackId: string, volume: number) => void
+  setTrackPan: (trackId: string, pan: number) => void
+  toggleTrackMute: (trackId: string) => void
+  toggleTrackSolo: (trackId: string) => void
+  toggleTrackArm: (trackId: string) => void
+  setTrackColor: (trackId: string, color: string) => void
+  setTrackOutput: (trackId: string, outputId?: string) => void
+  setSendLevel: (trackId: string, sendId: string, level: number) => void
   setZoom: (zoom: number) => void
   setViewMode: (mode: SequencerViewMode) => void
   addClip: (clip: ClipPayload) => void
@@ -119,10 +129,63 @@ export const useProjectStore = create<ProjectState>((set) => ({
   clips: initialClips,
   markers: initialMarkers,
   selectedTrackId: defaultTracks[0]?.id,
+  selectedClipId: undefined,
   zoom: 1,
   viewMode: 'arrange',
   setTracks: (tracks) => set({ tracks }),
   selectTrack: (trackId) => set({ selectedTrackId: trackId }),
+  selectClip: (clipId) => set({ selectedClipId: clipId }),
+  setTrackVolume: (trackId, volume) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) =>
+        track.id === trackId ? { ...track, volume: Math.min(1, Math.max(0, volume)) } : track,
+      ),
+    })),
+  setTrackPan: (trackId, pan) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) =>
+        track.id === trackId ? { ...track, pan: Math.min(100, Math.max(-100, pan)) } : track,
+      ),
+    })),
+  toggleTrackMute: (trackId) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) =>
+        track.id === trackId ? { ...track, muted: !track.muted, solo: track.solo && track.muted } : track,
+      ),
+    })),
+  toggleTrackSolo: (trackId) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) =>
+        track.id === trackId ? { ...track, solo: !track.solo, muted: track.muted && track.solo } : track,
+      ),
+    })),
+  toggleTrackArm: (trackId) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) =>
+        track.id === trackId ? { ...track, armed: !track.armed } : track,
+      ),
+    })),
+  setTrackColor: (trackId, color) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) => (track.id === trackId ? { ...track, color } : track)),
+    })),
+  setTrackOutput: (trackId, outputId) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) => (track.id === trackId ? { ...track, outputId } : track)),
+    })),
+  setSendLevel: (trackId, sendId, level) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) =>
+        track.id === trackId
+          ? {
+              ...track,
+              sends: track.sends.map((send) =>
+                send.id === sendId ? { ...send, level: Math.min(1, Math.max(0, level)) } : send,
+              ),
+            }
+          : track,
+      ),
+    })),
   setZoom: (zoom) =>
     set({
       zoom: Math.min(4, Math.max(0.5, Number.isFinite(zoom) ? zoom : 1)),

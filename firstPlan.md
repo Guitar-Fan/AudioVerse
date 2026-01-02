@@ -28,24 +28,29 @@ Deliver a web-first Digital Audio Workstation that feels indistinguishable from 
 ## Phase 1 – Track + Clip Workflow
 1. **Track Types & Headers**
    - Audio, MIDI, Instrument, Master, Return.
-   - Each header exposes mute/solo/arm, color swatch, instrument/effect badges, quick routing.
+   - Each header exposes mute/solo/arm, color swatch, instrument/effect badges, quick routing (pre/post-fader, send levels).
+   - Instrument focus: patch selector, macro knobs (Tone.js `PolySynth`, `Sampler`, `FMSynth`), articulation tag, MIDI channel/port badges, per-track monitoring/tuner indicator.
+   - Routing: Tone.js buses for returns/master, per-track input monitor toggle, record-arm for MIDI capture only, gain staging meter per header.
+   - UI: React/Mantine controls with keyboard shortcuts (M/S/R/C), color picker with recent swatches, drag-reorder tracks with auto-scroll.
    - Files: `src/components/Mixer/MixerPanel.tsx`, `src/components/Sequencer/ArrangeView.tsx`, `src/audio/Track.ts`.
 
 2. **Clip Engine**
    - Data model: `Clip { id, trackId, type: 'midi' | 'audio', start, length, loop, payload }`.
-   - Actions: add, duplicate, slip edit, resize (quantized + free), split, merge, consolidate, ghost copy.
-   - Drag gestures: custom overlay showing start/end, snap indicators, SHIFT to disable snapping.
-   - Files: `projectStore`, `ArrangeView`, `styles/global.css` (pointer cursors, no text select).
+   - Payload: MIDI notes (pitch/vel/duration), automation envelopes per clip (instrument macros, filter cutoff), audio buffer ref, pitch-shift/time-stretch tags.
+   - Actions: add, duplicate, slip edit, resize (quantized + free), split, merge, consolidate, ghost copy (linked state), bounce-in-place for instrument clips to audio.
+   - Gestures: overlay showing bar:beat start/end, snap/grid indicators, SHIFT disables snap, ALT duplicates, CMD/CTRL splits at cursor; resize handles show loop bracket counts.
+   - Files: `projectStore`, `ArrangeView`, `styles/global.css` (pointer cursors, no text select, drag affordances).
 
 3. **Timeline & Markers**
    - Absolute ruler with beats+bars, tempo/time-signature change lanes, loop region, playhead.
-   - Markers span full height with gradient lines for readability.
-   - Zoom: pinch trackpad, CTRL+scroll, dedicated slider.
+   - Markers span full height with gradient lines for readability; marker colors map to song sections; per-marker tempo/key hints for virtual instrument context.
+   - Loop region + punch range overlay; playhead follow with smooth easing; tempo/time-signature change handles that ripple schedule to Tone.js transport.
+   - Zoom: pinch trackpad, CTRL+scroll, dedicated slider; timeline and lanes remain in sync with horizontal scroll locking ruler + markers.
    - Files: `ArrangeView`, new `TimelineRuler` component using Konva or SVG.
 
 4. **Step Sequencer + Score View**
-   - Step sequencer grid for drum programming (per-track toggle).
-   - Score view (Noteflight-inspired) for printable notation (use VexFlow).
+   - Step sequencer grid per track with probability/ratchets/velocity lanes, swing per track, Euclidean fill, accent pattern presets; per-lane routing to instruments.
+   - Score view (Noteflight-inspired) for printable notation (VexFlow), showing articulations/dynamics for virtual instrument phrasing (staccato/legato/forte marks).
    - Files: `src/components/Sequencer/StepSequencer.tsx`, `ScoreEditor.tsx`.
 
 ---

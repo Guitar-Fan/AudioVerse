@@ -74,4 +74,18 @@ make Open Musician fully functional
     +Timeline marker lines going all the way down, no stop, dark color so hard to see, 
     +Zooming in and out of piano roll, multitrack area, audio visualization areas, everywhere neccessary
 
-prepare to debug your 
+complete phase 1, don't debug or start server, I will do that part for future reference.
+
+right now the UI isn't making sense for a DAW, the track area should practically cover
+the entire screen and there are a bunch of other not making sense arrangment with the 
+tone.js DAW. Also integrate eruda so I can debug it
+
+look at Mididawwithideas.html and create a similar single html page that is a 
+tone.js exhibit, showcasing the built in instruments of tone.js, with support from
+other vanilla compatible js libraries like midi.js, <script src="https://unpkg.com/d3@^7.0.0/dist/d3.min.js"></script>,
+for ui and ux. the output html should allow user to midi sequence notes, and hear 
+the audio output of the tone.js instruments.
+
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+

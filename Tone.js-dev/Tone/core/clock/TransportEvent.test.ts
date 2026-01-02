@@ -1,0 +1,44 @@
+import { expect } from "chai";
+
+import { Offline } from "../../../test/helper/Offline.js";
+import { TransportInstance } from "./Transport.js";
+import { TransportEvent } from "./TransportEvent.js";
+
+describe("TransportEvent", () => {
+	it("can be created and disposed", () => {
+		return Offline((context) => {
+			const transport = new TransportInstance({ context });
+			const event = new TransportEvent(transport, {
+				time: 0,
+			});
+			event.dispose();
+		});
+	});
+
+	it("has a unique id", () => {
+		return Offline((context) => {
+			const transport = new TransportInstance({ context });
+			const event = new TransportEvent(transport, {
+				time: 0,
+			});
+			expect(event.id).to.be.a("number");
+			event.dispose();
+		});
+	});
+
+	it("can invoke the callback", async () => {
+		let wasInvoked = false;
+		await Offline((context) => {
+			const transport = new TransportInstance({ context });
+			const event = new TransportEvent(transport, {
+				callback: (time) => {
+					expect(time).to.equal(100);
+					wasInvoked = true;
+				},
+				time: 0,
+			});
+			event.invoke(100);
+		});
+		expect(wasInvoked).to.equal(true);
+	});
+});

@@ -1,0 +1,35 @@
+Make UI desktop quality using largely d3 js library and others from unpkg link, for coding the plugin window experience
+for each instrument and effect, have a dedicated "plugin" window for it, with every parameter adjustable with them, have a Figma like canvas/diagram UX where 
+user can manually wire by mouse draging the wires from input "the virutal midi keyboard", through any plugin and amount of plugins they want, (there is a bank of plugin, and if they double click into plugin, 
+they will see dedicated plugin window for it ) to output which is speakers. user can freely move elements on the canvas.\
+this will be a addition and redesign of both frontend and 
+
+
+Add a selection of tone.js built instruments in a bank to load to the piano keys, try to not messup
+the midi logic and anything else. Use ToneJS_Deep_exploration.html as a reference
+
+add multi-track writing function that allows multiple midi clips to play
+at the same time the ai messed up, need dropdown menus
+
+to Midi_DAW_With_Ideas.html
+
+don't delete function to load custom audio file that pitches up and down to be triggered
+by piano tiles
+
+add ability to jump ahead anywhere on timeline and playback, go back or forward a measure. Basically improve transport and time system proactively (don't delete any existing functionality, you should only stack functionality).
+Expand selection of midi writing tools to be more versatile, to be able to select multiple notes with a expandable visual dashed rectangle, 
+have mass selection actions like delete, drag selected notes down or up semitones. Upgrade midi writing
+handling logic to be like FL Studio (right click drag over notes to delete them, be proactive about this one). Add right click actions on notes and selection of notes, with custom sleek, skinny black context menu
+with options like delete, move up and down a semitone (2 options here), move up and down an octave (2 options), be proactive.
+Note: being proactive doesn't mean to mess up functionality I already have. Make little edits frequently to not mess up.
+
+Polysynth, pluck synth sound the same. Add parameters that modify how the instruments sounds.
+Add a way to expand the loaded instrument to change parameters in a custom window pop up
+that looks good like a plugin interface (fun ways to dial controls like faders, 3d buttons animations, type in controls, looks like sound hardware), properly saves the parameters to the instrument everytime.
+Add deep, intricate parameters for each instrument. 
+
+The timeline quite isn't working (the already existin time features work, like autoscroll), 
+when I try to click a custom place on timeline, 
+it keeps going back to slightly before the playhead was when I clicked it not matter where I click , 
+the skip ahead or behind measure 
+Also I got a lot of errors in eruda when I try to modify the parameters in 

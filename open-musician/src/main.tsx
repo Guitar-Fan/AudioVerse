@@ -8,6 +8,12 @@ import '@mantine/dates/styles.css'
 import './styles/global.css'
 import App from './App'
 
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  import('eruda').then((eruda) => {
+    eruda.default?.init?.()
+  })
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider defaultColorScheme="dark" withGlobalStyles withNormalizeCSS>

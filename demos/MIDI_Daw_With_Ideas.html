@@ -250,6 +250,262 @@
         .loop-region:hover .loop-marker {
             opacity: 1;
         }
+        .instrument-selector {
+            background: #3f3f46;
+            color: #e4e4e7;
+            border: 1px solid #52525b;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 13px;
+            cursor: pointer;
+            min-width: 140px;
+        }
+        .instrument-selector:hover {
+            background: #52525b;
+        }
+        .selection-rectangle {
+            position: absolute;
+            border: 2px dashed #60a5fa;
+            background: rgba(96, 165, 250, 0.1);
+            pointer-events: none;
+            z-index: 20;
+            display: none;
+        }
+        .note.selected {
+            border: 2px solid #60a5fa !important;
+            box-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
+        }
+        .context-menu {
+            position: fixed;
+            background: #18181b;
+            border: 1px solid #52525b;
+            border-radius: 6px;
+            padding: 4px 0;
+            min-width: 180px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+        }
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #e4e4e7;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .context-menu-item:hover {
+            background: #3f3f46;
+        }
+        .context-menu-separator {
+            height: 1px;
+            background: #3f3f46;
+            margin: 4px 0;
+        }
+        .context-menu-item .shortcut {
+            margin-left: auto;
+            font-size: 11px;
+            color: #a1a1aa;
+        }
+        .plugin-interface {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #334155;
+            border-radius: 12px;
+            padding: 0;
+            min-width: 600px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            display: none;
+        }
+        .plugin-header {
+            background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+            padding: 16px 24px;
+            border-bottom: 1px solid #475569;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: move;
+        }
+        .plugin-title {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .plugin-close {
+            background: #ef4444;
+            border: none;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .plugin-close:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+        .plugin-body {
+            padding: 24px;
+            overflow-y: auto;
+            max-height: calc(80vh - 80px);
+        }
+        .param-section {
+            margin-bottom: 24px;
+        }
+        .param-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #334155;
+        }
+        .param-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 20px;
+        }
+        .param-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .knob-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin-bottom: 8px;
+        }
+        .knob {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 3px solid #334155;
+            position: relative;
+            cursor: pointer;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.15s;
+        }
+        .knob:hover {
+            border-color: #60a5fa;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.5), 0 4px 12px rgba(96,165,250,0.3);
+        }
+        .knob::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, #60a5fa, #3b82f6);
+            border-radius: 2px;
+            box-shadow: 0 0 8px rgba(96,165,250,0.8);
+        }
+        .knob-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            pointer-events: none;
+        }
+        .param-label {
+            font-size: 12px;
+            color: #cbd5e1;
+            text-align: center;
+            font-weight: 500;
+        }
+        .fader-container {
+            width: 40px;
+            height: 120px;
+            background: linear-gradient(180deg, #1e293b, #0f172a);
+            border-radius: 20px;
+            border: 2px solid #334155;
+            position: relative;
+            margin-bottom: 8px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
+        }
+        .fader-track {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: calc(100% - 20px);
+            background: #0f172a;
+            border-radius: 2px;
+        }
+        .fader-thumb {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 32px;
+            height: 16px;
+            background: linear-gradient(180deg, #475569, #334155);
+            border: 2px solid #60a5fa;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 8px rgba(96,165,250,0.3);
+            transition: all 0.15s;
+        }
+        .fader-thumb:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 12px rgba(96,165,250,0.6);
+        }
+        .select-control {
+            width: 100%;
+            padding: 8px 12px;
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .select-control:hover {
+            border-color: #60a5fa;
+        }
+        .expand-btn {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+        .expand-btn:hover {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
     </style>
 </head>
 <body class="flex flex-col h-screen overflow-hidden">
@@ -269,6 +525,9 @@
             <button id="rewind-btn" class="transport-btn" title="Rewind to Start">
                 <svg fill="currentColor" viewBox="0 0 20 20"><path d="M8.445 14.832A1 1 0 0010 14.032V5.968a1 1 0 00-1.555-.832L4 9.168V6a1 1 0 00-2 0v8a1 1 0 102 0v-3.168l4.445 4zM15.555 14.832A1 1 0 0017 14.032V5.968a1 1 0 00-1.555-.832L11 9.168V6a1 1 0 10-2 0v8a1 1 0 102 0v-3.168l4.555 4z"/></svg>
             </button>
+            <button id="prev-measure-btn" class="transport-btn" title="Previous Measure (←)">
+                <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd"/></svg>
+            </button>
             <button id="play-btn" class="transport-btn" title="Play">
                 <svg id="play-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/></svg>
                 <svg id="pause-icon" class="hidden" viewBox="0 0 20 20" fill="currentColor"><path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z"/></svg>
@@ -279,9 +538,28 @@
             <button id="loop-btn" class="transport-btn" title="Toggle Loop">
                 <svg viewBox="0 0 20 20" fill="currentColor"><path d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm-11.90-5.126a.75.75 0 00.42.404 7 7 0 0011.712-3.138.75.75 0 00-1.449-.39 5.5 5.5 0 01-9.201 2.466l-.312-.311v-2.43a.75.75 0 00-1.5 0v4.242c0 .414.336.75.75.75h4.243a.75.75 0 000-1.5H6.1l.31-.31z"/></svg>
             </button>
+            <button id="next-measure-btn" class="transport-btn" title="Next Measure (→)">
+                <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>
+            </button>
             <div class="playback-position" id="playback-position">0:00:000</div>
         </div>
         
+        <div class="control-group">
+            <label for="instrument-select" class="text-sm mr-2">Instrument:</label>
+            <select id="instrument-select" class="instrument-selector">
+                <option value="PolySynth">Poly Synth</option>
+                <option value="MonoSynth">Mono Synth</option>
+                <option value="FMSynth">FM Synth</option>
+                <option value="AMSynth">AM Synth</option>
+                <option value="DuoSynth">Duo Synth</option>
+                <option value="PluckSynth">Pluck Synth</option>
+                <option value="MembraneSynth">Membrane Synth</option>
+                <option value="MetalSynth">Metal Synth</option>
+                <option value="Sampler">Sampler</option>
+            </select>
+            <button id="expand-params-btn" class="expand-btn" title="Edit Instrument Parameters">⚙️ Edit</button>
+        </div>
+
         <div class="control-group">
             <label for="signature-select" class="text-sm mr-2">Signature:</label>
             <select id="signature-select" class="text-sm rounded-md p-1">
@@ -345,6 +623,7 @@
             <div id="grid-container" class="flex-grow h-full overflow-auto bg-zinc-900 relative">
                 <div id="grid-lines-container" class="absolute top-0 left-0 w-full h-full pointer-events-none z-0"></div>
                 <div id="note-container" class="relative z-10 h-full"></div>
+                <div id="selection-rectangle" class="selection-rectangle"></div>
                 <div id="playback-cursor"></div>
                 <div id="snap-indicator" class="snap-indicator"></div>
                 <div id="loop-region" class="loop-region" style="display: none;">
@@ -354,6 +633,43 @@
             </div>
         </div>
     </main>
+
+    <!-- Context Menu -->
+    <div id="context-menu" class="context-menu">
+        <div class="context-menu-item" data-action="delete">
+            <span>Delete</span>
+            <span class="shortcut">Del</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" data-action="transpose-up-semitone">
+            <span>Move Up Semitone</span>
+            <span class="shortcut">↑</span>
+        </div>
+        <div class="context-menu-item" data-action="transpose-down-semitone">
+            <span>Move Down Semitone</span>
+            <span class="shortcut">↓</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" data-action="transpose-up-octave">
+            <span>Move Up Octave</span>
+            <span class="shortcut">Shift+↑</span>
+        </div>
+        <div class="context-menu-item" data-action="transpose-down-octave">
+            <span>Move Down Octave</span>
+            <span class="shortcut">Shift+↓</span>
+        </div>
+    </div>
+
+    <!-- Plugin Interface -->
+    <div id="plugin-interface" class="plugin-interface">
+        <div class="plugin-header" id="plugin-header">
+            <div class="plugin-title" id="plugin-title">Instrument Parameters</div>
+            <button class="plugin-close" id="plugin-close">✕</button>
+        </div>
+        <div class="plugin-body" id="plugin-body">
+            <!-- Parameters will be dynamically generated here -->
+        </div>
+    </div>
 
     <script>
         // --- Tone.js Start Context ---
@@ -394,6 +710,17 @@
         const loopRegion = document.getElementById('loop-region');
         const loopStartMarker = document.getElementById('loop-start-marker');
         const loopEndMarker = document.getElementById('loop-end-marker');
+        const instrumentSelect = document.getElementById('instrument-select');
+        const prevMeasureBtn = document.getElementById('prev-measure-btn');
+        const nextMeasureBtn = document.getElementById('next-measure-btn');
+        const selectionRectangle = document.getElementById('selection-rectangle');
+        const contextMenu = document.getElementById('context-menu');
+        const expandParamsBtn = document.getElementById('expand-params-btn');
+        const pluginInterface = document.getElementById('plugin-interface');
+        const pluginHeader = document.getElementById('plugin-header');
+        const pluginClose = document.getElementById('plugin-close');
+        const pluginTitle = document.getElementById('plugin-title');
+        const pluginBody = document.getElementById('plugin-body');
 
         // --- State ---
         let midiData = null;
@@ -410,11 +737,408 @@
         let loopEnd = 8; // Default 2 measures in 4/4
         let maxMeasures = 1000; // Practically unlimited
         let playbackUpdateInterval = null;
+        
+        // Selection state
+        let selectedNotes = new Set();
+        let isSelecting = false;
+        let selectionStart = null;
+        let isRightClickDeleting = false;
+        let isDraggingNotes = false;
+        let dragStartY = 0;
+        let noteDragData = [];
 
         // --- Instruments ---
         let sampler = new Tone.Sampler().toDestination();
         let samplesLoaded = false;
+        let currentInstrument = null;
+        let currentInstrumentType = 'PolySynth';
         const trackColors = ['#3b82f6','#22c55e','#ef4444','#eab308','#a855f7','#f97316','#ec4899','#6366f1'];
+        
+        // Store parameters for each instrument type
+        let instrumentParameters = {
+            PolySynth: {},
+            MonoSynth: {},
+            FMSynth: {},
+            AMSynth: {},
+            DuoSynth: {},
+            PluckSynth: {},
+            MembraneSynth: {},
+            MetalSynth: {},
+            Sampler: {}
+        };
+        
+        // Parameter definitions for each instrument
+        const parameterDefinitions = {
+            PolySynth: {
+                'Oscillator': [
+                    { name: 'type', label: 'Wave Type', type: 'select', options: ['sine', 'triangle', 'square', 'sawtooth'], default: 'sine' },
+                    { name: 'detune', label: 'Detune', type: 'knob', min: -100, max: 100, default: 0, unit: 'cents' },
+                    { name: 'phase', label: 'Phase', type: 'knob', min: 0, max: 360, default: 0, unit: '°' }
+                ],
+                'Envelope': [
+                    { name: 'attack', label: 'Attack', type: 'knob', min: 0.001, max: 2, default: 0.005, unit: 's' },
+                    { name: 'decay', label: 'Decay', type: 'knob', min: 0.001, max: 2, default: 0.1, unit: 's' },
+                    { name: 'sustain', label: 'Sustain', type: 'knob', min: 0, max: 1, default: 0.3, unit: '' },
+                    { name: 'release', label: 'Release', type: 'knob', min: 0.001, max: 5, default: 1, unit: 's' }
+                ],
+                'Filter': [
+                    { name: 'filterType', label: 'Filter Type', type: 'select', options: ['lowpass', 'highpass', 'bandpass'], default: 'lowpass' },
+                    { name: 'filterFrequency', label: 'Cutoff', type: 'knob', min: 20, max: 20000, default: 5000, unit: 'Hz', log: true },
+                    { name: 'filterQ', label: 'Resonance', type: 'knob', min: 0.001, max: 30, default: 1, unit: 'Q' }
+                ],
+                'Voice': [
+                    { name: 'portamento', label: 'Portamento', type: 'knob', min: 0, max: 0.5, default: 0, unit: 's' },
+                    { name: 'volume', label: 'Volume', type: 'fader', min: -40, max: 6, default: 0, unit: 'dB' }
+                ]
+            },
+            MonoSynth: {
+                'Oscillator': [
+                    { name: 'type', label: 'Wave Type', type: 'select', options: ['sine', 'triangle', 'square', 'sawtooth'], default: 'sawtooth' },
+                    { name: 'detune', label: 'Detune', type: 'knob', min: -100, max: 100, default: 0, unit: 'cents' }
+                ],
+                'Filter': [
+                    { name: 'filterType', label: 'Filter Type', type: 'select', options: ['lowpass', 'highpass', 'bandpass'], default: 'lowpass' },
+                    { name: 'filterFrequency', label: 'Cutoff', type: 'knob', min: 20, max: 20000, default: 2000, unit: 'Hz', log: true },
+                    { name: 'filterQ', label: 'Resonance', type: 'knob', min: 0.001, max: 30, default: 6, unit: 'Q' },
+                    { name: 'filterRolloff', label: 'Rolloff', type: 'select', options: ['-12', '-24', '-48', '-96'], default: '-24' }
+                ],
+                'Envelope': [
+                    { name: 'attack', label: 'Attack', type: 'knob', min: 0.001, max: 2, default: 0.005, unit: 's' },
+                    { name: 'decay', label: 'Decay', type: 'knob', min: 0.001, max: 2, default: 0.1, unit: 's' },
+                    { name: 'sustain', label: 'Sustain', type: 'knob', min: 0, max: 1, default: 0.9, unit: '' },
+                    { name: 'release', label: 'Release', type: 'knob', min: 0.001, max: 5, default: 1, unit: 's' }
+                ],
+                'Filter Envelope': [
+                    { name: 'filterAttack', label: 'Attack', type: 'knob', min: 0.001, max: 2, default: 0.005, unit: 's' },
+                    { name: 'filterDecay', label: 'Decay', type: 'knob', min: 0.001, max: 2, default: 0.1, unit: 's' },
+                    { name: 'filterSustain', label: 'Sustain', type: 'knob', min: 0, max: 1, default: 0.5, unit: '' },
+                    { name: 'filterRelease', label: 'Release', type: 'knob', min: 0.001, max: 5, default: 2, unit: 's' },
+                    { name: 'filterBaseFrequency', label: 'Base Freq', type: 'knob', min: 20, max: 20000, default: 200, unit: 'Hz', log: true },
+                    { name: 'filterOctaves', label: 'Octaves', type: 'knob', min: 0, max: 8, default: 4, unit: '' }
+                ],
+                'Voice': [
+                    { name: 'portamento', label: 'Portamento', type: 'knob', min: 0, max: 0.5, default: 0, unit: 's' },
+                    { name: 'volume', label: 'Volume', type: 'fader', min: -40, max: 6, default: 0, unit: 'dB' }
+                ]
+            },
+            FMSynth: {
+                'Carrier': [
+                    { name: 'carrierType', label: 'Wave Type', type: 'select', options: ['sine', 'triangle', 'square', 'sawtooth'], default: 'sine' },
+                    { name: 'carrierDetune', label: 'Detune', type: 'knob', min: -100, max: 100, default: 0, unit: 'cents' }
+                ],
+                'Modulator': [
+                    { name: 'modulatorType', label: 'Wave Type', type: 'select', options: ['sine', 'triangle', 'square', 'sawtooth'], default: 'square' },
+                    { name: 'modulationIndex', label: 'Mod Index', type: 'knob', min: 0, max: 100, default: 10, unit: '' },
+                    { name: 'harmonicity', label: 'Harmonicity', type: 'knob', min: 0.1, max: 8, default: 3, unit: '' }
+                ],
+                'Envelope': [
+                    { name: 'attack', label: 'Attack', type: 'knob', min: 0.001, max: 2, default: 0.01, unit: 's' },
+                    { name: 'decay', label: 'Decay', type: 'knob', min: 0.001, max: 2, default: 0.2, unit: 's' },
+                    { name: 'sustain', label: 'Sustain', type: 'knob', min: 0, max: 1, default: 0.5, unit: '' },
+                    { name: 'release', label: 'Release', type: 'knob', min: 0.001, max: 5, default: 0.5, unit: 's' }
+                ],
+                'Modulation Envelope': [
+                    { name: 'modAttack', label: 'Attack', type: 'knob', min: 0.001, max: 2, default: 0.01, unit: 's' },
+                    { name: 'modDecay', label: 'Decay', type: 'knob', min: 0.001, max: 2, default: 0.2, unit: 's' },
+                    { name: 'modSustain', label: 'Sustain', type: 'knob', min: 0, max: 1, default: 0.8, unit: '' },
+                    { name: 'modRelease', label: 'Release', type: 'knob', min: 0.001, max: 5, default: 0.5, unit: 's' }
+                ],
+                'Voice': [
+                    { name: 'portamento', label: 'Portamento', type: 'knob', min: 0, max: 0.5, default: 0, unit: 's' },
+                    { name: 'volume', label: 'Volume', type: 'fader', min: -40, max: 6, default: -6, unit: 'dB' }
+                ]
+            },
+            AMSynth: {
+                'Carrier': [
+                    { name: 'carrierType', label: 'Wave Type', type: 'select', options: ['sine', 'triangle', 'square', 'sawtooth'], default: 'sine' },
+                    { name: 'carrierDetune', label: 'Detune', type: 'knob', min: -100, max: 100, default: 0, unit: 'cents' }
+                ],
+                'Modulator': [
+                    { name: 'modulatorType', label: 'Wave Type', type: 'select', options: ['sine', 'triangle', 'square', 'sawtooth'], default: 'triangle' },
+                    { name: 'harmonicity', label: 'Harmonicity', type: 'knob', min: 0.1, max: 8, default: 3, unit: '' }
+                ],
+                'Envelope': [
+                    { name: 'attack', label: 'Attack', type: 'knob', min: 0.001, max: 2, default: 0.01, unit: 's' },
+                    { name: 'decay', label: 'Decay', type: 'knob', min: 0.001, max: 2, default: 0.2, unit: 's' },
+                    { name: 'sustain', label: 'Sustain', type: 'knob', min: 0, max: 1, default: 0.6, unit: '' },
+                    { name: 'release', label: 'Release', type: 'knob', min: 0.001, max: 5, default: 0.5, unit: 's' }
+                ],
+                'Modulation Envelope': [
+                    { name: 'modAttack', label: 'Attack', type: 'knob', min: 0.001, max: 2, default: 0.01, unit: 's' },
+                    { name: 'modDecay', label: 'Decay', type: 'knob', min: 0.001, max: 2, default: 0.2, unit: 's' },
+                    { name: 'modSustain', label: 'Sustain', type: 'knob', min: 0, max: 1, default: 0.7, unit: '' },
+                    { name: 'modRelease', label: 'Release', type: 'knob', min: 0.001, max: 5, default: 0.5, unit: 's' }
+                ],
+                'Voice': [
+                    { name: 'portamento', label: 'Portamento', type: 'knob', min: 0, max: 0.5, default: 0, unit: 's' },
+                    { name: 'volume', label: 'Volume', type: 'fader', min: -40, max: 6, default: 0, unit: 'dB' }
+                ]
+            },
+            DuoSynth: {
+                'Voice 1': [
+                    { name: 'voice0Type', label: 'Wave Type', type: 'select', options: ['sine', 'triangle', 'square', 'sawtooth'], default: 'sawtooth' },
+                    { name: 'voice0Detune', label: 'Detune', type: 'knob', min: -100, max: 100, default: 0, unit: 'cents' },
+                    { name: 'voice0Volume', label: 'Volume', type: 'knob', min: -40, max: 6, default: -10, unit: 'dB' }
+                ],
+                'Voice 2': [
+                    { name: 'voice1Type', label: 'Wave Type', type: 'select', options: ['sine', 'triangle', 'square', 'sawtooth'], default: 'square' },
+                    { name: 'voice1Detune', label: 'Detune', type: 'knob', min: -100, max: 100, default: -7, unit: 'cents' },
+                    { name: 'voice1Volume', label: 'Volume', type: 'knob', min: -40, max: 6, default: -10, unit: 'dB' }
+                ],
+                'Envelope': [
+                    { name: 'attack', label: 'Attack', type: 'knob', min: 0.001, max: 2, default: 0.01, unit: 's' },
+                    { name: 'decay', label: 'Decay', type: 'knob', min: 0.001, max: 2, default: 0.5, unit: 's' },
+                    { name: 'sustain', label: 'Sustain', type: 'knob', min: 0, max: 1, default: 0.8, unit: '' },
+                    { name: 'release', label: 'Release', type: 'knob', min: 0.001, max: 5, default: 1, unit: 's' }
+                ],
+                'Voice': [
+                    { name: 'vibratoAmount', label: 'Vibrato Amt', type: 'knob', min: 0, max: 1, default: 0.5, unit: '' },
+                    { name: 'vibratoRate', label: 'Vibrato Rate', type: 'knob', min: 0.1, max: 20, default: 5, unit: 'Hz' },
+                    { name: 'portamento', label: 'Portamento', type: 'knob', min: 0, max: 0.5, default: 0, unit: 's' },
+                    { name: 'volume', label: 'Volume', type: 'fader', min: -40, max: 6, default: 0, unit: 'dB' }
+                ]
+            },
+            PluckSynth: {
+                'String': [
+                    { name: 'attackNoise', label: 'Attack Noise', type: 'knob', min: 0.1, max: 20, default: 1, unit: '' },
+                    { name: 'dampening', label: 'Dampening', type: 'knob', min: 200, max: 10000, default: 4000, unit: 'Hz', log: true },
+                    { name: 'resonance', label: 'Resonance', type: 'knob', min: 0.1, max: 0.99, default: 0.9, unit: '' }
+                ],
+                'Envelope': [
+                    { name: 'attack', label: 'Attack', type: 'knob', min: 0.001, max: 1, default: 0.001, unit: 's' },
+                    { name: 'decay', label: 'Decay', type: 'knob', min: 0.001, max: 2, default: 1.5, unit: 's' },
+                    { name: 'sustain', label: 'Sustain', type: 'knob', min: 0, max: 1, default: 0.8, unit: '' },
+                    { name: 'release', label: 'Release', type: 'knob', min: 0.001, max: 5, default: 1.5, unit: 's' }
+                ],
+                'Voice': [
+                    { name: 'volume', label: 'Volume', type: 'fader', min: -40, max: 6, default: 0, unit: 'dB' }
+                ]
+            },
+            MembraneSynth: {
+                'Membrane': [
+                    { name: 'pitchDecay', label: 'Pitch Decay', type: 'knob', min: 0.001, max: 0.5, default: 0.05, unit: 's' },
+                    { name: 'octaves', label: 'Octaves', type: 'knob', min: 0.5, max: 8, default: 10, unit: '' }
+                ],
+                'Oscillator': [
+                    { name: 'type', label: 'Wave Type', type: 'select', options: ['sine', 'triangle', 'square', 'sawtooth'], default: 'sine' }
+                ],
+                'Envelope': [
+                    { name: 'attack', label: 'Attack', type: 'knob', min: 0.001, max: 1, default: 0.001, unit: 's' },
+                    { name: 'decay', label: 'Decay', type: 'knob', min: 0.001, max: 2, default: 0.4, unit: 's' },
+                    { name: 'sustain', label: 'Sustain', type: 'knob', min: 0, max: 1, default: 0.01, unit: '' },
+                    { name: 'release', label: 'Release', type: 'knob', min: 0.001, max: 5, default: 1.4, unit: 's' }
+                ],
+                'Voice': [
+                    { name: 'volume', label: 'Volume', type: 'fader', min: -40, max: 6, default: 0, unit: 'dB' }
+                ]
+            },
+            MetalSynth: {
+                'Metal': [
+                    { name: 'frequency', label: 'Frequency', type: 'knob', min: 20, max: 2000, default: 200, unit: 'Hz', log: true },
+                    { name: 'harmonicity', label: 'Harmonicity', type: 'knob', min: 1, max: 20, default: 5.1, unit: '' },
+                    { name: 'modulationIndex', label: 'Mod Index', type: 'knob', min: 1, max: 100, default: 32, unit: '' },
+                    { name: 'resonance', label: 'Resonance', type: 'knob', min: 200, max: 10000, default: 4000, unit: 'Hz', log: true },
+                    { name: 'octaves', label: 'Octaves', type: 'knob', min: 0.1, max: 4, default: 1.5, unit: '' }
+                ],
+                'Envelope': [
+                    { name: 'attack', label: 'Attack', type: 'knob', min: 0.001, max: 0.5, default: 0.001, unit: 's' },
+                    { name: 'decay', label: 'Decay', type: 'knob', min: 0.001, max: 2, default: 1.4, unit: 's' },
+                    { name: 'release', label: 'Release', type: 'knob', min: 0.001, max: 5, default: 0.2, unit: 's' }
+                ],
+                'Voice': [
+                    { name: 'volume', label: 'Volume', type: 'fader', min: -40, max: 6, default: -12, unit: 'dB' }
+                ]
+            }
+        };
+        
+        // Initialize with default PolySynth
+        function initializeInstrument() {
+            if (currentInstrument) {
+                currentInstrument.dispose();
+            }
+            currentInstrument = createInstrument(currentInstrumentType);
+        }
+        
+        // Create instrument based on type
+        function createInstrument(type) {
+            let instrument;
+            try {
+                switch(type) {
+                    case 'PolySynth':
+                        instrument = new Tone.PolySynth(Tone.Synth).toDestination();
+                        break;
+                    case 'MonoSynth':
+                        instrument = new Tone.MonoSynth().toDestination();
+                        break;
+                    case 'FMSynth':
+                        instrument = new Tone.PolySynth(Tone.FMSynth).toDestination();
+                        break;
+                    case 'AMSynth':
+                        instrument = new Tone.PolySynth(Tone.AMSynth).toDestination();
+                        break;
+                    case 'DuoSynth':
+                        instrument = new Tone.PolySynth(Tone.DuoSynth).toDestination();
+                        break;
+                    case 'PluckSynth':
+                        instrument = new Tone.PolySynth(Tone.PluckSynth).toDestination();
+                        break;
+                    case 'MembraneSynth':
+                        instrument = new Tone.MembraneSynth().toDestination();
+                        break;
+                    case 'MetalSynth':
+                        instrument = new Tone.MetalSynth().toDestination();
+                        break;
+                    case 'Sampler':
+                        instrument = sampler;
+                        break;
+                    default:
+                        instrument = new Tone.PolySynth(Tone.Synth).toDestination();
+                }
+                
+                // Apply saved parameters
+                applyParametersToInstrument(instrument, type);
+                
+                console.log(`Loaded instrument: ${type}`);
+                return instrument;
+            } catch (error) {
+                console.error(`Error creating instrument ${type}:`, error);
+                return new Tone.PolySynth(Tone.Synth).toDestination();
+            }
+        }
+        
+        // Apply parameters to instrument
+        function applyParametersToInstrument(instrument, type) {
+            if (type === 'Sampler' || !parameterDefinitions[type]) return;
+            
+            const params = instrumentParameters[type];
+            const defs = parameterDefinitions[type];
+            
+            Object.values(defs).flat().forEach(def => {
+                const value = params[def.name] !== undefined ? params[def.name] : def.default;
+                setInstrumentParameter(instrument, type, def.name, value);
+            });
+        }
+        
+        // Set a single parameter on an instrument
+        function setInstrumentParameter(instrument, type, paramName, value) {
+            if (!instrument || type === 'Sampler') return;
+            
+            try {
+                const isPolySynth = ['PolySynth', 'FMSynth', 'AMSynth', 'DuoSynth', 'PluckSynth'].includes(type);
+                const target = isPolySynth ? instrument.voices[0] : instrument;
+                
+                // Map parameter names to Tone.js paths
+                const paramMap = {
+                    // Oscillator
+                    'type': 'oscillator.type',
+                    'detune': 'oscillator.detune',
+                    'phase': 'oscillator.phase',
+                    
+                    // Envelope
+                    'attack': 'envelope.attack',
+                    'decay': 'envelope.decay',
+                    'sustain': 'envelope.sustain',
+                    'release': 'envelope.release',
+                    
+                    // Filter
+                    'filterType': 'filter.type',
+                    'filterFrequency': 'filter.frequency',
+                    'filterQ': 'filter.Q',
+                    'filterRolloff': 'filter.rolloff',
+                    
+                    // Filter Envelope
+                    'filterAttack': 'filterEnvelope.attack',
+                    'filterDecay': 'filterEnvelope.decay',
+                    'filterSustain': 'filterEnvelope.sustain',
+                    'filterRelease': 'filterEnvelope.release',
+                    'filterBaseFrequency': 'filterEnvelope.baseFrequency',
+                    'filterOctaves': 'filterEnvelope.octaves',
+                    
+                    // FM/AM Synth
+                    'carrierType': 'oscillator.type',
+                    'carrierDetune': 'oscillator.detune',
+                    'modulatorType': 'modulationEnvelope.type',
+                    'modulationIndex': 'modulationIndex',
+                    'harmonicity': 'harmonicity',
+                    
+                    // Modulation Envelope
+                    'modAttack': 'modulationEnvelope.attack',
+                    'modDecay': 'modulationEnvelope.decay',
+                    'modSustain': 'modulationEnvelope.sustain',
+                    'modRelease': 'modulationEnvelope.release',
+                    
+                    // DuoSynth voices
+                    'voice0Type': 'voice0.oscillator.type',
+                    'voice0Detune': 'voice0.oscillator.detune',
+                    'voice0Volume': 'voice0.volume',
+                    'voice1Type': 'voice1.oscillator.type',
+                    'voice1Detune': 'voice1.oscillator.detune',
+                    'voice1Volume': 'voice1.volume',
+                    'vibratoAmount': 'vibratoAmount',
+                    'vibratoRate': 'vibratoRate',
+                    
+                    // PluckSynth
+                    'attackNoise': 'attackNoise',
+                    'dampening': 'dampening',
+                    'resonance': 'resonance',
+                    
+                    // MembraneSynth / MetalSynth
+                    'pitchDecay': 'pitchDecay',
+                    'octaves': 'octaves',
+                    'frequency': 'frequency',
+                    
+                    // Voice
+                    'portamento': 'portamento',
+                    'volume': 'volume'
+                };
+                
+                const path = paramMap[paramName];
+                if (!path) return;
+                
+                const parts = path.split('.');
+                let obj = target;
+                
+                for (let i = 0; i < parts.length - 1; i++) {
+                    if (obj[parts[i]]) {
+                        obj = obj[parts[i]];
+                    } else {
+                        return;
+                    }
+                }
+                
+                const finalProp = parts[parts.length - 1];
+                if (obj[finalProp] !== undefined) {
+                    if (typeof obj[finalProp] === 'object' && obj[finalProp].value !== undefined) {
+                        obj[finalProp].value = value;
+                    } else {
+                        obj[finalProp] = value;
+                    }
+                }
+                
+                // Store parameter
+                instrumentParameters[type][paramName] = value;
+                
+            } catch (error) {
+                console.warn(`Error setting parameter ${paramName}:`, error);
+            }
+        }
+        
+        // Handle instrument change
+        function handleInstrumentChange(type) {
+            const wasPlaying = Tone.Transport.state === 'started';
+            if (wasPlaying) {
+                handleStop();
+            }
+            
+            currentInstrumentType = type;
+            initializeInstrument();
+            
+            if (wasPlaying && midiData) {
+                setTimeout(() => {
+                    handlePlayPause();
+                }, 100);
+            }
+        }
 
         // --- Constants ---
         const NOTE_HEIGHT = 16;
@@ -426,6 +1150,7 @@
             setupToolbar();
             setupSubdivisionControls();
             setupGridInteraction();
+            initializeInstrument();
             draw();
             Tone.Transport.bpm.value = parseInt(tempoInput.value, 10);
             const sig = signatureSelect.value.split('/').map(n => parseInt(n));
@@ -457,10 +1182,44 @@
         playBtn.addEventListener('click', handlePlayPause);
         stopBtn.addEventListener('click', handleStop);
         rewindBtn.addEventListener('click', handleRewind);
+        prevMeasureBtn.addEventListener('click', handlePrevMeasure);
+        nextMeasureBtn.addEventListener('click', handleNextMeasure);
         snapEnabledCheckbox.addEventListener('change', (e) => {
             snapToGrid = e.target.checked;
         });
         loopBtn.addEventListener('click', toggleLoop);
+        instrumentSelect.addEventListener('change', (e) => {
+            handleInstrumentChange(e.target.value);
+        });
+        expandParamsBtn.addEventListener('click', () => {
+            showPluginInterface();
+        });
+        pluginClose.addEventListener('click', () => {
+            hidePluginInterface();
+        });
+        
+        // Make plugin window draggable
+        let isDraggingPlugin = false;
+        let pluginDragOffset = { x: 0, y: 0 };
+        
+        pluginHeader.addEventListener('mousedown', (e) => {
+            isDraggingPlugin = true;
+            const rect = pluginInterface.getBoundingClientRect();
+            pluginDragOffset.x = e.clientX - rect.left;
+            pluginDragOffset.y = e.clientY - rect.top;
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (isDraggingPlugin) {
+                pluginInterface.style.left = `${e.clientX - pluginDragOffset.x}px`;
+                pluginInterface.style.top = `${e.clientY - pluginDragOffset.y}px`;
+                pluginInterface.style.transform = 'none';
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isDraggingPlugin = false;
+        });
         
         // Timeline click to set playback position
         timelineContainer.addEventListener('click', (e) => {
@@ -512,6 +1271,33 @@
             
             loopRegion.style.left = `${startX}px`;
             loopRegion.style.width = `${width}px`;
+        }
+
+        // --- Transport Navigation ---
+        function handlePrevMeasure() {
+            const beatsPerMeasure = Tone.Transport.timeSignature[0];
+            const secondsPerBeat = 60 / Tone.Transport.bpm.value;
+            const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+            
+            const currentTime = Tone.Transport.seconds;
+            const currentMeasure = Math.floor(currentTime / secondsPerMeasure);
+            const newTime = Math.max(0, currentMeasure * secondsPerMeasure);
+            
+            setPlaybackPosition(newTime);
+            updatePlaybackCursor();
+        }
+
+        function handleNextMeasure() {
+            const beatsPerMeasure = Tone.Transport.timeSignature[0];
+            const secondsPerBeat = 60 / Tone.Transport.bpm.value;
+            const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+            
+            const currentTime = Tone.Transport.seconds;
+            const nextMeasure = Math.floor(currentTime / secondsPerMeasure) + 1;
+            const newTime = nextMeasure * secondsPerMeasure;
+            
+            setPlaybackPosition(newTime);
+            updatePlaybackCursor();
         }
 
         // --- File & MIDI Handling ---
@@ -608,25 +1394,137 @@
             let startX, startNote, originalX;
             
             gridContainer.addEventListener('mousedown', (e) => {
-                if (activeTool === 'pencil') {
+                if (e.button === 2) { // Right click
+                    e.preventDefault();
+                    const target = e.target;
+                    if (target.classList.contains('note') && !target.classList.contains('preview')) {
+                        // Right click on note - show context menu
+                        const noteElement = target;
+                        if (!selectedNotes.has(noteElement)) {
+                            clearSelection();
+                            selectNote(noteElement);
+                        }
+                        showContextMenu(e.clientX, e.clientY);
+                    } else {
+                        // Right click on empty space - start delete mode
+                        isRightClickDeleting = true;
+                        hideContextMenu();
+                    }
+                    return;
+                }
+                
+                if (e.button !== 0) return; // Only left click continues
+                
+                hideContextMenu();
+                
+                if (activeTool === 'select') {
+                    const target = e.target;
+                    if (target.classList.contains('note') && !target.classList.contains('preview')) {
+                        // Clicked on a note
+                        if (!e.shiftKey && !selectedNotes.has(target)) {
+                            clearSelection();
+                        }
+                        selectNote(target);
+                        isDraggingNotes = true;
+                        dragStartY = e.clientY;
+                        // Store original MIDI values
+                        noteDragData = Array.from(selectedNotes).map(noteEl => ({
+                            element: noteEl,
+                            originalMidi: parseInt(noteEl.dataset.midi)
+                        }));
+                    } else {
+                        // Clicked on empty space - start selection rectangle
+                        if (!e.shiftKey) clearSelection();
+                        isSelecting = true;
+                        const rect = gridContainer.getBoundingClientRect();
+                        selectionStart = {
+                            x: e.clientX - rect.left + gridContainer.scrollLeft,
+                            y: e.clientY - rect.top + gridContainer.scrollTop
+                        };
+                    }
+                } else if (activeTool === 'pencil') {
                     handlePencilDown(e);
                 }
             });
 
             gridContainer.addEventListener('mousemove', (e) => {
-                if (activeTool === 'pencil') {
+                if (isRightClickDeleting) {
+                    // Right click drag to delete notes
+                    const target = e.target;
+                    if (target.classList.contains('note') && !target.classList.contains('preview')) {
+                        deleteNoteElement(target);
+                    }
+                } else if (isDraggingNotes) {
+                    // Drag selected notes up/down
+                    const deltaY = e.clientY - dragStartY;
+                    const semitoneDelta = -Math.round(deltaY / NOTE_HEIGHT);
+                    
+                    noteDragData.forEach(data => {
+                        const newMidi = data.originalMidi + semitoneDelta;
+                        if (newMidi >= MIDI_NOTE_RANGE.min && newMidi <= MIDI_NOTE_RANGE.max) {
+                            data.element.dataset.midi = newMidi;
+                            const y = getYFromNote(newMidi);
+                            data.element.style.top = `${y}px`;
+                        }
+                    });
+                } else if (isSelecting && selectionStart) {
+                    // Update selection rectangle
+                    const rect = gridContainer.getBoundingClientRect();
+                    const currentX = e.clientX - rect.left + gridContainer.scrollLeft;
+                    const currentY = e.clientY - rect.top + gridContainer.scrollTop;
+                    
+                    const left = Math.min(selectionStart.x, currentX);
+                    const top = Math.min(selectionStart.y, currentY);
+                    const width = Math.abs(currentX - selectionStart.x);
+                    const height = Math.abs(currentY - selectionStart.y);
+                    
+                    selectionRectangle.style.left = `${left}px`;
+                    selectionRectangle.style.top = `${top}px`;
+                    selectionRectangle.style.width = `${width}px`;
+                    selectionRectangle.style.height = `${height}px`;
+                    selectionRectangle.style.display = 'block';
+                    
+                    // Select notes within rectangle
+                    updateSelectionFromRectangle(left, top, width, height);
+                } else if (activeTool === 'pencil') {
                     handlePencilMove(e);
                 }
                 
-                if (snapToGrid) {
+                if (snapToGrid && activeTool === 'pencil') {
                     updateSnapIndicator(e);
                 }
             });
 
             gridContainer.addEventListener('mouseup', (e) => {
+                if (isRightClickDeleting) {
+                    isRightClickDeleting = false;
+                    return;
+                }
+                
+                if (isDraggingNotes) {
+                    // Finalize note drag
+                    noteDragData.forEach(data => {
+                        const newMidi = parseInt(data.element.dataset.midi);
+                        updateNoteInMidiData(data.element, newMidi);
+                    });
+                    isDraggingNotes = false;
+                    noteDragData = [];
+                    drawPianoRoll();
+                }
+                
+                if (isSelecting) {
+                    isSelecting = false;
+                    selectionStart = null;
+                    selectionRectangle.style.display = 'none';
+                }
+                
                 if (activeTool === 'pencil') {
                     handlePencilUp(e);
                 }
+            });
+
+            gridContainer.addEventListener('contextmenu', (e) => {
+                e.preventDefault(); // Prevent default context menu
             });
 
             gridContainer.addEventListener('mouseleave', () => {
@@ -638,6 +1536,105 @@
             });
         }
 
+        // --- Note Selection Functions ---
+        function selectNote(noteElement) {
+            noteElement.classList.add('selected');
+            selectedNotes.add(noteElement);
+        }
+
+        function deselectNote(noteElement) {
+            noteElement.classList.remove('selected');
+            selectedNotes.delete(noteElement);
+        }
+
+        function clearSelection() {
+            selectedNotes.forEach(note => note.classList.remove('selected'));
+            selectedNotes.clear();
+        }
+
+        function selectAllNotes() {
+            const allNotes = noteContainer.querySelectorAll('.note:not(.preview)');
+            allNotes.forEach(note => selectNote(note));
+        }
+
+        function updateSelectionFromRectangle(left, top, width, height) {
+            const right = left + width;
+            const bottom = top + height;
+            
+            const allNotes = noteContainer.querySelectorAll('.note:not(.preview)');
+            allNotes.forEach(note => {
+                const noteLeft = parseFloat(note.style.left);
+                const noteTop = parseFloat(note.style.top);
+                const noteRight = noteLeft + parseFloat(note.style.width);
+                const noteBottom = noteTop + parseFloat(note.style.height);
+                
+                // Check if note intersects with selection rectangle
+                const intersects = !(noteRight < left || noteLeft > right || 
+                                   noteBottom < top || noteTop > bottom);
+                
+                if (intersects) {
+                    selectNote(note);
+                } else if (!isSelecting) {
+                    deselectNote(note);
+                }
+            });
+        }
+
+        // --- Note Manipulation Functions ---
+        function deleteSelectedNotes() {
+            if (selectedNotes.size === 0) return;
+            
+            selectedNotes.forEach(noteElement => {
+                deleteNoteElement(noteElement);
+            });
+            
+            clearSelection();
+            drawPianoRoll();
+        }
+
+        function deleteNoteElement(noteElement) {
+            const trackIndex = parseInt(noteElement.dataset.track);
+            const noteIndex = parseInt(noteElement.dataset.index);
+            
+            if (midiData && midiData.tracks[trackIndex]) {
+                midiData.tracks[trackIndex].notes.splice(noteIndex, 1);
+            }
+            
+            noteElement.remove();
+            selectedNotes.delete(noteElement);
+        }
+
+        function transposeSelectedNotes(semitones) {
+            if (selectedNotes.size === 0) return;
+            
+            selectedNotes.forEach(noteElement => {
+                const currentMidi = parseInt(noteElement.dataset.midi);
+                const newMidi = currentMidi + semitones;
+                
+                // Validate range
+                if (newMidi >= MIDI_NOTE_RANGE.min && newMidi <= MIDI_NOTE_RANGE.max) {
+                    noteElement.dataset.midi = newMidi;
+                    const y = getYFromNote(newMidi);
+                    noteElement.style.top = `${y}px`;
+                    updateNoteInMidiData(noteElement, newMidi);
+                }
+            });
+            
+            drawPianoRoll();
+        }
+
+        function updateNoteInMidiData(noteElement, newMidi) {
+            const trackIndex = parseInt(noteElement.dataset.track);
+            const noteIndex = parseInt(noteElement.dataset.index);
+            
+            if (midiData && midiData.tracks[trackIndex] && midiData.tracks[trackIndex].notes[noteIndex]) {
+                const note = midiData.tracks[trackIndex].notes[noteIndex];
+                note.midi = newMidi;
+                note.name = Tone.Midi(newMidi).toNote();
+            }
+        }
+
+        // --- Pencil Tool Functions ---
         function handlePencilDown(e) {
             const rect = gridContainer.getBoundingClientRect();
             const x = e.clientX - rect.left + gridContainer.scrollLeft;
@@ -762,6 +1759,8 @@
                 if(btn) btn.addEventListener('click', () => setActiveTool(tool));
             });
             setActiveTool('select'); // Set default tool
+            setupKeyboardShortcuts();
+            setupContextMenu();
         }
 
         function setActiveTool(toolName) {
@@ -771,6 +1770,296 @@
                 if(btn) btn.dataset.active = (tool === toolName);
             });
             gridContainer.style.cursor = toolName === 'pencil' ? 'crosshair' : 'default';
+        }
+
+        // --- Keyboard Shortcuts ---
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Don't trigger shortcuts when typing in inputs
+                if (e.target.tagName === 'INPUT') return;
+                
+                switch(e.key.toLowerCase()) {
+                    case 'v':
+                        setActiveTool('select');
+                        break;
+                    case 'b':
+                        setActiveTool('pencil');
+                        break;
+                    case 'c':
+                        setActiveTool('cutter');
+                        break;
+                    case 'delete':
+                    case 'backspace':
+                        if (selectedNotes.size > 0) {
+                            e.preventDefault();
+                            deleteSelectedNotes();
+                        }
+                        break;
+                    case 'arrowup':
+                        if (selectedNotes.size > 0) {
+                            e.preventDefault();
+                            transposeSelectedNotes(e.shiftKey ? 12 : 1);
+                        }
+                        break;
+                    case 'arrowdown':
+                        if (selectedNotes.size > 0) {
+                            e.preventDefault();
+                            transposeSelectedNotes(e.shiftKey ? -12 : -1);
+                        }
+                        break;
+                    case 'arrowleft':
+                        if (!e.shiftKey) {
+                            e.preventDefault();
+                            handlePrevMeasure();
+                        }
+                        break;
+                    case 'arrowright':
+                        if (!e.shiftKey) {
+                            e.preventDefault();
+                            handleNextMeasure();
+                        }
+                        break;
+                    case 'a':
+                        if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            selectAllNotes();
+                        }
+                        break;
+                    case 'escape':
+                        clearSelection();
+                        hideContextMenu();
+                        break;
+                }
+            });
+        }
+
+        // --- Context Menu ---
+        function setupContextMenu() {
+            // Hide context menu on outside click
+            document.addEventListener('click', () => hideContextMenu());
+            
+            // Context menu item actions
+            contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const action = item.dataset.action;
+                    handleContextMenuAction(action);
+                    hideContextMenu();
+                });
+            });
+        }
+
+        function showContextMenu(x, y) {
+            contextMenu.style.left = `${x}px`;
+            contextMenu.style.top = `${y}px`;
+            contextMenu.style.display = 'block';
+        }
+
+        function hideContextMenu() {
+            contextMenu.style.display = 'none';
+        }
+
+        function handleContextMenuAction(action) {
+            switch(action) {
+                case 'delete':
+                    deleteSelectedNotes();
+                    break;
+                case 'transpose-up-semitone':
+                    transposeSelectedNotes(1);
+                    break;
+                case 'transpose-down-semitone':
+                    transposeSelectedNotes(-1);
+                    break;
+                case 'transpose-up-octave':
+                    transposeSelectedNotes(12);
+                    break;
+                case 'transpose-down-octave':
+                    transposeSelectedNotes(-12);
+                    break;
+            }
+        }
+
+        // --- Plugin Interface Functions ---
+        function showPluginInterface() {
+            pluginTitle.textContent = `${currentInstrumentType} Parameters`;
+            generateParameterControls();
+            pluginInterface.style.display = 'block';
+        }
+
+        function hidePluginInterface() {
+            pluginInterface.style.display = 'none';
+        }
+
+        function generateParameterControls() {
+            pluginBody.innerHTML = '';
+            
+            const defs = parameterDefinitions[currentInstrumentType];
+            if (!defs) return;
+            
+            Object.entries(defs).forEach(([sectionName, params]) => {
+                const section = document.createElement('div');
+                section.className = 'param-section';
+                
+                const title = document.createElement('div');
+                title.className = 'param-section-title';
+                title.textContent = sectionName;
+                section.appendChild(title);
+                
+                const grid = document.createElement('div');
+                grid.className = 'param-grid';
+                
+                params.forEach(param => {
+                    const control = createParameterControl(param);
+                    grid.appendChild(control);
+                });
+                
+                section.appendChild(grid);
+                pluginBody.appendChild(section);
+            });
+        }
+
+        function createParameterControl(param) {
+            const container = document.createElement('div');
+            container.className = 'param-control';
+            
+            if (param.type === 'knob') {
+                const knobContainer = document.createElement('div');
+                knobContainer.className = 'knob-container';
+                
+                const knob = document.createElement('div');
+                knob.className = 'knob';
+                
+                const value = instrumentParameters[currentInstrumentType][param.name] ?? param.default;
+                const rotation = ((value - param.min) / (param.max - param.min)) * 270 - 135;
+                knob.style.transform = `rotate(${rotation}deg)`;
+                
+                const knobValue = document.createElement('div');
+                knobValue.className = 'knob-value';
+                knobValue.textContent = formatParamValue(value, param);
+                
+                knob.appendChild(knobValue);
+                knobContainer.appendChild(knob);
+                container.appendChild(knobContainer);
+                
+                // Knob interaction
+                let isDragging = false;
+                let startY = 0;
+                let startValue = value;
+                
+                knob.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    startY = e.clientY;
+                    startValue = instrumentParameters[currentInstrumentType][param.name] ?? param.default;
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    
+                    const deltaY = startY - e.clientY;
+                    const range = param.max - param.min;
+                    const sensitivity = param.log ? range / 300 : range / 200;
+                    let newValue = startValue + (deltaY * sensitivity);
+                    
+                    if (param.log) {
+                        const logMin = Math.log(param.min);
+                        const logMax = Math.log(param.max);
+                        const logValue = logMin + ((newValue - param.min) / range) * (logMax - logMin);
+                        newValue = Math.exp(logValue);
+                    }
+                    
+                    newValue = Math.max(param.min, Math.min(param.max, newValue));
+                    
+                    const rotation = ((newValue - param.min) / range) * 270 - 135;
+                    knob.style.transform = `rotate(${rotation}deg)`;
+                    knobValue.textContent = formatParamValue(newValue, param);
+                    
+                    setInstrumentParameter(currentInstrument, currentInstrumentType, param.name, newValue);
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+                
+            } else if (param.type === 'fader') {
+                const faderContainer = document.createElement('div');
+                faderContainer.className = 'fader-container';
+                
+                const track = document.createElement('div');
+                track.className = 'fader-track';
+                
+                const thumb = document.createElement('div');
+                thumb.className = 'fader-thumb';
+                
+                const value = instrumentParameters[currentInstrumentType][param.name] ?? param.default;
+                const percentage = 1 - ((value - param.min) / (param.max - param.min));
+                thumb.style.top = `${percentage * 100}%`;
+                
+                faderContainer.appendChild(track);
+                faderContainer.appendChild(thumb);
+                container.appendChild(faderContainer);
+                
+                // Fader interaction
+                let isDragging = false;
+                
+                thumb.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    
+                    const rect = faderContainer.getBoundingClientRect();
+                    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+                    const newValue = param.max - (y * (param.max - param.min));
+                    
+                    thumb.style.top = `${y * 100}%`;
+                    
+                    setInstrumentParameter(currentInstrument, currentInstrumentType, param.name, newValue);
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+                
+            } else if (param.type === 'select') {
+                const select = document.createElement('select');
+                select.className = 'select-control';
+                
+                param.options.forEach(option => {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = option;
+                    optionElement.textContent = option;
+                    select.appendChild(optionElement);
+                });
+                
+                const value = instrumentParameters[currentInstrumentType][param.name] ?? param.default;
+                select.value = value;
+                
+                select.addEventListener('change', (e) => {
+                    setInstrumentParameter(currentInstrument, currentInstrumentType, param.name, e.target.value);
+                });
+                
+                container.appendChild(select);
+            }
+            
+            const label = document.createElement('div');
+            label.className = 'param-label';
+            label.textContent = param.label;
+            container.appendChild(label);
+            
+            return container;
+        }
+
+        function formatParamValue(value, param) {
+            if (param.log) {
+                return value < 1000 ? value.toFixed(0) : (value / 1000).toFixed(1) + 'k';
+            }
+            if (value >= 1) {
+                return value.toFixed(1);
+            }
+            return value.toFixed(3);
         }
 
         function draw() {
@@ -871,7 +2160,14 @@
         }
 
         function drawPianoRoll() {
+            // Store selected note data before clearing
+            const selectedNoteData = Array.from(selectedNotes).map(note => ({
+                track: parseInt(note.dataset.track),
+                index: parseInt(note.dataset.index)
+            }));
+            
             noteContainer.innerHTML = '';
+            selectedNotes.clear();
             
             // Add snap indicator back after clearing
             const snapIndicatorElement = document.createElement('div');
@@ -894,12 +2190,16 @@
 
             midiData.tracks.forEach((track, trackIndex) => {
                 const color = trackColors[trackIndex % trackColors.length];
-                track.notes.forEach(note => {
+                track.notes.forEach((note, noteIndex) => {
                     const keyIdx = midiKeys.indexOf(note.midi);
                     if (keyIdx === -1) return;
 
                     const noteDiv = document.createElement('div');
                     noteDiv.classList.add('note');
+                    noteDiv.dataset.track = trackIndex;
+                    noteDiv.dataset.index = noteIndex;
+                    noteDiv.dataset.midi = note.midi;
+                    
                     const y = keyIdx * NOTE_HEIGHT;
                     const x = note.time * zoom;
                     const width = note.duration * zoom;
@@ -912,6 +2212,14 @@
                     noteDiv.style.opacity = note.velocity * 0.7 + 0.3;
                     noteDiv.title = `Track ${trackIndex + 1}\nNote: ${note.name}\nTime: ${note.time.toFixed(2)}s\nVel: ${Math.round(note.velocity * 100)}%`;
                     noteContainer.appendChild(noteDiv);
+                    
+                    // Restore selection if this note was selected
+                    const wasSelected = selectedNoteData.some(data => 
+                        data.track === trackIndex && data.index === noteIndex
+                    );
+                    if (wasSelected) {
+                        selectNote(noteDiv);
+                    }
                 });
             });
         }
@@ -982,13 +2290,13 @@
             }
         }
 
-        // --- Sampler Logic ---
+        // --- Piano Key Interaction & Sample Loading ---
         pianoKeysSVG.addEventListener('click', async (e) => {
             if (!e.target.dataset.midi) return;
             const midi = parseInt(e.target.dataset.midi);
             const noteName = Tone.Midi(midi).toNote();
-            alert(`Click a key to play. To load a sample for ${noteName}, create an input element.`);
-            // Existing sampler loading logic preserved
+            
+            // Always allow sample loading - sampler pitches samples automatically
             const fileInput = document.createElement('input');
             fileInput.type = 'file';
             fileInput.accept = 'audio/*';
@@ -1059,11 +2367,21 @@
 
             midiData.tracks.forEach(track => {
                 if (track.notes.length === 0) return;
-                const instrument = samplesLoaded ? sampler : new Tone.PolySynth(Tone.Synth).toDestination();
-                if (!samplesLoaded) synths.push(instrument);
-
+                
+                // Use the current instrument or sampler if samples are loaded
+                const instrument = (currentInstrumentType === 'Sampler' && samplesLoaded) ? sampler : currentInstrument;
+                
+                // For monophonic synths, handle notes differently
+                const isMonophonic = ['MonoSynth', 'MembraneSynth', 'MetalSynth'].includes(currentInstrumentType);
+                
                 const part = new Tone.Part((time, note) => {
-                    instrument.triggerAttackRelease(note.name, note.duration, time, note.velocity);
+                    if (isMonophonic) {
+                        // For mono synths, use simple trigger
+                        instrument.triggerAttackRelease(note.name, note.duration, time, note.velocity);
+                    } else {
+                        // For poly synths, standard trigger
+                        instrument.triggerAttackRelease(note.name, note.duration, time, note.velocity);
+                    }
                 }, track.notes).start(0);
                 parts.push(part);
             });

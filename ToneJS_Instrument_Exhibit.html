@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tone.js Instrument Exhibit</title>
+  <script src="https://cdn.jsdelivr.net/npm/tone@latest/build/Tone.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/MIDI.js/0.3.1/MIDI.min.js"></script>
+  <script src="https://unpkg.com/d3@^7.0.0/dist/d3.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --card: #1f2937;
+      --accent: #22d3ee;
+      --accent-2: #a855f7;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --grid: #1f2937;
+      --cell-active: #22d3ee22;
+      --cell-border: #334155;
+      --step-highlight: #22d3ee55;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(34,211,238,0.08), transparent 35%),
+                  radial-gradient(circle at 80% 0%, rgba(168,85,247,0.08), transparent 30%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--panel);
+      border: 1px solid #1f2937;
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0.2px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 2px 0 0;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid #1f2937;
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.25);
+    }
+
+    .stack { display: flex; flex-direction: column; gap: 10px; }
+
+    label { font-size: 12px; color: var(--muted); }
+
+    select, input[type="number"], input[type="range"] {
+      background: var(--card);
+      border: 1px solid #273146;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    button {
+      background: linear-gradient(120deg, #22d3ee, #8b5cf6);
+      color: #0b1021;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      box-shadow: 0 10px 30px rgba(34,211,238,0.25);
+    }
+
+    button:active { transform: translateY(1px) scale(0.99); }
+
+    .ghost-btn {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid #273146;
+      box-shadow: none;
+    }
+
+    .grid-wrapper {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid #1f2937;
+      background: var(--card);
+    }
+
+    .sequencer {
+      min-width: 960px;
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .sequencer th, .sequencer td {
+      border: 1px solid var(--cell-border);
+      text-align: center;
+      padding: 0;
+    }
+
+    .sequencer th {
+      background: #111827;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .note-label {
+      width: 70px;
+      background: #0b1220;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+    }
+
+    .cell {
+      width: 48px;
+      height: 40px;
+      background: var(--grid);
+      cursor: pointer;
+      position: relative;
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .cell.active {
+      background: linear-gradient(135deg, #22d3ee22, #8b5cf622);
+      box-shadow: inset 0 0 0 1px #22d3ee44;
+    }
+
+    .cell .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #22d3ee;
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      opacity: 0;
+      transform: scale(0.9);
+      transition: opacity 0.12s ease, transform 0.12s ease;
+      box-shadow: 0 0 12px rgba(34,211,238,0.6);
+    }
+
+    .cell.active .dot { opacity: 1; transform: scale(1); }
+
+    .cell.playing { background: var(--step-highlight); }
+
+    .transport { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .small { font-size: 13px; color: var(--muted); }
+
+    #step-graph { width: 100%; height: 120px; }
+
+    .badge {
+      background: #0f172a;
+      border: 1px solid #273146;
+      color: var(--muted);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .legend .swatch { width: 10px; height: 10px; border-radius: 50%; }
+
+    .footer { color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Tone.js Instrument Exhibit</h1>
+      <p class="subtitle">Audition built-in Tone.js synths with a lightweight sequencer. Click to toggle steps, hit Play, and swap instruments on the fly.</p>
+    </div>
+    <div class="controls">
+      <button id="play-btn">Play</button>
+      <button id="stop-btn" class="ghost-btn">Stop</button>
+      <button id="clear-btn" class="ghost-btn">Clear Grid</button>
+    </div>
+  </header>
+
+  <section class="card stack">
+    <div class="controls">
+      <div class="stack">
+        <label for="instrument-select">Instrument</label>
+        <select id="instrument-select">
+          <option value="Synth">Synth (default)</option>
+          <option value="AMSynth">AMSynth</option>
+          <option value="FMSynth">FMSynth</option>
+          <option value="MonoSynth">MonoSynth</option>
+          <option value="DuoSynth">DuoSynth</option>
+          <option value="MembraneSynth">MembraneSynth (drums)</option>
+          <option value="PluckSynth">PluckSynth</option>
+        </select>
+      </div>
+      <div class="stack">
+        <label for="tempo">Tempo: <span id="tempo-value">110</span> BPM</label>
+        <input id="tempo" type="range" min="60" max="180" value="110">
+      </div>
+      <div class="stack">
+        <label for="swing">Swing: <span id="swing-value">0%</span></label>
+        <input id="swing" type="range" min="0" max="60" value="0">
+      </div>
+      <div class="stack">
+        <label for="volume">Volume: <span id="volume-value">0 dB</span></label>
+        <input id="volume" type="range" min="-24" max="6" value="0">
+      </div>
+      <div class="stack">
+        <label>Utilities</label>
+        <div class="controls">
+          <button id="randomize" class="ghost-btn">Random Fill</button>
+          <button id="shift-left" class="ghost-btn">Shift ◀</button>
+          <button id="shift-right" class="ghost-btn">Shift ▶</button>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="badge"><span class="swatch" style="background:#22d3ee"></span>Active note</span>
+      <span class="badge"><span class="swatch" style="background:#8b5cf6"></span>Current step</span>
+      <span class="badge">Click cells to toggle notes. Multiple notes per step are allowed.</span>
+    </div>
+  </section>
+
+  <section class="card stack">
+    <div class="grid-wrapper">
+      <table class="sequencer" aria-label="step sequencer grid">
+        <thead>
+          <tr>
+            <th class="note-label">Note</th>
+            <th colspan="16">Steps</th>
+          </tr>
+          <tr>
+            <th class="note-label"></th>
+            <th>1</th><th>2</th><th>3</th><th>4</th>
+            <th>5</th><th>6</th><th>7</th><th>8</th>
+            <th>9</th><th>10</th><th>11</th><th>12</th>
+            <th>13</th><th>14</th><th>15</th><th>16</th>
+          </tr>
+        </thead>
+        <tbody id="grid-body"></tbody>
+      </table>
+    </div>
+    <div id="step-graph"></div>
+  </section>
+
+  <footer class="footer">Tone.js + D3 + MIDI.js ready. Audio starts on first click. Built for quick demos of Tone's built-in synth families.</footer>
+
+  <script>
+    const notes = ['C5','B4','A4','G4','F4','E4','D4','C4'];
+    const steps = 16;
+    const gridState = Array.from({ length: steps }, () => new Set());
+
+    let synth = null;
+    let sequence = null;
+    let isPlaying = false;
+
+    const gridBody = document.getElementById('grid-body');
+    const playBtn = document.getElementById('play-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const instrumentSelect = document.getElementById('instrument-select');
+    const tempo = document.getElementById('tempo');
+    const tempoValue = document.getElementById('tempo-value');
+    const swing = document.getElementById('swing');
+    const swingValue = document.getElementById('swing-value');
+    const volume = document.getElementById('volume');
+    const volumeValue = document.getElementById('volume-value');
+    const randomizeBtn = document.getElementById('randomize');
+    const shiftLeftBtn = document.getElementById('shift-left');
+    const shiftRightBtn = document.getElementById('shift-right');
+
+    const stepGraph = d3.select('#step-graph').append('svg').attr('width', '100%').attr('height', 120);
+
+    function buildSynth(name) {
+      if (synth) synth.dispose();
+      const opts = { volume: Tone.dbToGain(0) };
+      switch (name) {
+        case 'AMSynth': return new Tone.AMSynth().toDestination();
+        case 'FMSynth': return new Tone.FMSynth().toDestination();
+        case 'MonoSynth': return new Tone.MonoSynth({ oscillator: { type: 'square' }, filter: { Q: 2 } }).toDestination();
+        case 'DuoSynth': return new Tone.DuoSynth().toDestination();
+        case 'MembraneSynth': return new Tone.MembraneSynth().toDestination();
+        case 'PluckSynth': return new Tone.PluckSynth().toDestination();
+        default: return new Tone.Synth().toDestination();
+      }
+    }
+
+    function renderGrid() {
+      const rows = notes.map(note => {
+        const tds = Array.from({ length: steps }, (_, step) => `<td class="cell" data-step="${step}" data-note="${note}"><div class="dot"></div></td>`).join('');
+        return `<tr><th class="note-label">${note}</th>${tds}</tr>`;
+      }).join('');
+      gridBody.innerHTML = rows;
+    }
+
+    function redrawActiveCells() {
+      document.querySelectorAll('.cell').forEach(cell => {
+        const step = Number(cell.dataset.step);
+        const note = cell.dataset.note;
+        const active = gridState[step].has(note);
+        cell.classList.toggle('active', active);
+      });
+    }
+
+    function updateGraph(playIndex = null) {
+      const data = gridState.map(s => s.size);
+      const width = stepGraph.node().getBoundingClientRect().width || 960;
+      const barWidth = width / steps;
+      const height = 120;
+      const y = d3.scaleLinear().domain([0, Math.max(1, d3.max(data))]).range([height - 20, 10]);
+
+      const bars = stepGraph.selectAll('rect').data(data);
+      bars.enter().append('rect')
+        .merge(bars)
+        .attr('x', (_, i) => i * barWidth + 4)
+        .attr('y', d => y(d))
+        .attr('width', barWidth - 8)
+        .attr('height', d => height - 20 - y(d))
+        .attr('rx', 4)
+        .attr('fill', '#22d3ee44');
+      bars.exit().remove();
+
+      const markers = stepGraph.selectAll('line').data([playIndex]);
+      markers.enter().append('line')
+        .merge(markers)
+        .attr('x1', playIndex === null ? -10 : playIndex * barWidth + barWidth / 2)
+        .attr('x2', playIndex === null ? -10 : playIndex * barWidth + barWidth / 2)
+        .attr('y1', 0)
+        .attr('y2', height)
+        .attr('stroke', '#8b5cf6')
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '4 3');
+      markers.exit().remove();
+    }
+
+    function toggleCell(step, note) {
+      if (gridState[step].has(note)) gridState[step].delete(note);
+      else gridState[step].add(note);
+      redrawActiveCells();
+      updateGraph();
+    }
+
+    function setupGridListeners() {
+      gridBody.addEventListener('click', (e) => {
+        const cell = e.target.closest('.cell');
+        if (!cell) return;
+        toggleCell(Number(cell.dataset.step), cell.dataset.note);
+      });
+    }
+
+    function setTransportOptions() {
+      Tone.Transport.bpm.value = Number(tempo.value);
+      tempoValue.textContent = tempo.value;
+      Tone.Transport.swing = Number(swing.value) / 100;
+      swingValue.textContent = `${swing.value}%`;
+      const vol = Number(volume.value);
+      volumeValue.textContent = `${vol} dB`;
+      synth.volume.value = vol;
+    }
+
+    function makeSequence() {
+      if (sequence) sequence.dispose();
+      sequence = new Tone.Sequence((time, step) => {
+        const notesNow = Array.from(gridState[step]);
+        const cells = document.querySelectorAll(`.cell[data-step='${step}']`);
+        document.querySelectorAll('.cell').forEach(c => c.classList.remove('playing'));
+        cells.forEach(c => c.classList.add('playing'));
+        updateGraph(step);
+        notesNow.forEach(n => synth.triggerAttackRelease(n, '16n', time));
+      }, [...Array(steps).keys()], '16n');
+      sequence.start(0);
+    }
+
+    async function startAudio() {
+      if (Tone.context.state !== 'running') {
+        await Tone.start();
+      }
+    }
+
+    async function handlePlay() {
+      await startAudio();
+      setTransportOptions();
+      if (!sequence) makeSequence();
+      Tone.Transport.start('+0.1');
+      isPlaying = true;
+      playBtn.textContent = 'Pause';
+    }
+
+    function handlePause() {
+      Tone.Transport.pause();
+      isPlaying = false;
+      playBtn.textContent = 'Play';
+      document.querySelectorAll('.cell').forEach(c => c.classList.remove('playing'));
+      updateGraph(null);
+    }
+
+    function handleStop() {
+      Tone.Transport.stop();
+      if (sequence) sequence.dispose();
+      sequence = null;
+      isPlaying = false;
+      playBtn.textContent = 'Play';
+      document.querySelectorAll('.cell').forEach(c => c.classList.remove('playing'));
+      updateGraph(null);
+    }
+
+    function clearGrid() {
+      gridState.forEach(set => set.clear());
+      redrawActiveCells();
+      updateGraph();
+    }
+
+    function randomFill() {
+      clearGrid();
+      gridState.forEach((set, idx) => {
+        if (Math.random() > 0.6) {
+          const note = notes[Math.floor(Math.random() * notes.length)];
+          set.add(note);
+        }
+      });
+      redrawActiveCells();
+      updateGraph();
+    }
+
+    function shift(direction) {
+      if (direction === 'left') {
+        const first = gridState.shift();
+        gridState.push(first);
+      } else {
+        const last = gridState.pop();
+        gridState.unshift(last);
+      }
+      redrawActiveCells();
+      updateGraph();
+    }
+
+    function wireControls() {
+      playBtn.addEventListener('click', () => isPlaying ? handlePause() : handlePlay());
+      stopBtn.addEventListener('click', handleStop);
+      clearBtn.addEventListener('click', clearGrid);
+      randomizeBtn.addEventListener('click', randomFill);
+      shiftLeftBtn.addEventListener('click', () => shift('left'));
+      shiftRightBtn.addEventListener('click', () => shift('right'));
+      tempo.addEventListener('input', setTransportOptions);
+      swing.addEventListener('input', setTransportOptions);
+      volume.addEventListener('input', setTransportOptions);
+      instrumentSelect.addEventListener('change', () => {
+        synth = buildSynth(instrumentSelect.value);
+        setTransportOptions();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          isPlaying ? handlePause() : handlePlay();
+        }
+      });
+    }
+
+    function init() {
+      synth = buildSynth(instrumentSelect.value);
+      renderGrid();
+      setupGridListeners();
+      setTransportOptions();
+      makeSequence();
+      updateGraph();
+      wireControls();
+    }
+
+    init();
+  </script>
+</body>
+</html>

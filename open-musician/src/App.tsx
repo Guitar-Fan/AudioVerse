@@ -1,4 +1,5 @@
-import { AppShell, Badge, Burger, Button, Group, ScrollArea, Stack, Text, Title } from '@mantine/core'
+import { AppShell, Badge, Burger, Button, Group, Stack, Text, Title } from '@mantine/core'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import {
   ArrangeView,
   EffectsRack,
@@ -9,13 +10,9 @@ import {
   TransportControls,
 } from './components'
 import { useAudioEngine } from './hooks/useAudioEngine'
-import { useProjectStore } from './store/projectStore'
 import { useUIStore } from './store/uiStore'
 
 function App() {
-  const tracks = useProjectStore((state) => state.tracks)
-  const selectedTrackId = useProjectStore((state) => state.selectedTrackId)
-  const selectTrack = useProjectStore((state) => state.selectTrack)
   const sidebarOpen = useUIStore((state) => state.sidebarOpen)
   const toggleSidebar = useUIStore((state) => state.toggleSidebar)
 
@@ -23,9 +20,8 @@ function App() {
 
   return (
     <AppShell
-      padding="md"
+      padding={0}
       header={{ height: 64 }}
-      navbar={{ width: 280, breakpoint: 'sm', collapsed: { mobile: !sidebarOpen } }}
       styles={{ main: { backgroundColor: 'transparent' } }}
     >
       <AppShell.Header>
@@ -50,46 +46,34 @@ function App() {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md">
-        <Stack gap="sm" h="100%">
-          <Text size="sm" fw={600}>
-            Tracks
-          </Text>
-          <ScrollArea>
-            <Stack gap="xs">
-              {tracks.map((track) => (
-                <Button
-                  key={track.id}
-                  variant={selectedTrackId === track.id ? 'light' : 'subtle'}
-                  onClick={() => selectTrack(track.id)}
-                  justify="space-between"
-                >
-                  <span>{track.name}</span>
-                  <Badge variant="dot" color={track.type === 'audio' ? 'cyan' : 'grape'}>
-                    {track.type}
-                  </Badge>
-                </Button>
-              ))}
-            </Stack>
-          </ScrollArea>
-        </Stack>
-      </AppShell.Navbar>
-
       <AppShell.Main>
-        <Stack gap="md">
+        <Stack gap="sm" p="md">
           <TransportControls />
-          <Group align="flex-start" gap="md" grow>
-            <ArrangeView />
-            <ResourceBrowser />
-          </Group>
-          <Group align="flex-start" gap="md" grow>
-            <PianoRollEditor />
-            <MixerPanel />
-          </Group>
-          <Group align="flex-start" gap="md" grow>
-            <EffectsRack />
-            <InstrumentsPanel />
-          </Group>
+
+          <PanelGroup direction="horizontal" className="panel-group">
+            <Panel defaultSize={75} minSize={60} className="panel">
+              <ArrangeView />
+            </Panel>
+            <PanelResizeHandle className="panel-resize-handle" />
+            <Panel defaultSize={25} minSize={15} className="panel">
+              <Stack gap="sm">
+                <ResourceBrowser />
+                <InstrumentsPanel />
+              </Stack>
+            </Panel>
+          </PanelGroup>
+
+          <PanelGroup direction="horizontal" className="panel-group">
+            <Panel defaultSize={65} minSize={45} className="panel">
+              <PianoRollEditor />
+            </Panel>
+            <PanelResizeHandle className="panel-resize-handle" />
+            <Panel defaultSize={35} minSize={25} className="panel">
+              <MixerPanel />
+            </Panel>
+          </PanelGroup>
+
+          <EffectsRack />
         </Stack>
       </AppShell.Main>
     </AppShell>

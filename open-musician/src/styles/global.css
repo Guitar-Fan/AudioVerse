@@ -14,6 +14,7 @@ body {
   background: radial-gradient(circle at 20% 20%, rgba(255, 165, 0, 0.08), transparent 60%),
     radial-gradient(circle at 80% 0%, rgba(0, 191, 255, 0.08), transparent 60%),
     #05080c;
+  user-select: none;
 }
 
 #root {
@@ -95,9 +96,16 @@ body {
 }
 
 .arrange-track-label {
-  width: 140px;
+  width: 150px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #05080c;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 6px 8px;
+  border-radius: 8px;
 }
 
 .arrange-track-lane {
@@ -107,6 +115,7 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.01);
   border-radius: 8px;
+  overflow: hidden;
 }
 
 .arrange-clip {
@@ -118,6 +127,11 @@ body {
   color: #05080c;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+}
+
+.arrange-track-label[data-selected='true'] {
+  outline: 1px solid rgba(80, 180, 255, 0.65);
+  box-shadow: 0 0 0 2px rgba(80, 180, 255, 0.2);
 }
 
 .arrange-clip[data-type='audio'] {
@@ -144,4 +158,32 @@ body {
 .step-cell[data-active='true'] {
   background: linear-gradient(135deg, #51cf66, #37b24d);
   box-shadow: 0 0 8px rgba(81, 207, 102, 0.6);
+}
+
+.arrange-clip[data-selected='true'] {
+  box-shadow: 0 0 0 2px #ffe066, 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.timeline-lanes {
+  min-width: 100%;
+}
+
+.panel-group {
+  width: 100%;
+  min-height: 280px;
+}
+
+.panel {
+  min-width: 0;
+}
+
+.panel-resize-handle {
+  width: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  transition: background 120ms ease;
+}
+
+.panel-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
