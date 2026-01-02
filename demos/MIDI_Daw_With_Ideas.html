@@ -56,7 +56,7 @@
             background: #27272a; /* zinc-800 */
             border-bottom: 1px solid #3f3f46; /* zinc-700 */
             position: relative;
-            z-index: 30; /* Increased from 20 */
+            z-index: 100; /* Increased to be above everything */
             height: 30px;
             overflow: hidden;
             flex-shrink: 0;
@@ -133,6 +133,250 @@
             z-index:25;
             pointer-events: none;
             display:none;
+        }
+        #timeline-playhead {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 2px;
+            height: 100%;
+            background: #facc15;
+            z-index: 50;
+            pointer-events: none;
+            display: none;
+        }
+        #timeline-playhead::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: -6px;
+            width: 0;
+            height: 0;
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-top: 8px solid #facc15;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        /* Tutorial Button with Glow Animation */
+        #tutorial-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border: 3px solid #fbbf24;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.6),
+                        0 0 40px rgba(251, 191, 36, 0.4),
+                        0 4px 8px rgba(0, 0, 0, 0.3);
+            animation: glow-pulse 2s ease-in-out infinite;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        #tutorial-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.8),
+                        0 0 60px rgba(251, 191, 36, 0.6),
+                        0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        @keyframes glow-pulse {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(251, 191, 36, 0.6),
+                            0 0 40px rgba(251, 191, 36, 0.4),
+                            0 4px 8px rgba(0, 0, 0, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(251, 191, 36, 0.9),
+                            0 0 60px rgba(251, 191, 36, 0.7),
+                            0 4px 8px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        /* Tutorial Overlay */
+        #tutorial-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            display: none;
+        }
+
+        #tutorial-overlay.active {
+            display: block;
+        }
+
+        /* Tutorial Character */
+        #tutorial-character {
+            position: fixed;
+            bottom: 40px;
+            left: 40px;
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            border: 4px solid #fbbf24;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            z-index: 10002;
+            animation: character-bounce 2s ease-in-out infinite;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        @keyframes character-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Tutorial Dialogue Bubble */
+        #tutorial-dialogue {
+            position: fixed;
+            bottom: 180px;
+            left: 40px;
+            max-width: 400px;
+            background: white;
+            color: #1f2937;
+            padding: 20px;
+            border-radius: 16px;
+            border: 3px solid #fbbf24;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            z-index: 10002;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        #tutorial-dialogue::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: 40px;
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 20px solid #fbbf24;
+        }
+
+        #tutorial-dialogue::before {
+            content: '';
+            position: absolute;
+            bottom: -14px;
+            left: 43px;
+            width: 0;
+            height: 0;
+            border-left: 17px solid transparent;
+            border-right: 17px solid transparent;
+            border-top: 17px solid white;
+            z-index: 1;
+        }
+
+        #tutorial-text {
+            margin-bottom: 15px;
+        }
+
+        #tutorial-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .tutorial-btn-small {
+            padding: 8px 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .tutorial-btn-small:hover {
+            background: #2563eb;
+        }
+
+        .tutorial-btn-small.skip {
+            background: #6b7280;
+        }
+
+        .tutorial-btn-small.skip:hover {
+            background: #4b5563;
+        }
+
+        /* Tutorial Highlight Box */
+        .tutorial-highlight {
+            position: absolute;
+            border: 4px solid #fbbf24;
+            background: rgba(251, 191, 36, 0.15);
+            z-index: 10001;
+            pointer-events: none;
+            animation: highlight-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes highlight-pulse {
+            0%, 100% {
+                border-color: #fbbf24;
+                box-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
+            }
+            50% {
+                border-color: #f59e0b;
+                box-shadow: 0 0 40px rgba(251, 191, 36, 0.9);
+            }
+        }
+
+        /* Tutorial Arrow */
+        .tutorial-arrow {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            z-index: 10001;
+            pointer-events: none;
+            color: #fbbf24;
+            filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.8));
+            animation: arrow-bounce 1s ease-in-out infinite;
+        }
+
+        @keyframes arrow-bounce {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-10px, -10px); }
+        }
+
+        .timeline-measure-marker {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            border-left: 2px solid #52525b;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .timeline-beat-marker {
+            position: absolute;
+            top: 50%;
+            height: 50%;
+            border-left: 1px solid #3f3f46;
+            pointer-events: none;
+            z-index: 9;
+        }
+        .timeline-measure-label {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            pointer-events: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
         }
         .snap-indicator {
             position: absolute;
@@ -612,7 +856,9 @@
     </div>
 
     <div id="timeline-header">
-        <div id="timeline-container" class="relative w-full h-full" style="z-index: 35;"></div>
+        <div id="timeline-container" class="relative w-full h-full" style="z-index: 35;">
+            <div id="timeline-playhead"></div>
+        </div>
     </div>
 
     <main id="main-content" class="flex-grow flex overflow-hidden">
@@ -671,6 +917,19 @@
         </div>
     </div>
 
+    <!-- Tutorial System -->
+    <button id="tutorial-btn">🎓 Tutorial</button>
+    <div id="tutorial-overlay">
+        <div id="tutorial-character">🎸</div>
+        <div id="tutorial-dialogue">
+            <div id="tutorial-text"></div>
+            <div id="tutorial-controls">
+                <button class="tutorial-btn-small skip" onclick="skipTutorial()">Skip</button>
+                <button class="tutorial-btn-small" onclick="nextTutorialStep()">Next</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- Tone.js Start Context ---
         document.documentElement.addEventListener('mousedown', async () => {
@@ -705,6 +964,7 @@
         const snapEnabledCheckbox = document.getElementById('snap-enabled');
         const snapIndicator = document.getElementById('snap-indicator');
         const timelineContainer = document.getElementById('timeline-container');
+        const timelinePlayhead = document.getElementById('timeline-playhead');
         const playbackPosition = document.getElementById('playback-position');
         const loopBtn = document.getElementById('loop-btn');
         const loopRegion = document.getElementById('loop-region');
@@ -1025,93 +1285,86 @@
             
             try {
                 const isPolySynth = ['PolySynth', 'FMSynth', 'AMSynth', 'DuoSynth', 'PluckSynth'].includes(type);
-                const target = isPolySynth ? instrument.voices[0] : instrument;
                 
-                // Map parameter names to Tone.js paths
-                const paramMap = {
-                    // Oscillator
-                    'type': 'oscillator.type',
-                    'detune': 'oscillator.detune',
-                    'phase': 'oscillator.phase',
+                // For PolySynth, use the set method with options instead of accessing voices
+                if (isPolySynth) {
+                    const optionsMap = {
+                        'type': { oscillator: { type: value } },
+                        'detune': { oscillator: { detune: value } },
+                        'phase': { oscillator: { phase: value } },
+                        'attack': { envelope: { attack: value } },
+                        'decay': { envelope: { decay: value } },
+                        'sustain': { envelope: { sustain: value } },
+                        'release': { envelope: { release: value } },
+                        'carrierType': { oscillator: { type: value } },
+                        'carrierDetune': { oscillator: { detune: value } },
+                        'modulatorType': { modulationEnvelope: { type: value } },
+                        'modulationIndex': { modulationIndex: value },
+                        'harmonicity': { harmonicity: value },
+                        'modAttack': { modulationEnvelope: { attack: value } },
+                        'modDecay': { modulationEnvelope: { decay: value } },
+                        'modSustain': { modulationEnvelope: { sustain: value } },
+                        'modRelease': { modulationEnvelope: { release: value } },
+                        'attackNoise': { attackNoise: value },
+                        'dampening': { dampening: value },
+                        'resonance': { resonance: value },
+                        'portamento': { portamento: value },
+                        'volume': { volume: value }
+                    };
                     
-                    // Envelope
-                    'attack': 'envelope.attack',
-                    'decay': 'envelope.decay',
-                    'sustain': 'envelope.sustain',
-                    'release': 'envelope.release',
-                    
-                    // Filter
-                    'filterType': 'filter.type',
-                    'filterFrequency': 'filter.frequency',
-                    'filterQ': 'filter.Q',
-                    'filterRolloff': 'filter.rolloff',
-                    
-                    // Filter Envelope
-                    'filterAttack': 'filterEnvelope.attack',
-                    'filterDecay': 'filterEnvelope.decay',
-                    'filterSustain': 'filterEnvelope.sustain',
-                    'filterRelease': 'filterEnvelope.release',
-                    'filterBaseFrequency': 'filterEnvelope.baseFrequency',
-                    'filterOctaves': 'filterEnvelope.octaves',
-                    
-                    // FM/AM Synth
-                    'carrierType': 'oscillator.type',
-                    'carrierDetune': 'oscillator.detune',
-                    'modulatorType': 'modulationEnvelope.type',
-                    'modulationIndex': 'modulationIndex',
-                    'harmonicity': 'harmonicity',
-                    
-                    // Modulation Envelope
-                    'modAttack': 'modulationEnvelope.attack',
-                    'modDecay': 'modulationEnvelope.decay',
-                    'modSustain': 'modulationEnvelope.sustain',
-                    'modRelease': 'modulationEnvelope.release',
-                    
-                    // DuoSynth voices
-                    'voice0Type': 'voice0.oscillator.type',
-                    'voice0Detune': 'voice0.oscillator.detune',
-                    'voice0Volume': 'voice0.volume',
-                    'voice1Type': 'voice1.oscillator.type',
-                    'voice1Detune': 'voice1.oscillator.detune',
-                    'voice1Volume': 'voice1.volume',
-                    'vibratoAmount': 'vibratoAmount',
-                    'vibratoRate': 'vibratoRate',
-                    
-                    // PluckSynth
-                    'attackNoise': 'attackNoise',
-                    'dampening': 'dampening',
-                    'resonance': 'resonance',
-                    
-                    // MembraneSynth / MetalSynth
-                    'pitchDecay': 'pitchDecay',
-                    'octaves': 'octaves',
-                    'frequency': 'frequency',
-                    
-                    // Voice
-                    'portamento': 'portamento',
-                    'volume': 'volume'
-                };
-                
-                const path = paramMap[paramName];
-                if (!path) return;
-                
-                const parts = path.split('.');
-                let obj = target;
-                
-                for (let i = 0; i < parts.length - 1; i++) {
-                    if (obj[parts[i]]) {
-                        obj = obj[parts[i]];
-                    } else {
-                        return;
+                    const options = optionsMap[paramName];
+                    if (options && instrument.set) {
+                        instrument.set(options);
                     }
-                }
-                
-                const finalProp = parts[parts.length - 1];
-                if (obj[finalProp] !== undefined) {
-                    if (typeof obj[finalProp] === 'object' && obj[finalProp].value !== undefined) {
-                        obj[finalProp].value = value;
-                    } else {
-                        obj[finalProp] = value;
+                } else {
+                    // For mono synths, access properties directly
+                    const paramMap = {
+                        'type': 'oscillator.type',
+                        'detune': 'oscillator.detune',
+                        'attack': 'envelope.attack',
+                        'decay': 'envelope.decay',
+                        'sustain': 'envelope.sustain',
+                        'release': 'envelope.release',
+                        'filterType': 'filter.type',
+                        'filterFrequency': 'filter.frequency',
+                        'filterQ': 'filter.Q',
+                        'filterRolloff': 'filter.rolloff',
+                        'filterAttack': 'filterEnvelope.attack',
+                        'filterDecay': 'filterEnvelope.decay',
+                        'filterSustain': 'filterEnvelope.sustain',
+                        'filterRelease': 'filterEnvelope.release',
+                        'filterBaseFrequency': 'filterEnvelope.baseFrequency',
+                        'filterOctaves': 'filterEnvelope.octaves',
+                        'pitchDecay': 'pitchDecay',
+                        'octaves': 'octaves',
+                        'frequency': 'frequency',
+                        'harmonicity': 'harmonicity',
+                        'modulationIndex': 'modulationIndex',
+                        'portamento': 'portamento',
+                        'volume': 'volume'
+                    };
+                    
+                    const path = paramMap[paramName];
+                    if (!path) return;
+                    
+                    const parts = path.split('.');
+                    let obj = instrument;
+                    
+                    for (let i = 0; i < parts.length - 1; i++) {
+                        if (obj[parts[i]]) {
+                            obj = obj[parts[i]];
+                        } else {
+                            return;
+                        }
+                    }
+                    
+                    const finalProp = parts[parts.length - 1];
+                    if (obj[finalProp] !== undefined) {
+                        if (typeof obj[finalProp] === 'object' && obj[finalProp].value !== undefined) {
+                            obj[finalProp].value = value;
+                        } else {
+                            obj[finalProp] = value;
+                        }
                     }
                 }
                 
@@ -1155,6 +1408,9 @@
             Tone.Transport.bpm.value = parseInt(tempoInput.value, 10);
             const sig = signatureSelect.value.split('/').map(n => parseInt(n));
             Tone.Transport.timeSignature = sig;
+            // Show timeline playhead at start
+            timelinePlayhead.style.display = 'block';
+            updateTimelinePlayhead();
         };
 
         // --- Event Listeners ---
@@ -1177,6 +1433,10 @@
         gridContainer.addEventListener('scroll', () => {
             pianoKeysSVG.style.marginTop = `-${gridContainer.scrollTop}px`;
             timelineHeader.scrollLeft = gridContainer.scrollLeft;
+            // Update timeline playhead position when scrolling
+            if (timelinePlayhead.style.display !== 'none') {
+                updateTimelinePlayhead();
+            }
         });
 
         playBtn.addEventListener('click', handlePlayPause);
@@ -1224,17 +1484,18 @@
         // Timeline click to set playback position
         timelineContainer.addEventListener('click', (e) => {
             const rect = timelineContainer.getBoundingClientRect();
-            const x = e.clientX - rect.left + timelineHeader.scrollLeft;
-            const time = x / zoom;
-            setPlaybackPosition(time);
+            const clickX = e.clientX - rect.left;
+            const scrollX = gridContainer.scrollLeft; // Use grid scroll, not timeline scroll
+            const totalX = clickX + scrollX;
+            const time = totalX / zoom;
+            
+            Tone.Transport.seconds = Math.max(0, time);
+            updateTimelinePlayhead();
+            updatePlaybackCursor();
+            updatePlaybackDisplay();
         });
 
         // --- Playback Position Management ---
-        function setPlaybackPosition(time) {
-            Tone.Transport.seconds = Math.max(0, time);
-            updatePlaybackDisplay();
-        }
-
         function updatePlaybackDisplay() {
             const currentTime = Tone.Transport.seconds;
             const beatsPerMeasure = Tone.Transport.timeSignature[0];
@@ -1281,10 +1542,17 @@
             
             const currentTime = Tone.Transport.seconds;
             const currentMeasure = Math.floor(currentTime / secondsPerMeasure);
-            const newTime = Math.max(0, currentMeasure * secondsPerMeasure);
+            // If we're at the very start of a measure, go to previous measure
+            // Otherwise go to start of current measure
+            const tolerance = 0.01; // 10ms tolerance
+            const timeInMeasure = currentTime - (currentMeasure * secondsPerMeasure);
+            const targetMeasure = timeInMeasure < tolerance ? Math.max(0, currentMeasure - 1) : currentMeasure;
+            const newTime = targetMeasure * secondsPerMeasure;
             
-            setPlaybackPosition(newTime);
+            Tone.Transport.seconds = newTime;
+            updateTimelinePlayhead();
             updatePlaybackCursor();
+            updatePlaybackDisplay();
         }
 
         function handleNextMeasure() {
@@ -1296,8 +1564,10 @@
             const nextMeasure = Math.floor(currentTime / secondsPerMeasure) + 1;
             const newTime = nextMeasure * secondsPerMeasure;
             
-            setPlaybackPosition(newTime);
+            Tone.Transport.seconds = newTime;
+            updateTimelinePlayhead();
             updatePlaybackCursor();
+            updatePlaybackDisplay();
         }
 
         // --- File & MIDI Handling ---
@@ -2225,15 +2495,21 @@
         }
 
         function drawTimeline() {
+            // Store existing playhead
+            const existingPlayhead = document.getElementById('timeline-playhead');
             timelineContainer.innerHTML = '';
+            
+            // Re-add playhead
+            if (existingPlayhead) {
+                timelineContainer.appendChild(existingPlayhead);
+            }
             
             // Calculate timeline parameters
             const beatsPerMeasure = Tone.Transport.timeSignature[0];
             const secondsPerBeat = 60 / Tone.Transport.bpm.value;
             const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
-            const secondsPerSubdivision = secondsPerBeat / (currentSubdivision / 4);
             
-            // Determine total duration - either from MIDI or default minimum
+            // Determine total duration
             const midiDuration = midiData ? midiData.duration : 0;
             const minDuration = maxMeasures * secondsPerMeasure;
             const totalDuration = Math.max(midiDuration, minDuration);
@@ -2241,53 +2517,42 @@
             const containerWidth = totalDuration * zoom;
             timelineContainer.style.width = `${containerWidth}px`;
             timelineContainer.style.position = 'relative';
-            timelineContainer.style.zIndex = '35';
+            timelineContainer.style.zIndex = '100';
             
-            // Calculate subdivision count
-            const totalSubdivisions = Math.ceil(totalDuration / secondsPerSubdivision);
+            // Calculate number of measures to display
+            const totalMeasures = Math.ceil(totalDuration / secondsPerMeasure);
             
-            for (let i = 0; i <= totalSubdivisions; i++) {
-                const time = i * secondsPerSubdivision;
-                const x = time * zoom;
+            // Draw measure markers
+            for (let measure = 0; measure <= totalMeasures; measure++) {
+                const measureTime = measure * secondsPerMeasure;
+                const x = measureTime * zoom;
                 
-                // Skip if beyond our view to optimize performance
-                if (x > containerWidth) break;
+                // Measure marker line
+                const measureMarker = document.createElement('div');
+                measureMarker.className = 'timeline-measure-marker';
+                measureMarker.style.left = `${x}px`;
+                timelineContainer.appendChild(measureMarker);
                 
-                // Determine tick type
-                const subdivisionInMeasure = i % (beatsPerMeasure * currentSubdivision / 4);
-                const subdivisionInBeat = i % (currentSubdivision / 4);
+                // Measure number label
+                const label = document.createElement('div');
+                label.className = 'timeline-measure-label';
+                label.textContent = (measure + 1).toString();
+                label.style.left = `${x}px`;
+                timelineContainer.appendChild(label);
                 
-                const tick = document.createElement('div');
-                tick.className = 'timeline-tick';
-                tick.style.left = `${x}px`;
-                tick.style.position = 'absolute';
-                
-                if (subdivisionInMeasure === 0) {
-                    // Measure marker
-                    const measure = Math.floor(i / (beatsPerMeasure * currentSubdivision / 4)) + 1;
-                    tick.classList.add('measure');
-                    tick.textContent = measure.toString();
-                    tick.style.zIndex = '40';
-                } else if (subdivisionInBeat === 0) {
-                    // Beat marker
-                    const beatInMeasure = Math.floor(subdivisionInMeasure / (currentSubdivision / 4)) + 1;
-                    tick.classList.add('beat');
-                    tick.style.zIndex = '37';
-                    if (currentSubdivision >= 8) { // Only show beat numbers on fine subdivisions
-                        tick.textContent = beatInMeasure.toString();
-                    }
-                } else {
-                    // Subdivision marker
-                    tick.classList.add('subdivision');
-                    tick.style.zIndex = '35';
-                    if (currentSubdivision >= 16) { // Only show subdivision numbers on very fine subdivisions
-                        const subInBeat = (subdivisionInMeasure % (currentSubdivision / 4)) + 1;
-                        tick.textContent = subInBeat.toString();
-                    }
+                // Draw beat markers within the measure
+                for (let beat = 1; beat < beatsPerMeasure; beat++) {
+                    const beatTime = measureTime + (beat * secondsPerBeat);
+                    const beatX = beatTime * zoom;
+                    
+                    const beatMarker = document.createElement('div');
+                    beatMarker.className = 'timeline-beat-marker';
+                    beatMarker.style.left = `${beatX}px`;
+                    timelineContainer.appendChild(beatMarker);
                 }
-                
-                timelineContainer.appendChild(tick);
             }
+            
+            updateTimelinePlayhead();
         }
 
         // --- Piano Key Interaction & Sample Loading ---
@@ -2320,6 +2585,8 @@
                 playIcon.classList.remove('hidden');
                 pauseIcon.classList.add('hidden');
                 stopPlaybackUpdates();
+                // Keep cursor visible in pause mode
+                timelinePlayhead.style.display = 'block';
             } else {
                 if (!midiData && !isLooping) {
                     // Create a default empty track for practice
@@ -2347,6 +2614,7 @@
             playIcon.classList.remove('hidden');
             pauseIcon.classList.add('hidden');
             hidePlaybackCursor();
+            timelinePlayhead.style.display = 'none';
             stopPlaybackUpdates();
             updatePlaybackDisplay();
         }
@@ -2357,6 +2625,7 @@
             } else {
                 Tone.Transport.position = 0;
             }
+            updateTimelinePlayhead();
             updatePlaybackCursor();
             updatePlaybackDisplay();
         }
@@ -2411,7 +2680,9 @@
 
         function showPlaybackCursor() {
             playbackCursor.style.display = 'block';
+            timelinePlayhead.style.display = 'block';
             updatePlaybackCursor();
+            updateTimelinePlayhead();
         }
 
         function hidePlaybackCursor() {
@@ -2423,24 +2694,209 @@
         }
 
         function updatePlaybackCursor() {
-            if (Tone.Transport.state !== 'started') {
-                const x = Tone.Transport.seconds * zoom;
-                playbackCursor.style.transform = `translateX(${x}px)`;
-                if (Tone.Transport.state === "stopped") hidePlaybackCursor();
-                return;
-            }
             const x = Tone.Transport.seconds * zoom;
             playbackCursor.style.transform = `translateX(${x}px)`;
-
+            
+            // Update timeline playhead to match (accounting for scroll)
+            const timelineX = x - gridContainer.scrollLeft;
+            timelinePlayhead.style.transform = `translateX(${timelineX}px)`;
+            
+            if (Tone.Transport.state !== 'started') {
+                if (Tone.Transport.state === "stopped") {
+                    hidePlaybackCursor();
+                    timelinePlayhead.style.display = 'none';
+                }
+                return;
+            }
+            
+            // Autoscroll logic (triggers at 75% of screen)
             const gridRect = gridContainer.getBoundingClientRect();
-            if (x > gridContainer.scrollLeft + gridRect.width - 50) {
-                gridContainer.scrollLeft = x - gridRect.width + 50;
-            } else if (x < gridContainer.scrollLeft + 50) {
-                gridContainer.scrollLeft = Math.max(0, x - 50);
+            const autoScrollTrigger = gridRect.width * 0.75;
+            if (x > gridContainer.scrollLeft + autoScrollTrigger) {
+                gridContainer.scrollLeft = x - autoScrollTrigger;
+                // Sync timeline scroll
+                timelineHeader.scrollLeft = gridContainer.scrollLeft;
+            } else if (x < gridContainer.scrollLeft + gridRect.width * 0.25) {
+                gridContainer.scrollLeft = Math.max(0, x - gridRect.width * 0.25);
+                // Sync timeline scroll
+                timelineHeader.scrollLeft = gridContainer.scrollLeft;
             }
             
             cursorAnimationFrame = requestAnimationFrame(updatePlaybackCursor);
         }
+        
+        function updateTimelinePlayhead() {
+            const x = Tone.Transport.seconds * zoom;
+            const timelineX = x - gridContainer.scrollLeft;
+            timelinePlayhead.style.transform = `translateX(${timelineX}px)`;
+        }
+
+        // Tutorial System
+        let currentTutorialStep = 0;
+        let tutorialHighlights = [];
+        let tutorialArrows = [];
+        
+        const tutorialSteps = [
+            {
+                text: "🎵 Welcome to AudioVerse DAW! I'm Riff, your musical guide! Let's rock through this epic DAW together. Ready to create some fire tracks? Let's go! 🔥",
+                highlight: null
+            },
+            {
+                text: "🎹 These are your PIANO KEYS! Click any key to play a note. You can also LOAD CUSTOM SAMPLES by clicking on a key - then you can play that sample across the keyboard at different pitches! Pretty sweet, right?",
+                highlight: { selector: '#piano-keys-svg', offset: { top: 0, left: 0 } }
+            },
+            {
+                text: "📝 This is the MIDI GRID where you draw notes! Each row matches a piano key. Time flows left to right. This is where the magic happens! ✨",
+                highlight: { selector: '#grid', offset: { top: 0, left: 0 } }
+            },
+            {
+                text: "⏯️ Meet the TRANSPORT CONTROLS! Play ▶️ starts playback, Pause ⏸️ freezes time, Stop ⏹️ returns to start, and Rewind ⏮️ jumps back. Master these and you control time itself! ⏰",
+                highlight: { selector: '#play-btn', offset: { top: -10, left: -10, width: 320, height: 60 } }
+            },
+            {
+                text: "🔴 Hit RECORD to capture your performance in real-time! Play notes on the piano keys while recording and watch them appear on the grid. You're a live performer now! 🎤",
+                highlight: { selector: '#record-btn', offset: { top: -10, left: -10, width: 80, height: 60 } }
+            },
+            {
+                text: "🔁 LOOP MODE is your best friend! Toggle this to repeat a section over and over. Perfect for jamming, testing ideas, or hypnotizing your audience! 🌀",
+                highlight: { selector: '#loop-btn', offset: { top: -10, left: -10, width: 80, height: 60 } }
+            },
+            {
+                text: "💓 BPM controls your TEMPO! Crank it up for high-energy dance tracks (180+ BPM) or slow it down for chill vibes (60-80 BPM). Feel the rhythm! 🎶",
+                highlight: { selector: '#bpm-display', offset: { top: -10, left: -10, width: 150, height: 60 } }
+            },
+            {
+                text: "🔍 ZOOM IN and OUT to see more detail or get the big picture! Slide right to zoom in on those precise edits, left to see your whole masterpiece! 🎨",
+                highlight: { selector: '#zoom-range', offset: { top: -10, left: -10, width: 220, height: 60 } }
+            },
+            {
+                text: "📏 SNAP TO GRID keeps your notes aligned! Choose whole notes, half notes, quarter notes, or go wild with FREE mode. Snap makes everything groove together! 🎯",
+                highlight: { selector: '#snap-display', offset: { top: -10, left: -10, width: 200, height: 60 } }
+            },
+            {
+                text: "✏️ PENCIL TOOL (V key) lets you draw notes! Click and drag on the grid to create notes. The longer you drag, the longer the note. Start composing! 🎼",
+                highlight: { selector: '#pencil-tool', offset: { top: -10, left: -10, width: 60, height: 60 } }
+            },
+            {
+                text: "👆 SELECT TOOL (B key) is for selecting and moving notes! Click to select one note, or drag to select multiple. Then drag them around to rearrange your melody! 🎵",
+                highlight: { selector: '#select-tool', offset: { top: -10, left: -10, width: 60, height: 60 } }
+            },
+            {
+                text: "✂️ CUTTER TOOL (C key) slices notes in half! Click on any note to split it at that point. Great for creating rhythmic variations! Snip snip! ✨",
+                highlight: { selector: '#cutter-tool', offset: { top: -10, left: -10, width: 60, height: 60 } }
+            },
+            {
+                text: "⏭️ TIMELINE NAVIGATION! Click anywhere on the timeline to jump to that moment. Use PREV/NEXT MEASURE buttons to hop around quickly. Time travel! ⚡",
+                highlight: { selector: '#timeline-header', offset: { top: 0, left: 0 } }
+            },
+            {
+                text: "🎺 INSTRUMENT SELECTOR! Choose from 9 epic synthesizers - PolySynth, MonoSynth, FM, AM, Duo, Pluck, Membrane, Metal, or load your own Samples! Each one sounds totally different! 🎹",
+                highlight: { selector: '#instrument-select', offset: { top: -10, left: -10, width: 220, height: 60 } }
+            },
+            {
+                text: "🎛️ Click EDIT INSTRUMENT to open a pro-level plugin interface with 15-17 parameters per synth! Tweak envelopes, filters, oscillators, effects... Go DEEP into sound design! 🔊",
+                highlight: { selector: '#edit-instrument-btn', offset: { top: -10, left: -10, width: 160, height: 60 } }
+            },
+            {
+                text: "🖱️ RIGHT-CLICK on notes for a CONTEXT MENU! Transpose up/down by semitones or octaves, or delete notes. You can also RIGHT-CLICK and DRAG to delete multiple notes FL Studio style! 🎚️",
+                highlight: { selector: '#grid', offset: { top: 0, left: 0 } }
+            },
+            {
+                text: "🔲 SELECTION RECTANGLE! In Select mode, click and drag on empty space to draw a selection box around multiple notes. Then move them all together or use arrow keys to transpose! 📦",
+                highlight: { selector: '#grid', offset: { top: 0, left: 0 } }
+            },
+            {
+                text: "⌨️ KEYBOARD SHORTCUTS are your power moves! V=Pencil, B=Select, C=Cutter, DELETE=Remove notes, Arrow Keys=Transpose selection. Once you learn these, you'll be FLYING! 🚀",
+                highlight: null
+            },
+            {
+                text: "🎮 BONUS TIPS: The playback cursor auto-scrolls at 75% of screen. Timeline triangle shows where you are. Measure markers help you stay on beat. Yellow highlights show selections! 💛",
+                highlight: null
+            },
+            {
+                text: "🌟 You're all set! Now go forth and CREATE AMAZING MUSIC! Remember: there are no wrong notes, only happy accidents. Rock on, maestro! 🎸🔥🎵",
+                highlight: null
+            }
+        ];
+        
+        function startTutorial() {
+            currentTutorialStep = 0;
+            document.getElementById('tutorial-overlay').classList.add('active');
+            showTutorialStep();
+        }
+        
+        function showTutorialStep() {
+            // Clear previous highlights
+            tutorialHighlights.forEach(h => h.remove());
+            tutorialArrows.forEach(a => a.remove());
+            tutorialHighlights = [];
+            tutorialArrows = [];
+            
+            const step = tutorialSteps[currentTutorialStep];
+            document.getElementById('tutorial-text').textContent = step.text;
+            
+            if (step.highlight) {
+                const element = document.querySelector(step.highlight.selector);
+                if (element) {
+                    const rect = element.getBoundingClientRect();
+                    const offset = step.highlight.offset || { top: 0, left: 0 };
+                    
+                    // Create highlight box
+                    const highlight = document.createElement('div');
+                    highlight.className = 'tutorial-highlight';
+                    highlight.style.position = 'fixed';
+                    highlight.style.top = `${rect.top + offset.top}px`;
+                    highlight.style.left = `${rect.left + offset.left}px`;
+                    highlight.style.width = `${offset.width || rect.width}px`;
+                    highlight.style.height = `${offset.height || rect.height}px`;
+                    document.body.appendChild(highlight);
+                    tutorialHighlights.push(highlight);
+                    
+                    // Create arrow pointing to element
+                    const arrow = document.createElement('div');
+                    arrow.className = 'tutorial-arrow';
+                    arrow.innerHTML = '➤';
+                    arrow.style.position = 'fixed';
+                    arrow.style.top = `${rect.top + (offset.height || rect.height) / 2 - 30}px`;
+                    arrow.style.left = `${rect.left - 80}px`;
+                    arrow.style.fontSize = '60px';
+                    document.body.appendChild(arrow);
+                    tutorialArrows.push(arrow);
+                }
+            }
+            
+            // Update button text
+            const nextBtn = document.querySelector('.tutorial-btn-small:not(.skip)');
+            if (currentTutorialStep === tutorialSteps.length - 1) {
+                nextBtn.textContent = 'Finish';
+            } else {
+                nextBtn.textContent = 'Next';
+            }
+        }
+        
+        function nextTutorialStep() {
+            currentTutorialStep++;
+            if (currentTutorialStep >= tutorialSteps.length) {
+                endTutorial();
+            } else {
+                showTutorialStep();
+            }
+        }
+        
+        function skipTutorial() {
+            endTutorial();
+        }
+        
+        function endTutorial() {
+            document.getElementById('tutorial-overlay').classList.remove('active');
+            tutorialHighlights.forEach(h => h.remove());
+            tutorialArrows.forEach(a => a.remove());
+            tutorialHighlights = [];
+            tutorialArrows = [];
+        }
+        
+        // Tutorial button click handler
+        document.getElementById('tutorial-btn').addEventListener('click', startTutorial);
     </script>
 </body>
 </html>

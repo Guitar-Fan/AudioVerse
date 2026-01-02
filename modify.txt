@@ -32,4 +32,53 @@ The timeline quite isn't working (the already existin time features work, like a
 when I try to click a custom place on timeline, 
 it keeps going back to slightly before the playhead was when I clicked it not matter where I click , 
 the skip ahead or behind measure 
-Also I got a lot of errors in eruda when I try to modify the parameters in 
+A lot of errors in eruda about instrument parameters when midi daw starts up
+ and when I modify the parameters in plugin window, 
+ (the ui works though, doesn't show a save button)
+
+Midi Daw in PAUSE mode, playback head should be visible and able to move wherever it wants, so when
+user presses play, it starts at where the playback head was last. Also the click wherever
+on timeline while in play mode works only until playback header goes till edge of my screen distance,
+(remember it autoscrolls, so the the header is around the middle, but the distance is one screen)
+then beyond the edge of screen distance.(This was always the problem, the last update to change anything about that) In other standard DAWs, there is usually a visible triangle on top playhead
+that hangs out in timeline area, and measure or time interval markers on timeline strip, but my midi daw
+has none of that right now.
+
+In summary, improve pause mode time handling logic, fix skip ahead and behind logic, add
+visual triangle and timeline markers
+
+Now that the playback line is showing visually in timeline area, I can see that
+the playback line looks broken into 2 pieces, 1 in timeline area, and 1 in midi grid area.
+the timeline area line starts and moves behind line in midi grid area. but after midi grid
+line reaches edge of screen, autoscroll starts and the line in timeline area blazes past midi area line which is going at the speed of autoscroll
+it has to be something with the autoscroll. to clarify the midi grid line is going at speed of autoscroll.
+also the triangle and measure markers and labels aren't visible. check z-index of elements.
+
+make autoscroll trigger earlier at 75% of screen.
+make glowing in style "tutorial" button,
+that has a musician guy at corner of screen with dialogue bubbles talking and yellow moving
+rectangles and arrows point to every feature available, so user of DAW doesn't miss a single feature.
+Kind of like a guided demo of a video game at the beginning. tutorial should showcare every button and feature with engaging, fun dialogue.
+
+Made ToneJS_Deep_exploration html that attempts to cover every feature available in the
+Tone.js library. Uses D3 javascript library to visually route the incoming signal, the virutal
+midi keyboard, through any amount of instruments, sequencers and effects (built-in Tone.js features).
+The GUI is like a mind map. Turns out I actually tried to do this before with TonejsInst html in Summer of Making.
+I accidently deleted the stylesheet, which I generically named style css. So I redid the css with inline and now
+it has css.
+
+Made several improvements to Midi_DAW_With_Ideas html.
+-Midi DAW now allows users to skip ahead or behind to wherever they want on timeline
+    +Pre-flavortown, users would always have to play the midi arrangement from beginning
+    +Auto-scrolling was available pre-flavortown, now improved syncing with playhead and triggers earlier so user can see what's ahead
+-Added multiple midi notes actions
+    +User can now select any number of notes using selection tool to drag a blue, dashed rectangle around desired notes
+    +Implemented sleek right-click menu for selected notes: delete, move up/down a semitone/octave
+    +Deleting notes is now available; backspace or right-click menu
+-Added fun interactive tutorial demo
+    +Coded a guitar character named "Riff" as the guide person, who can speak via dialogue bubbles
+    +Has moving yellow boxes and arrows to point out every feature
+Video shows Midi DAW with an already uploaded Willhem Tell Overture midi file. I go through most features of the Midi DAW.
+I also modified TonejsInst and created another html called ToneJS_Deep_exploration, but I'll talk about that next devlog, where I can upload a dedicated video for that.
+
+make a sleek, desktop like GUI for TonejsInst.
