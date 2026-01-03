@@ -2,782 +2,1138 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AudioVerse Universe - Solar System of Audio Tools</title>
+  <title>AudioVerse Solar System</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
   <style>
-    body {
-      background: radial-gradient(ellipse at center, #0f0f23 0%, #020024 50%, #000000 100%);
-      color: #e4e4e7;
-      font-family: 'Inter', sans-serif;
-      min-height: 100vh;
+    * {
       margin: 0;
-      overflow-x: hidden;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Space Grotesk', 'Orbitron', monospace;
+      background: #000;
+      overflow: hidden;
+      color: #fff;
+    }
+
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
       position: relative;
     }
-    
-    /* Animated starfield background */
-    .starfield {
+
+    /* UI Overlay */
+    #ui-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: 0;
       pointer-events: none;
+      z-index: 1000;
     }
-    
-    .star {
+
+    /* Title */
+    #title {
       position: absolute;
-      background: white;
-      border-radius: 50%;
-      animation: twinkle 3s infinite;
-    }
-    
-    .star.small {
-      width: 1px;
-      height: 1px;
-      opacity: 0.7;
-    }
-    
-    .star.medium {
-      width: 2px;
-      height: 2px;
-      opacity: 0.8;
-      box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
-    }
-    
-    .star.large {
-      width: 3px;
-      height: 3px;
-      opacity: 0.9;
-      box-shadow: 0 0 10px rgba(255, 255, 255, 0.9);
-    }
-    
-    @keyframes twinkle {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 1; }
-    }
-    
-    /* Main container */
-    .universe-container {
-      position: relative;
-      z-index: 1;
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    h1 {
-      font-size: 3rem;
-      font-weight: 700;
-      margin-bottom: 2rem;
-      color: #ff9500;
-      letter-spacing: 0.04em;
-      text-shadow: 0 0 30px #ff9500, 0 0 60px #ff950080;
-      text-align: center;
-      animation: pulse-glow 3s infinite alternate;
-    }
-    
-    /* Solar System Container */
-    .solar-system {
-      position: relative;
-      width: 60vw;
-      height: 80vh;
-      max-width: 1200px;
-      max-height: 800px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    /* Central Sun - AudioVerse DAW */
-    .sun {
-      position: absolute;
-      width: 200px;
-      height: 200px;
-      z-index: 10;
-      transform: translate(-50%, -50%);
-      left: 50%;
-      top: 50%;
-    }
-    
-    /* Orbit paths (visual guides) */
-    .orbit {
-      position: absolute;
-      border: 1px solid rgba(255, 149, 0, 0.2);
-      border-radius: 50%;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      z-index: 1;
-    }
-    
-    .orbit.orbit-1 { width: 350px; height: 350px; }
-    .orbit.orbit-2 { width: 450px; height: 450px; }
-    .orbit.orbit-3 { width: 550px; height: 550px; }
-    .orbit.orbit-4 { width: 650px; height: 650px; }
-    .orbit.orbit-5 { width: 750px; height: 750px; }
-    .orbit.orbit-6 { width: 850px; height: 850px; }
-    
-    /* Planet containers for orbiting */
-    .planet-orbit {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 20;
-      pointer-events: none;
-    }
-    
-    .planet-orbit.orbit-1 { 
-      width: 350px; 
-      height: 350px; 
-      animation: orbit 20s linear infinite;
-    }
-    .planet-orbit.orbit-2 { 
-      width: 450px; 
-      height: 450px; 
-      animation: orbit 25s linear infinite;
-    }
-    .planet-orbit.orbit-3 { 
-      width: 550px; 
-      height: 550px; 
-      animation: orbit 30s linear infinite;
-    }
-    .planet-orbit.orbit-4 { 
-      width: 650px; 
-      height: 650px; 
-      animation: orbit 35s linear infinite;
-    }
-    .planet-orbit.orbit-5 { 
-      width: 750px; 
-      height: 750px; 
-      animation: orbit 40s linear infinite;
-    }
-    .planet-orbit.orbit-6 { 
-      width: 850px; 
-      height: 850px; 
-      animation: orbit 45s linear infinite;
-    }
-    
-    @keyframes orbit {
-      from { transform: translate(-50%, -50%) rotate(0deg); }
-      to { transform: translate(-50%, -50%) rotate(360deg); }
-    }
-    .tool-btn {
-      background: radial-gradient(circle at 30% 30%, #4a5568 0%, #2d3748 50%, #1a202c 100%);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      border-radius: 50%;
-      box-shadow: 
-        0 0 20px rgba(0, 0, 0, 0.8),
-        inset 0 0 20px rgba(255, 255, 255, 0.1),
-        0 0 40px rgba(59, 130, 246, 0.3);
-      padding: 1rem;
-      color: #e4e4e7;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      outline: none;
-      position: absolute;
-      width: 120px;
-      height: 120px;
-      text-align: center;
-      overflow: hidden;
-      z-index: 30;
-      pointer-events: auto;
-    }
-    
-    /* Sun (AudioVerse DAW) special styling */
-    .tool-btn.sun-daw {
-      background: radial-gradient(circle at 30% 30%, #ff9500 0%, #ff6b00 30%, #ff4500 70%, #cc3700 100%);
-      border: 3px solid #ffaa00;
-      box-shadow: 
-        0 0 60px #ff950080,
-        0 0 120px #ff950040,
-        inset 0 0 30px rgba(255, 255, 255, 0.3);
-      width: 200px;
-      height: 200px;
-      animation: sun-pulse 4s ease-in-out infinite alternate;
-    }
-    
-    @keyframes sun-pulse {
-      0% { 
-        box-shadow: 
-          0 0 60px #ff950080,
-          0 0 120px #ff950040,
-          inset 0 0 30px rgba(255, 255, 255, 0.3);
-      }
-      100% { 
-        box-shadow: 
-          0 0 80px #ff9500aa,
-          0 0 160px #ff950060,
-          inset 0 0 40px rgba(255, 255, 255, 0.4);
-      }
-    }
-    
-    /* Planet positioning */
-    .planet {
-      position: absolute;
-      top: -60px;
+      top: 30px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 25;
+      text-align: center;
       pointer-events: auto;
     }
-    
-    .tool-btn:hover, .tool-btn:focus {
-      transform: translateX(-50%) scale(1.1);
-      box-shadow: 
-        0 0 30px rgba(0, 0, 0, 0.8),
-        inset 0 0 30px rgba(255, 255, 255, 0.2),
-        0 0 60px rgba(59, 130, 246, 0.6);
-      border-color: rgba(255, 255, 255, 0.4);
-      z-index: 35;
+
+    #title h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: 3.5rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #ff6ec7, #7873f5, #4facfe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 40px rgba(127, 115, 245, 0.8);
+      letter-spacing: 4px;
+      margin-bottom: 10px;
+      animation: titlePulse 3s ease-in-out infinite;
     }
-    
-    .tool-btn.sun-daw:hover {
-      transform: scale(1.05);
-      animation: sun-pulse 2s ease-in-out infinite alternate;
+
+    @keyframes titlePulse {
+      0%, 100% { opacity: 0.9; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.02); }
     }
-    .tool-btn svg {
-      width: 2.5rem;
-      height: 2.5rem;
-      margin-bottom: 0.5rem;
-      fill: #ffffff;
-      transition: all 0.3s;
-      filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+
+    #title p {
+      font-size: 1.2rem;
+      color: #a0cfff;
+      font-weight: 300;
+      letter-spacing: 2px;
     }
-    
-    .tool-btn.sun-daw svg {
-      width: 4rem;
-      height: 4rem;
-      fill: #ffffff;
-      filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.8));
+
+    /* Instructions Panel - Bottom Right */
+    #instructions {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+      pointer-events: auto;
+      text-align: left;
+      max-width: 280px;
     }
-    
-    .tool-btn:hover svg, .tool-btn:focus svg {
-      fill: #fff;
-      filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.9));
-      transform: scale(1.1);
-    }
-    
-    .tool-title {
-      font-size: 0.9rem;
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-      color: #ffffff;
-      letter-spacing: 0.01em;
-      text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
-      transition: all 0.3s;
-      line-height: 1.2;
-    }
-    
-    .tool-btn.sun-daw .tool-title {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: #ffffff;
-      text-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
-    }
-    
-    .tool-btn:hover .tool-title, .tool-btn:focus .tool-title {
+
+    #instructions h3 {
+      font-family: 'Orbitron', monospace;
       color: #fff;
-      text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-    }
-    
-    .tool-desc {
-      font-size: 0.75rem;
-      color: #d1d5db;
-      text-align: center;
-      line-height: 1.3;
-      margin-bottom: 0;
-      transition: all 0.3s;
-      text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
-    }
-    
-    .tool-btn.sun-daw .tool-desc {
+      margin-bottom: 8px;
       font-size: 0.9rem;
-      color: #f9fafb;
+      letter-spacing: 1px;
+      font-weight: 700;
     }
-    
-    .tool-btn:hover .tool-desc, .tool-btn:focus .tool-desc {
-      color: #f9fafb;
-      text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+
+    #instructions p {
+      margin: 4px 0;
+      font-size: 0.75rem;
+      color: #ccc;
+      line-height: 1.4;
     }
-    .tool-btn:active {
+
+    #instructions .key {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 2px 6px;
+      border-radius: 3px;
+      margin: 0 2px;
+      font-weight: 600;
+      font-size: 0.7rem;
+    }
+
+    /* Cannon Power Display */
+    #power-display {
+      position: absolute;
+      top: 150px;
+      left: 30px;
+      background: rgba(20, 20, 40, 0.9);
+      border: 2px solid rgba(255, 110, 199, 0.6);
+      border-radius: 12px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      min-width: 200px;
+      box-shadow: 0 10px 30px rgba(255, 110, 199, 0.4);
+    }
+
+    #power-display h3 {
+      font-family: 'Orbitron', monospace;
+      color: #ff6ec7;
+      margin-bottom: 12px;
+      font-size: 1.2rem;
+    }
+
+    #power-bar-container {
+      width: 100%;
+      height: 25px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 110, 199, 0.4);
+    }
+
+    #power-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #4facfe, #7873f5, #ff6ec7);
+      width: 50%;
+      transition: width 0.1s ease;
+      box-shadow: 0 0 20px rgba(255, 110, 199, 0.8);
+    }
+
+    #power-value {
+      margin-top: 8px;
+      font-size: 1.1rem;
+      color: #a0cfff;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    /* Target Info Display */
+    #target-info {
+      position: absolute;
+      top: 150px;
+      right: 30px;
+      background: rgba(20, 20, 40, 0.9);
+      border: 2px solid rgba(79, 172, 254, 0.6);
+      border-radius: 12px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      min-width: 250px;
+      box-shadow: 0 10px 30px rgba(79, 172, 254, 0.4);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    #target-info.visible {
+      opacity: 1;
+    }
+
+    #target-info h3 {
+      font-family: 'Orbitron', monospace;
+      color: #4facfe;
+      margin-bottom: 10px;
+      font-size: 1.3rem;
+    }
+
+    #target-info p {
+      color: #e0e0ff;
+      margin: 5px 0;
+      font-size: 0.95rem;
+    }
+
+    /* Launch Button - Bottom Right */
+    #launch-btn {
+      position: absolute;
+      bottom: 180px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 10px 20px;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      pointer-events: auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+      transition: all 0.3s ease;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    #launch-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.5);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.8);
+    }
+
+    #launch-btn:active {
       transform: scale(0.98);
     }
-    .footer {
-      margin-top: 3rem;
-      color: #52525b;
-      font-size: 0.95rem;
-      text-align: center;
-      letter-spacing: 0.02em;
+
+    #launch-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
-    @keyframes pulse-glow {
-      0% { 
-        text-shadow: 0 0 30px #ff9500, 0 0 60px #ff950080;
-      }
-      100% { 
-        text-shadow: 0 0 50px #ff9500, 0 0 100px #ff9500aa;
-      }
+
+    /* Reset Button */
+    #reset-btn {
+      position: absolute;
+      bottom: 230px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 8px 16px;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      pointer-events: auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+      transition: all 0.3s ease;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      opacity: 0;
     }
-    
-    /* Responsive design for smaller screens */
-    @media (max-width: 1200px) {
-      .solar-system {
-        width: 95vw;
-        height: 70vh;
-      }
-      
-      .orbit.orbit-1 { width: 300px; height: 300px; }
-      .orbit.orbit-2 { width: 380px; height: 380px; }
-      .orbit.orbit-3 { width: 460px; height: 460px; }
-      .orbit.orbit-4 { width: 540px; height: 540px; }
-      .orbit.orbit-5 { width: 620px; height: 620px; }
-      .orbit.orbit-6 { width: 700px; height: 700px; }
-      
-      .planet-orbit.orbit-1 { width: 300px; height: 300px; }
-      .planet-orbit.orbit-2 { width: 380px; height: 380px; }
-      .planet-orbit.orbit-3 { width: 460px; height: 460px; }
-      .planet-orbit.orbit-4 { width: 540px; height: 540px; }
-      .planet-orbit.orbit-5 { width: 620px; height: 620px; }
-      .planet-orbit.orbit-6 { width: 700px; height: 700px; }
-      
-      .sun {
-        width: 160px;
-        height: 160px;
-      }
-      
-      .tool-btn.sun-daw {
-        width: 160px;
-        height: 160px;
-      }
-      
-      .tool-btn {
-        width: 100px;
-        height: 100px;
-      }
+
+    #reset-btn.visible {
+      opacity: 1;
     }
-    
+
+    #reset-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Loading Screen */
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(ellipse at center, #1a1a2e, #0a0a15);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+
+    #loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loader {
+      width: 80px;
+      height: 80px;
+      border: 6px solid rgba(127, 115, 245, 0.3);
+      border-top: 6px solid #7873f5;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #loading p {
+      margin-top: 20px;
+      font-size: 1.2rem;
+      color: #a0cfff;
+      letter-spacing: 2px;
+    }
+
+    /* Planet List Sidebar */
+    #planet-list {
+      position: absolute;
+      top: 50%;
+      right: 20px;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+      pointer-events: auto;
+      max-width: 200px;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    #planet-list h3 {
+      font-family: 'Orbitron', monospace;
+      color: #fff;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+      font-weight: 700;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 8px;
+    }
+
+    .planet-item {
+      padding: 8px 10px;
+      margin: 4px 0;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-left: 3px solid transparent;
+    }
+
+    .planet-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-left-color: #4facfe;
+    }
+
+    .planet-item.active {
+      background: rgba(79, 172, 254, 0.2);
+      border-left-color: #4facfe;
+    }
+
+    .planet-item-name {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+
+    .planet-item-desc {
+      font-size: 0.65rem;
+      color: #aaa;
+      line-height: 1.3;
+    }
+
+    /* Planet Info Popup */
+    #planet-popup {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.95);
+      border: 2px solid rgba(79, 172, 254, 0.6);
+      border-radius: 12px;
+      padding: 24px;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+      pointer-events: auto;
+      max-width: 400px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      z-index: 2000;
+    }
+
+    #planet-popup.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #planet-popup h2 {
+      font-family: 'Orbitron', monospace;
+      color: #4facfe;
+      margin-bottom: 12px;
+      font-size: 1.4rem;
+    }
+
+    #planet-popup p {
+      color: #ddd;
+      margin: 8px 0;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    #planet-popup .close-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      transition: all 0.2s ease;
+    }
+
+    #planet-popup .close-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    #planet-popup .visit-btn {
+      background: rgba(79, 172, 254, 0.3);
+      border: 1px solid #4facfe;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 16px;
+      transition: all 0.2s ease;
+      display: inline-block;
+    }
+
+    #planet-popup .visit-btn:hover {
+      background: rgba(79, 172, 254, 0.5);
+    }
+
+    /* Scrollbar for planet list */
+    #planet-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #planet-list::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+    }
+
+    #planet-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    #planet-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Responsive */
     @media (max-width: 768px) {
-      h1 {
-        font-size: 2.2rem;
+      #title h1 {
+        font-size: 2rem;
       }
-      
-      .solar-system {
-        width: 98vw;
-        height: 60vh;
+      #title p {
+        font-size: 0.9rem;
       }
-      
-      .orbit.orbit-1 { width: 220px; height: 220px; }
-      .orbit.orbit-2 { width: 280px; height: 280px; }
-      .orbit.orbit-3 { width: 340px; height: 340px; }
-      .orbit.orbit-4 { width: 400px; height: 400px; }
-      .orbit.orbit-5 { width: 460px; height: 460px; }
-      .orbit.orbit-6 { width: 520px; height: 520px; }
-      
-      .planet-orbit.orbit-1 { width: 220px; height: 220px; }
-      .planet-orbit.orbit-2 { width: 280px; height: 280px; }
-      .planet-orbit.orbit-3 { width: 340px; height: 340px; }
-      .planet-orbit.orbit-4 { width: 400px; height: 400px; }
-      .planet-orbit.orbit-5 { width: 460px; height: 460px; }
-      .planet-orbit.orbit-6 { width: 520px; height: 520px; }
-      
-      .sun {
-        width: 120px;
-        height: 120px;
+      #instructions {
+        bottom: 20px;
+        padding: 15px 25px;
       }
-      
-      .tool-btn.sun-daw {
-        width: 120px;
-        height: 120px;
-      }
-      
-      .tool-btn.sun-daw .tool-title {
+      #instructions h3 {
         font-size: 1.1rem;
       }
-      
-      .tool-btn.sun-daw .tool-desc {
-        font-size: 0.75rem;
+      #instructions p {
+        font-size: 0.85rem;
       }
-      
-      .tool-btn {
-        width: 80px;
-        height: 80px;
+      #power-display, #target-info {
+        top: 120px;
+        left: 10px;
+        right: 10px;
+        min-width: auto;
       }
-      
-      .tool-title {
-        font-size: 0.75rem;
+      #target-info {
+        top: auto;
+        bottom: 200px;
+        right: 10px;
       }
-      
-      .tool-desc {
-        font-size: 0.65rem;
+      #launch-btn {
+        bottom: 110px;
+        font-size: 1.1rem;
+        padding: 15px 40px;
       }
-    }
-    
-    /* Add some cosmic particle effects */
-    .cosmic-particle {
-      position: absolute;
-      background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%);
-      border-radius: 50%;
-      pointer-events: none;
-      animation: float 10s infinite linear;
-    }
-    
-    @keyframes float {
-      0% { transform: translateY(100vh) translateX(0px); opacity: 0; }
-      10% { opacity: 1; }
-      90% { opacity: 1; }
-      100% { transform: translateY(-100px) translateX(50px); opacity: 0; }
     }
   </style>
 </head>
 <body>
-  <!-- Animated starfield -->
-  <div class="starfield" id="starfield"></div>
-  
-  <div class="universe-container">
-    <h1>AudioVerse Universe</h1>
-    
-    <div class="solar-system">
-      <!-- Orbit visualization circles -->
-      <div class="orbit orbit-1"></div>
-      <div class="orbit orbit-2"></div>
-      <div class="orbit orbit-3"></div>
-      <div class="orbit orbit-4"></div>
-      <div class="orbit orbit-5"></div>
-      <div class="orbit orbit-6"></div>
-      
-      <!-- Central Sun - AudioVerse DAW -->
-      <div class="sun">
-        <a class="tool-btn sun-daw" href="AudioVerse/AudioVerse.html" tabindex="0">
-          <!-- AudioVerse Universe Logo SVG -->
-          <svg viewBox="0 0 80 40">
-            <defs>
-              <radialGradient id="cosmicGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ff9500" stop-opacity="0.8"/>
-                <stop offset="50%" stop-color="#1de9b6" stop-opacity="0.4"/>
-                <stop offset="100%" stop-color="#000" stop-opacity="0.1"/>
-              </radialGradient>
-              <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#ffffff"/>
-                <stop offset="50%" stop-color="#ffff00"/>
-                <stop offset="100%" stop-color="#ffffff"/>
-              </linearGradient>
-            </defs>
-            <circle cx="40" cy="20" r="35" fill="url(#cosmicGlow)" opacity="0.6"/>
-            <!-- Central orb -->
-            <circle cx="40" cy="20" r="8" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.8"/>
-            <circle cx="40" cy="20" r="5" fill="#ffffff" opacity="0.6"/>
-            <!-- Audio waveform -->
-            <path d="M5 20 L10 18 L15 22 L20 16 L25 24 L30 14 L35 26 L40 20 L45 14 L50 26 L55 16 L60 22 L65 18 L70 20 L75 22" 
-                  stroke="url(#waveGradient)" stroke-width="2" fill="none" opacity="0.9"/>
-          </svg>
-          <span class="tool-title">AudioVerse DAW</span>
-          <span class="tool-desc">The Heart of Audio Creation</span>
-        </a>
-      </div>
-      
-      <!-- Orbiting Planets -->
-      <div class="planet-orbit orbit-1">
-        <div class="planet">
-          <a class="tool-btn" href="MIDI_Daw_With_Ideas.html" tabindex="0">
-            <svg viewBox="0 0 48 48">
-              <circle cx="24" cy="24" r="20" fill="#4f46e5" opacity="0.8"/>
-              <rect x="12" y="16" width="24" height="16" rx="2" fill="#ffffff" opacity="0.9"/>
-              <rect x="14" y="18" width="6" height="12" rx="1" fill="#4f46e5"/>
-              <rect x="22" y="20" width="4" height="10" rx="1" fill="#4f46e5"/>
-              <rect x="28" y="22" width="4" height="8" rx="1" fill="#4f46e5"/>
-            </svg>
-            <span class="tool-title">MIDI Planet</span>
-            <span class="tool-desc">Piano Roll & MIDI Editing</span>
-          </a>
-        </div>
-      </div>
-      
-      <div class="planet-orbit orbit-2">
-        <div class="planet">
-          <a class="tool-btn" href="ParameterAudioEditor.html" tabindex="0">
-            <svg viewBox="0 0 48 48">
-              <circle cx="24" cy="24" r="20" fill="#059669" opacity="0.8"/>
-              <rect x="8" y="16" width="32" height="16" rx="4" fill="#ffffff" opacity="0.9"/>
-              <polyline points="12,28 16,20 20,24 24,18 28,30 32,16 36,26" fill="none" stroke="#059669" stroke-width="2"/>
-              <rect x="14" y="12" width="2" height="6" rx="1" fill="#059669"/>
-              <rect x="22" y="14" width="2" height="6" rx="1" fill="#059669"/>
-              <rect x="30" y="10" width="2" height="6" rx="1" fill="#059669"/>
-            </svg>
-            <span class="tool-title">Audio Editor</span>
-            <span class="tool-desc">Parameter Control & Effects</span>
-          </a>
-        </div>
-      </div>
-      
-      <div class="planet-orbit orbit-3">
-        <div class="planet">
-          <a class="tool-btn" href="Wavetable_Synth.html" tabindex="0">
-            <svg viewBox="0 0 48 48">
-              <circle cx="24" cy="24" r="20" fill="#7c3aed" opacity="0.8"/>
-              <rect x="8" y="16" width="32" height="16" rx="4" fill="#ffffff" opacity="0.9"/>
-              <polyline points="12,28 18,16 24,30 30,14 36,26" fill="none" stroke="#7c3aed" stroke-width="3"/>
-              <circle cx="18" cy="16" r="2" fill="#7c3aed"/>
-              <circle cx="30" cy="14" r="2" fill="#7c3aed"/>
-            </svg>
-            <span class="tool-title">Synth World</span>
-            <span class="tool-desc">Wavetable Synthesis</span>
-          </a>
-        </div>
-      </div>
-      
-      <div class="planet-orbit orbit-4">
-        <div class="planet">
-          <a class="tool-btn" href="EQ.html" tabindex="0">
-            <svg viewBox="0 0 48 48">
-              <circle cx="24" cy="24" r="20" fill="#dc2626" opacity="0.8"/>
-              <rect x="8" y="16" width="32" height="16" rx="4" fill="#ffffff" opacity="0.9"/>
-              <rect x="14" y="26" width="3" height="6" rx="1" fill="#dc2626"/>
-              <rect x="20" y="22" width="3" height="10" rx="1" fill="#dc2626"/>
-              <rect x="26" y="18" width="3" height="14" rx="1" fill="#dc2626"/>
-              <rect x="32" y="24" width="3" height="8" rx="1" fill="#dc2626"/>
-            </svg>
-            <span class="tool-title">EQ Station</span>
-            <span class="tool-desc">Frequency Control</span>
-          </a>
-        </div>
-      </div>
-      
-      <div class="planet-orbit orbit-5">
-        <div class="planet">
-          <a class="tool-btn" href="DrawAudio.html" tabindex="0">
-            <svg viewBox="0 0 48 48">
-              <circle cx="24" cy="24" r="20" fill="#0891b2" opacity="0.8"/>
-              <rect x="8" y="16" width="32" height="16" rx="4" fill="#ffffff" opacity="0.9"/>
-              <polyline points="12,28 16,20 20,24 24,18 28,30 32,16 36,26" fill="none" stroke="#0891b2" stroke-width="2"/>
-              <circle cx="24" cy="20" r="2" fill="#0891b2"/>
-            </svg>
-            <span class="tool-title">Wave Drawer</span>
-            <span class="tool-desc">Custom Waveforms</span>
-          </a>
-        </div>
-      </div>
-      
-      <div class="planet-orbit orbit-6">
-        <div class="planet">
-          <a class="tool-btn" href="reaper-web/ui/ReaVerse.html" tabindex="0">
-            <svg viewBox="0 0 48 48">
-              <circle cx="24" cy="24" r="20" fill="#ea580c" opacity="0.8"/>
-              <rect x="8" y="12" width="32" height="24" rx="2" fill="#ffffff" opacity="0.9"/>
-              <!-- REAPER-style interface elements -->
-              <rect x="10" y="14" width="28" height="2" rx="1" fill="#ea580c"/>
-              <rect x="10" y="18" width="28" height="2" rx="1" fill="#ea580c"/>
-              <rect x="10" y="22" width="28" height="2" rx="1" fill="#ea580c"/>
-              <!-- Transport controls -->
-              <circle cx="16" cy="30" r="2" fill="#ea580c"/>
-              <polygon points="20,28 20,32 24,30" fill="#ea580c"/>
-              <rect x="26" y="28" width="2" height="4" fill="#ea580c"/>
-              <rect x="30" y="28" width="2" height="4" fill="#ea580c"/>
-              <rect x="34" y="28" width="2" height="4" fill="#ea580c"/>
-            </svg>
-            <span class="tool-title">ReaVerse</span>
-            <span class="tool-desc">Failed Reaper Recreation</span>
-          </a>
-        </div>
-      </div>
-      
-      <!-- Additional distant planets/asteroids for more tools -->
-      <div class="planet-orbit" style="width: 950px; height: 950px; animation: orbit 50s linear infinite;">
-        <div class="planet">
-          <a class="tool-btn" href="ConvolutionReverb.html" tabindex="0" style="width: 80px; height: 80px;">
-            <svg viewBox="0 0 48 48">
-              <circle cx="24" cy="24" r="18" fill="#8b5cf6" opacity="0.8"/>
-              <rect x="10" y="18" width="28" height="12" rx="6" fill="#ffffff" opacity="0.9"/>
-              <path d="M12 24 Q18 18, 24 24 Q30 30, 36 24" stroke="#8b5cf6" stroke-width="2" fill="none"/>
-              <circle cx="15" cy="21" r="1" fill="#8b5cf6"/>
-              <circle cx="33" cy="27" r="1" fill="#8b5cf6"/>
-            </svg>
-            <span class="tool-title">Convolution Reverb</span>
-            <span class="tool-desc">Upload your own IRs</span>
-          </a>
-        </div>
-      </div>
-      
-      <div class="planet-orbit" style="width: 1050px; height: 1050px; animation: orbit 55s linear infinite reverse;">
-        <div class="planet">
-          <a class="tool-btn" href="reverb-collection.html" tabindex="0" style="width: 75px; height: 75px;">
-            <svg viewBox="0 0 48 48">
-              <circle cx="24" cy="24" r="17" fill="#10b981" opacity="0.8"/>
-              <rect x="12" y="20" width="24" height="8" rx="4" fill="#ffffff" opacity="0.9"/>
-              <circle cx="18" cy="24" r="2" fill="#10b981"/>
-              <circle cx="24" cy="24" r="2" fill="#10b981"/>
-              <circle cx="30" cy="24" r="2" fill="#10b981"/>
-            </svg>
-            <span class="tool-title">Reverb Collection</span>
-            <span class="tool-desc">Echo Chambers</span>
-          </a>
-        </div>
-      </div>
+  <!-- Loading Screen -->
+  <div id="loading">
+    <div class="loader"></div>
+    <p>Initializing Universe...</p>
+  </div>
+
+  <!-- 3D Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- UI Overlay -->
+  <div id="ui-overlay">
+    <!-- Title -->
+    <div id="title">
+      <h1>AUDIOVERSE UNIVERSE</h1>
+      <p>Navigate through the cosmos of audio creation</p>
     </div>
+
+    <!-- Planet List Sidebar -->
+    <div id="planet-list">
+      <h3>PLANETS</h3>
+      <div id="planet-items"></div>
+    </div>
+
+    <!-- Planet Info Popup -->
+    <div id="planet-popup">
+      <button class="close-btn" onclick="closePlanetPopup()">×</button>
+      <h2 id="popup-name">Planet Name</h2>
+      <p id="popup-desc">Description</p>
+      <p id="popup-distance"></p>
+      <button class="visit-btn" onclick="visitCurrentPlanet()">Visit Planet</button>
+    </div>
+
+    <!-- Power Display -->
+    <div id="power-display">
+      <h3>⚡ POWER</h3>
+      <div id="power-bar-container">
+        <div id="power-bar"></div>
+      </div>
+      <div id="power-value">50%</div>
+    </div>
+
+    <!-- Instructions -->
+    <div id="instructions">
+      <h3>🚀 CONTROLS</h3>
+      <p><span class="key">Drag</span> to orbit view</p>
+      <p><span class="key">Mouse Position</span> determines cannon aim</p>
+      <p><span class="key">SPACE</span> hold to charge, release to fire</p>
+      <p><span class="key">R</span> to reset camera</p>
+    </div>
+
+    <!-- Launch Button -->
+    <button id="launch-btn">🚀 FIRE CANNON</button>
+
+    <!-- Reset Button -->
+    <button id="reset-btn">↺ RESET</button>
   </div>
-  
-  <div class="footer" style="
-    position: fixed;
-    bottom: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 100;
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.85rem;
-    text-align: center;
-    text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
-  ">
-    &copy; 2024 AudioVerse Universe &mdash; Explore the cosmos of audio creation
-  </div>
-  
+
   <script>
-    // Create animated starfield
+    // ===== PLANET DATA =====
+    const planets = [
+      {
+        name: 'AudioVerse DAW',
+        description: 'The Heart of Audio Creation',
+        url: '../AudioVerse/AudioVerse.html',
+        color: 0xff9500,
+        size: 3,
+        distance: 0,
+        orbitSpeed: 0,
+        glowColor: 0xffaa00,
+        isSun: true
+      },
+      {
+        name: 'MIDI Planet',
+        description: 'Piano Roll & MIDI Editing',
+        url: 'MIDI_Daw_With_Ideas.html',
+        color: 0x4f46e5,
+        size: 1.5,
+        distance: 20,
+        orbitSpeed: 0.5,
+        glowColor: 0x6366f1
+      },
+      {
+        name: 'Audio Editor',
+        description: 'Parameter Control & Effects',
+        url: 'ParameterAudioEditor.html',
+        color: 0x059669,
+        size: 1.6,
+        distance: 30,
+        orbitSpeed: 0.4,
+        glowColor: 0x10b981
+      },
+      {
+        name: 'Synth World',
+        description: 'Wavetable Synthesis',
+        url: 'Wavetable_Synth.html',
+        color: 0x7c3aed,
+        size: 1.7,
+        distance: 40,
+        orbitSpeed: 0.35,
+        glowColor: 0x8b5cf6
+      },
+      {
+        name: 'EQ Station',
+        description: 'Frequency Control',
+        url: 'EQ.html',
+        color: 0xdc2626,
+        size: 1.4,
+        distance: 50,
+        orbitSpeed: 0.3,
+        glowColor: 0xef4444
+      },
+      {
+        name: 'Wave Drawer',
+        description: 'Custom Waveforms',
+        url: 'DrawAudio.html',
+        color: 0x0891b2,
+        size: 1.5,
+        distance: 60,
+        orbitSpeed: 0.25,
+        glowColor: 0x06b6d4
+      },
+      {
+        name: 'ReaVerse',
+        description: 'REAPER-inspired DAW',
+        url: '../reaper-web/ui/ReaVerse.html',
+        color: 0xea580c,
+        size: 1.8,
+        distance: 70,
+        orbitSpeed: 0.2,
+        glowColor: 0xf97316
+      },
+      {
+        name: 'Tone.js Instruments',
+        description: 'Synthesis Engine',
+        url: 'TonejsInst.html',
+        color: 0x10b981,
+        size: 1.6,
+        distance: 80,
+        orbitSpeed: 0.18,
+        glowColor: 0x34d399
+      },
+      {
+        name: 'ToneJS Deep Exploration',
+        description: 'Advanced Tone.js Features',
+        url: '../ToneJS_Deep_Exploration.html',
+        color: 0x6366f1,
+        size: 1.9,
+        distance: 90,
+        orbitSpeed: 0.15,
+        glowColor: 0x818cf8
+      },
+      {
+        name: 'Convolution Reverb',
+        description: 'Upload your own IRs',
+        url: 'ConvolutionReverb.html',
+        color: 0x8b5cf6,
+        size: 1.3,
+        distance: 100,
+        orbitSpeed: 0.12,
+        glowColor: 0xa78bfa
+      },
+      {
+        name: 'Reverb Collection',
+        description: 'Echo Chambers',
+        url: 'reverb-collection.html',
+        color: 0x10b981,
+        size: 1.2,
+        distance: 110,
+        orbitSpeed: 0.1,
+        glowColor: 0x34d399
+      }
+    ];
+
+    // ===== THREE.JS SETUP =====
+    let scene, camera, renderer, controls;
+    let planetMeshes = [];
+    let cannonBall = null;
+    let playerCamera;
+    let targetPlanet = null;
+    let launchPower = 50;
+    let isFlying = false;
+    let originalCameraPosition = new THREE.Vector3(0, 50, 120);
+
+    // Physics world
+    let world;
+    let cannonBodies = [];
+    let timeStep = 1/60;
+
+    function init() {
+      // Create scene
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x000000, 0.0015);
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        2000
+      );
+      camera.position.copy(originalCameraPosition);
+      camera.lookAt(0, 0, 0);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+      // Add OrbitControls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 30;
+      controls.maxDistance = 300;
+      controls.enablePan = true;
+      controls.autoRotate = false;
+      controls.autoRotateSpeed = 0.5;
+
+      // Initialize Physics World
+      world = new CANNON.World();
+      world.gravity.set(0, 0, 0); // Space has no gravity
+      world.broadphase = new CANNON.NaiveBroadphase();
+      world.solver.iterations = 10;
+
+      // Add lights
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+      scene.add(ambientLight);
+
+      const pointLight = new THREE.PointLight(0xff9500, 2, 300);
+      pointLight.position.set(0, 0, 0);
+      scene.add(pointLight);
+
+      // Create starfield
+      createStarfield();
+
+      // Create planets
+      createPlanets();
+
+      // Event listeners
+      window.addEventListener('resize', onWindowResize);
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('keydown', onKeyDown);
+      document.addEventListener('keyup', onKeyUp);
+      document.getElementById('launch-btn').addEventListener('click', launchCannon);
+      document.getElementById('reset-btn').addEventListener('click', resetCamera);
+
+      // Hide loading screen
+      setTimeout(() => {
+        document.getElementById('loading').classList.add('hidden');
+      }, 1000);
+
+      // Start animation
+      animate();
+    }
+
     function createStarfield() {
-      const starfield = document.getElementById('starfield');
-      const numStars = 300;
+      const starGeometry = new THREE.BufferGeometry();
+      const starMaterial = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.7,
+        transparent: true,
+        opacity: 0.8
+      });
+
+      const starVertices = [];
+      for (let i = 0; i < 10000; i++) {
+        const x = (Math.random() - 0.5) * 2000;
+        const y = (Math.random() - 0.5) * 2000;
+        const z = (Math.random() - 0.5) * 2000;
+        starVertices.push(x, y, z);
+      }
+
+      starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+      const stars = new THREE.Points(starGeometry, starMaterial);
+      scene.add(stars);
+    }
+
+    function createPlanets() {
+      planets.forEach((planetData, index) => {
+        // Create planet sphere
+        const geometry = new THREE.SphereGeometry(planetData.size, 32, 32);
+        const material = new THREE.MeshPhongMaterial({
+          color: planetData.color,
+          emissive: planetData.color,
+          emissiveIntensity: planetData.isSun ? 0.8 : 0.2,
+          shininess: 50
+        });
+        const planet = new THREE.Mesh(geometry, material);
+
+        // Add glow effect
+        const glowGeometry = new THREE.SphereGeometry(planetData.size * 1.2, 32, 32);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+          color: planetData.glowColor,
+          transparent: true,
+          opacity: planetData.isSun ? 0.6 : 0.3,
+          side: THREE.BackSide
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        planet.add(glow);
+
+        // Add text label etched on planet
+        createPlanetLabel(planet, planetData.name, planetData.size);
+
+        // Position planet
+        if (planetData.isSun) {
+          planet.position.set(0, 0, 0);
+        } else {
+          const angle = (index / planets.length) * Math.PI * 2;
+          planet.position.x = Math.cos(angle) * planetData.distance;
+          planet.position.z = Math.sin(angle) * planetData.distance;
+          planet.position.y = (Math.random() - 0.5) * 10;
+        }
+
+        planet.userData = planetData;
+        scene.add(planet);
+        planetMeshes.push(planet);
+
+        // Create physics body for collision detection
+        const shape = new CANNON.Sphere(planetData.size);
+        const body = new CANNON.Body({
+          mass: 0, // Static
+          shape: shape,
+          position: new CANNON.Vec3(planet.position.x, planet.position.y, planet.position.z)
+        });
+        world.addBody(body);
+        cannonBodies.push({ mesh: planet, body: body });
+
+        // Add orbit ring for non-sun planets
+        if (!planetData.isSun) {
+          const orbitGeometry = new THREE.RingGeometry(planetData.distance - 0.5, planetData.distance + 0.5, 64);
+          const orbitMaterial = new THREE.MeshBasicMaterial({
+            color: planetData.glowColor,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.1
+          });
+          const orbitRing = new THREE.Mesh(orbitGeometry, orbitMaterial);
+          orbitRing.rotation.x = Math.PI / 2;
+          scene.add(orbitRing);
+        }
+      });
+
+      // Populate planet list
+      populatePlanetList();
+    }
+
+    // Create text label on planet surface
+    function createPlanetLabel(planet, text, size) {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = 512;
+      canvas.height = 256;
+
+      context.fillStyle = 'rgba(0, 0, 0, 0)';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      context.font = 'bold 48px Orbitron';
+      context.fillStyle = 'white';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMaterial = new THREE.SpriteMaterial({ 
+        map: texture,
+        transparent: true,
+        opacity: 0.9
+      });
+      const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.scale.set(size * 2, size, 1);
+      sprite.position.y = size + 1;
+      planet.add(sprite);
+    }
+
+    // Populate planet list sidebar
+    function populatePlanetList() {
+      const container = document.getElementById('planet-items');
+      container.innerHTML = '';
       
-      for (let i = 0; i < numStars; i++) {
-        const star = document.createElement('div');
-        star.className = 'star';
-        
-        // Random size class
-        const sizes = ['small', 'medium', 'large'];
-        const sizeWeights = [0.7, 0.25, 0.05]; // More small stars
-        let randomValue = Math.random();
-        let sizeClass = 'small';
-        let cumulative = 0;
-        
-        for (let j = 0; j < sizes.length; j++) {
-          cumulative += sizeWeights[j];
-          if (randomValue <= cumulative) {
-            sizeClass = sizes[j];
-            break;
+      planets.forEach((planetData, index) => {
+        const item = document.createElement('div');
+        item.className = 'planet-item';
+        item.innerHTML = `
+          <div class="planet-item-name">${planetData.name}</div>
+          <div class="planet-item-desc">${planetData.description}</div>
+        `;
+        item.onclick = () => showPlanetPopup(planetData);
+        container.appendChild(item);
+      });
+    }
+
+    // Global variable to store current popup planet
+    let currentPopupPlanet = null;
+
+    // Show planet popup
+    function showPlanetPopup(planetData) {
+      currentPopupPlanet = planetData;
+      document.getElementById('popup-name').textContent = planetData.name;
+      document.getElementById('popup-desc').textContent = planetData.description;
+      document.getElementById('popup-distance').textContent = 
+        planetData.isSun ? 'Central Star' : `Distance: ${planetData.distance} AU`;
+      document.getElementById('planet-popup').classList.add('visible');
+    }
+
+    // Close planet popup
+    function closePlanetPopup() {
+      document.getElementById('planet-popup').classList.remove('visible');
+      currentPopupPlanet = null;
+    }
+
+    // Visit current planet
+    function visitCurrentPlanet() {
+      if (currentPopupPlanet && currentPopupPlanet.url) {
+        window.location.href = currentPopupPlanet.url;
+      }
+    }
+
+    let spacePressed = false;
+    let powerInterval = null;
+
+    function onKeyDown(e) {
+      if (e.code === 'Space' && !isFlying) {
+        e.preventDefault();
+        spacePressed = true;
+        // Start charging power
+        powerInterval = setInterval(() => {
+          launchPower += 2;
+          if (launchPower > 100) launchPower = 100;
+          updatePowerDisplay();
+        }, 50);
+      }
+      if (e.code === 'KeyR') {
+        resetCamera();
+      }
+    }
+
+    function onKeyUp(e) {
+      if (e.code === 'Space' && spacePressed) {
+        e.preventDefault();
+        spacePressed = false;
+        clearInterval(powerInterval);
+        launchCannon();
+      }
+    }
+
+    function updatePowerDisplay() {
+      const powerBar = document.getElementById('power-bar');
+      const powerValue = document.getElementById('power-value');
+      powerBar.style.width = launchPower + '%';
+      powerValue.textContent = Math.round(launchPower) + '%';
+    }
+
+    let mouse = new THREE.Vector2();
+    let raycaster = new THREE.Raycaster();
+
+    function onMouseMove(event) {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    }
+
+    function launchCannon() {
+      if (isFlying) return;
+
+      isFlying = true;
+      document.getElementById('launch-btn').disabled = true;
+      document.getElementById('reset-btn').classList.add('visible');
+
+      // Create cannonball (player)
+      const ballGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+      const ballMaterial = new THREE.MeshPhongMaterial({
+        color: 0xff6ec7,
+        emissive: 0xff6ec7,
+        emissiveIntensity: 0.5
+      });
+      cannonBall = new THREE.Mesh(ballGeometry, ballMaterial);
+      cannonBall.position.copy(camera.position);
+      scene.add(cannonBall);
+
+      // Create physics body for cannonball
+      const ballShape = new CANNON.Sphere(0.5);
+      const ballBody = new CANNON.Body({
+        mass: 1,
+        shape: ballShape,
+        position: new CANNON.Vec3(camera.position.x, camera.position.y, camera.position.z),
+        linearDamping: 0.1
+      });
+
+      // Calculate direction
+      const direction = new THREE.Vector3();
+      raycaster.setFromCamera(mouse, camera);
+      direction.copy(raycaster.ray.direction).normalize();
+
+      // Apply velocity based on power
+      const power = launchPower * 2;
+      ballBody.velocity.set(
+        direction.x * power,
+        direction.y * power,
+        direction.z * power
+      );
+
+      world.addBody(ballBody);
+
+      // Add trail effect
+      const trailGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+      const trailMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff6ec7,
+        transparent: true,
+        opacity: 0.5
+      });
+
+      // Collision detection
+      ballBody.addEventListener('collide', (e) => {
+        // Find which planet was hit
+        cannonBodies.forEach(({ mesh, body }) => {
+          if (body === e.body) {
+            if (mesh.userData && mesh.userData.url) {
+              // Navigate to planet
+              setTimeout(() => {
+                window.location.href = mesh.userData.url;
+              }, 500);
+            }
+          }
+        });
+      });
+
+      // Follow cannonball with camera
+      const followCannon = () => {
+        if (!cannonBall) return;
+
+        // Update physics
+        world.step(timeStep);
+
+        // Update cannonball position
+        cannonBall.position.copy(ballBody.position);
+
+        // Camera follows
+        camera.position.lerp(
+          new THREE.Vector3(
+            ballBody.position.x - direction.x * 10,
+            ballBody.position.y - direction.y * 10 + 5,
+            ballBody.position.z - direction.z * 10
+          ),
+          0.1
+        );
+        camera.lookAt(cannonBall.position);
+
+        // Add trail
+        const trail = new THREE.Mesh(trailGeometry, trailMaterial.clone());
+        trail.position.copy(cannonBall.position);
+        scene.add(trail);
+        setTimeout(() => scene.remove(trail), 1000);
+
+        if (isFlying) {
+          requestAnimationFrame(followCannon);
+        }
+      };
+
+      followCannon();
+    }
+
+    function resetCamera() {
+      isFlying = false;
+      if (cannonBall) {
+        scene.remove(cannonBall);
+        cannonBall = null;
+      }
+      
+      // Reset camera position and controls
+      camera.position.copy(originalCameraPosition);
+      camera.lookAt(0, 0, 0);
+      if (controls) {
+        controls.target.set(0, 0, 0);
+        controls.update();
+      }
+      
+      launchPower = 50;
+      updatePowerDisplay();
+      
+      document.getElementById('launch-btn').disabled = false;
+      document.getElementById('reset-btn').classList.remove('visible');
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Update orbit controls
+      if (controls && !isFlying) {
+        controls.update();
+      }
+
+      // Rotate planets around sun
+      const time = Date.now() * 0.0001;
+      planetMeshes.forEach((planet, index) => {
+        if (!planet.userData.isSun) {
+          const data = planet.userData;
+          const angle = time * data.orbitSpeed;
+          planet.position.x = Math.cos(angle) * data.distance;
+          planet.position.z = Math.sin(angle) * data.distance;
+          
+          // Update physics body position
+          if (cannonBodies[index]) {
+            cannonBodies[index].body.position.set(
+              planet.position.x,
+              planet.position.y,
+              planet.position.z
+            );
           }
         }
         
-        star.classList.add(sizeClass);
-        
-        // Random position
-        star.style.left = Math.random() * 100 + '%';
-        star.style.top = Math.random() * 100 + '%';
-        
-        // Random animation delay and duration
-        star.style.animationDelay = Math.random() * 3 + 's';
-        star.style.animationDuration = (2 + Math.random() * 2) + 's';
-        
-        starfield.appendChild(star);
+        // Rotate planet on its axis
+        planet.rotation.y += 0.002;
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      if (controls) {
+        controls.update();
       }
     }
-    
-    // Create floating cosmic particles
-    function createCosmicParticles() {
-      setInterval(() => {
-        if (Math.random() < 0.3) { // 30% chance every interval
-          const particle = document.createElement('div');
-          particle.className = 'cosmic-particle';
-          particle.style.left = Math.random() * 100 + '%';
-          particle.style.width = (1 + Math.random() * 3) + 'px';
-          particle.style.height = particle.style.width;
-          particle.style.animationDuration = (8 + Math.random() * 4) + 's';
-          
-          document.body.appendChild(particle);
-          
-          // Remove particle after animation
-          setTimeout(() => {
-            if (particle.parentNode) {
-              particle.parentNode.removeChild(particle);
-            }
-          }, 12000);
-        }
-      }, 2000);
-    }
-    
-    // Add interactive effects
-    function addInteractiveEffects() {
-      const planets = document.querySelectorAll('.tool-btn:not(.sun-daw)');
-      const sun = document.querySelector('.sun-daw');
-      
-      // Debug: Log found planets
-      console.log('Found planets:', planets.length);
-      
-      // Ensure all planets are clickable
-      planets.forEach((planet, index) => {
-        planet.style.pointerEvents = 'auto';
-        planet.style.zIndex = '30';
-        console.log(`Planet ${index + 1}:`, planet.href, 'clickable:', planet.style.pointerEvents);
-      });
-      
-      // Planet hover and click effects
-      planets.forEach((planet, index) => {
-        // Hover effects
-        planet.addEventListener('mouseenter', () => {
-          planet.style.animationPlayState = 'paused';
-          planet.parentNode.parentNode.style.animationPlayState = 'paused';
-        });
-        
-        planet.addEventListener('mouseleave', () => {
-          planet.style.animationPlayState = 'running';
-          planet.parentNode.parentNode.style.animationPlayState = 'running';
-        });
-        
-        // Ensure clicks work
-        planet.addEventListener('click', (e) => {
-          console.log(`Planet ${index + 1} clicked:`, planet.href);
-          // Let the default link behavior handle navigation
-        });
-        
-        // Add visual feedback for debugging
-        planet.addEventListener('mousedown', () => {
-          planet.style.transform = 'translateX(-50%) scale(0.95)';
-        });
-        
-        planet.addEventListener('mouseup', () => {
-          planet.style.transform = 'translateX(-50%) scale(1.1)';
-        });
-      });
-      
-      // Sun special effects
-      if (sun) {
-        sun.addEventListener('mouseenter', () => {
-          sun.style.animationDuration = '2s';
-        });
-        
-        sun.addEventListener('mouseleave', () => {
-          sun.style.animationDuration = '4s';
-        });
-      }
-    }
-    
-    // Initialize everything when page loads
-    document.addEventListener('DOMContentLoaded', () => {
-      createStarfield();
-      createCosmicParticles();
-      addInteractiveEffects();
-      
-      // Add some random twinkling to orbit lines
-      const orbits = document.querySelectorAll('.orbit');
-      orbits.forEach((orbit, index) => {
-        setInterval(() => {
-          orbit.style.opacity = 0.1 + Math.random() * 0.3;
-        }, 2000 + index * 500);
-      });
-    });
-    
-    // Add keyboard navigation
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && document.activeElement.classList.contains('tool-btn')) {
-        document.activeElement.click();
-      }
-    });
+
+    // Start the experience
+    window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
-</html>
+</html> 

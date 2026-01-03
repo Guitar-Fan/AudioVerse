@@ -82,3 +82,23 @@ Video shows Midi DAW with an already uploaded Willhem Tell Overture midi file. I
 I also modified TonejsInst and created another html called ToneJS_Deep_exploration, but I'll talk about that next devlog, where I can upload a dedicated video for that.
 
 make a sleek, desktop like GUI for TonejsInst.
+
+update links for WebAudioDAWTools.html, add ToneJS_Deep_exploration planet.
+ Completely refactor the entire UI to be a interactive sleek three.js universe full of 
+ beautiful 3d orbiting planents that are actually 3d links. In order to click one,
+  user has to shoot themselves from a cosmic cannon and successfully hit a planet, 
+  or reset from where they started. Use some cdn links to called appropriate physics and three.js libraries.
+
+universe should be mouse orbitable just like a usual three.js simulation. Also, screw physics,
+and allow when users click on a planet to aim and press fire, you always score and can redirected to the website
+after cutscene is done.
+
+bottom right corner of screen, and a bank of planet names also on right side,
+with pop up window giving additional info about planet. etch names of planets into planets 3d render
+
+Objective of this prompt: Refactor AudioVerse.html GUI to be sleek, desktop like graphics, text font, button symbols and animations
+ without deleting, adding or modifying any functionality
+ Be very careful as AudioVerse.html is a huge ecosystem of files
+
+ the only thing i need now is for audioverse.html to look like reaverse
+ javascript named handling

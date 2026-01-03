@@ -9,8 +9,70 @@
   <link rel="stylesheet" href="DAWstyling.css">
 </head>
 <body class="min-w-0 bg-gray-900 text-white overflow-hidden">
+  <!-- REAPER-Style Menu Bar -->
+  <div class="menu-bar">
+    <div class="menu-items">
+      <div class="menu-item" data-menu="file">File</div>
+      <div class="menu-item" data-menu="edit">Edit</div>
+      <div class="menu-item" data-menu="view">View</div>
+      <div class="menu-item" data-menu="insert">Insert</div>
+      <div class="menu-item" data-menu="track">Track</div>
+      <div class="menu-item" data-menu="item">Item</div>
+      <div class="menu-item" data-menu="options">Options</div>
+      <div class="menu-item" data-menu="help">Help</div>
+    </div>
+  </div>
+
+  <!-- REAPER-Style Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-section">
+      <button class="toolbar-btn" id="newProjectBtn" title="New Project">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M2 2h12v12H2V2zm1 1v10h10V3H3z" fill="currentColor"/>
+          <path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </button>
+      <button class="toolbar-btn" id="openProjectBtn" title="Open Project">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M2 3v10h12V5H8L6 3H2z" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="toolbar-btn" id="saveProjectBtn" title="Save Project">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M2 2v12h12V4.5L11.5 2H2z" fill="currentColor"/>
+          <path d="M3 3h7v3H3V3z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="toolbar-separator"></div>
+    
+    <div class="toolbar-section">
+      <button class="toolbar-btn" id="undoBtn" title="Undo (Ctrl+Z)">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M3 8l4-4v2h5c1.1 0 2 .9 2 2s-.9 2-2 2H7v2L3 8z" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="toolbar-btn" id="redoBtn" title="Redo (Ctrl+Y)">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M13 8l-4-4v2H4c-1.1 0-2 .9-2 2s.9 2 2 2h5v2l4-4z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="toolbar-separator"></div>
+    
+    <div class="toolbar-section">
+      <button class="toolbar-btn" id="addTrackBtn" title="Add Track">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
   <!-- Transport Controls - Always Visible -->
-  <div id="toolbar" class="bg-gray-800 p-4 border-b-2 border-orange-500 shadow-lg">
+  <div id="toolbar" class="transport-bar">
     <div class="flex gap-4 items-center justify-between">
       <div class="transport-controls flex gap-2">
         <button id="recordBtn" title="Record (R)" class="p-2 bg-gray-700 rounded hover:bg-red-600 transition-colors">
