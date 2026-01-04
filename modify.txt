@@ -100,5 +100,109 @@ Objective of this prompt: Refactor AudioVerse.html GUI to be sleek, desktop like
  without deleting, adding or modifying any functionality
  Be very careful as AudioVerse.html is a huge ecosystem of files
 
- the only thing i need now is for audioverse.html to look like reaverse
- javascript named handling
+ Created ToneJS_Deep_exploration planet;
+ -Made 10 core instruments built into Tone.js available to use in this tool
+    +10 synthesizers, all built from code, not audio samples
+    +Subjectively, the most interesting ones are Duosynth and AM synth
+-18 Audio FXs are all good to use
+    +Reverbs, compressors, distortion, delays, experimentation FXs
+-All "plugins" have parameters users can tweak
+    +Double click any plugin to modify related parameters 
+-Use D3 javascript library to make visual diagram routing GUI of FXs and instruments.
+    +Inspired by Patcher plugin from FL Studio
+    +Drag instruments and FXs from navigation bank on left, into workspace
+    +Visually connect inputs and output nodes with adaptive arrows to route the audio chain 
+-Press Virtual Midi Keyboard to trigger audio
+    +Sleek GUI and animation of virtual keyboard
+    +Error stopping note after releasing key, but page still produces audible sound
+-Placeholder signal processors, modulators, analyzers, utilities, sequencers and so many more features coming.
+-Consulted official Tone.js documentation to properly implement tone.js features
+In video, I load AM synth with Freeverb FX and show GUI and features.
+
+
+Will now update UI of WebAudioDAWTools
+
+In WebAudioDAWTools:
+-Move fire and reset button to the left. Get rid of fire button, because user uses spacebar to shoot.
+-Allow user to see circle or highlight of the planet, if they press visit planet in the bank of planets.
+Users only way to access tools is shoot themselves from the cannon.
+-Make animations better for when user successfully hits a planet (right now they just bounce off, and then it redirects)
+-Also have instruction dialogue pop ups to let user know to reset if it misses for too long,
+and lets them know to position the cursor to aim, press spacebar and release to shoot.
+-Make bank of planets have more detailed info when clicked into, look more beautiful and cosmic like,
+ have Space game experience dialog themed window popup with slow animation.
+-Make planets more interesting shape wise, orbiting behavior wise, bigger name and some short info floating on each planet.
+right now they all look like colored balls
+
+-Make orbit paths and speed of each planet different, variable and random every reload. 
+Make it realistic like our Solar System, so most planets follow a almost circle orbit around sun.
+-Add a time speed up or slow down controls to control speed of orbits
+-when user press highlight in window, the window blocks the line of sight of user seeing highlighted planet.
+-make the cursor a crosshair with circle around it like in shooter games.
+-Make dialogue box instruction show up when simulation loads, 
+emphasize that user must aim with mouse position and press or hold space to shoot; also environment is mouse 3d orbitable
+-Add detailed description of each planet's function when user selects it from bank.
+
+
+create a devlog for WebAudioDAWTools landing page and brief mention of ToneJSInst UI update
+similar to this:
+Made several improvements to Midi_DAW_With_Ideas html.
+-Added a selection of ToneJS instruments to be triggered by midi arrangement
++Included a plugin UI quality pop up windows to adjust instrument parameters such as wave type, envelope, etc…
+-Midi DAW now allows users to skip ahead or behind to wherever they want on timeline
++Pre-flavortown, users would always have to play the midi arrangement from beginning
++Auto-scrolling was available pre-flavortown, now improved syncing with playhead and triggers earlier so user can see what’s ahead
+-Added multiple midi notes actions
++User can now select any number of notes using selection tool to drag a blue, dashed rectangle around desired notes
++Implemented sleek right-click menu for selected notes: delete, move up/down a semitone/octave
++Deleting notes is now available; backspace or right-click menu
+-Added fun interactive tutorial demo
++Coded a guitar character named “Riff” as the guide person, who can speak via dialogue bubbles
++Has moving yellow boxes and arrows to point out every feature
+*Video shows Midi DAW with an already uploaded Willhem Tell Overture midi file. I go through most features of the Midi DAW. Video is 2x sped up as video was too long to upload.
+*I also did other things: modified TonejsInst and created another html called ToneJS_Deep_exploration, but I’ll talk about that next devlog, where I can upload a dedicated video for that
+
+
+
+In AudioVerse DAW:
+-Improve recording quality using Tone.js
+-Make Volume Automation feature actually work
+-Implement Tone.js instruments slowly and carefully
+-missing zoom controls
+
+make the devlog shorter with the +items being the details, -items being the headlines/general 
+*items are general without detail items to elaborate
+
+average language and not too much detail on technical, 
+add items under related general points that describe how to use the simulation; crosshair aim, space, etc...
+make it human like, engaging, fun
+
+
+Turned the 2d Audioverse Universe links page into a full-blown 3D space cannon simulation:
+-Every tool is now a 3d planet orbiting a sun (which is the DAW)
++Drag your mouse to fly around the universe
++Use the new time-warp buttons in the corner to make the planets zoom or crawl at your own pace
++Check out the "Planet Bank" on the right to see exactly what each tool does before you launch
+-Added a "Cosmic Cannon" because clicking links is for boomers
++Aim with the cursor crosshair, hold Space to charge your power, and blast yourself toward a planet to open it
++You can shoot from any position in the universe
++If you miss and get lost in the void, just hit 'R' to reset and try again
++Watch out for the particle explosions when you finally nail a landing — it's super satisfying
+*Redid TonejsInst planet's GUI with nice blue and red colors. TonejsInst main feature is the drum sequencer.
+*Video shows space cannon links page demonstration and TonejsInst drum sequencer
+
+could be the artwork or the addition ofwhy i'm i hesitating
+the one and only ivan
+
+implement tonejsinstrument library sample based insruments in ToneJS_Instrument_Exhibit.html,
+expand grid, and make it chromatic and each box is smaller
+
+-code custom parameters for each not quite usually an unpkg link
+
+Audioverse DAW could be improved
+
+the sampled based instruments aren't being called correctly
+
+Exhibit never load the samples, have progress visual and better error handling and javascript console logging.
+it actually g
+it doesn't load at all

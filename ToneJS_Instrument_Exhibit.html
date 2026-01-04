@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tone.js Instrument Exhibit</title>
   <script src="https://cdn.jsdelivr.net/npm/tone@latest/build/Tone.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/nbrosowsky/tonejs-instruments@master/Tonejs-Instruments.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/MIDI.js/0.3.1/MIDI.min.js"></script>
   <script src="https://unpkg.com/d3@^7.0.0/dist/d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
   <style>
     :root {
       --bg: #0f172a;
@@ -105,6 +108,12 @@
 
     button:active { transform: translateY(1px) scale(0.99); }
 
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     .ghost-btn {
       background: transparent;
       color: var(--text);
@@ -153,8 +162,8 @@
     }
 
     .cell {
-      width: 48px;
-      height: 40px;
+      width: 32px;
+      height: 24px;
       background: var(--grid);
       cursor: pointer;
       position: relative;
@@ -167,8 +176,8 @@
     }
 
     .cell .dot {
-      width: 12px;
-      height: 12px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: #22d3ee;
       position: absolute;
@@ -177,7 +186,7 @@
       opacity: 0;
       transform: scale(0.9);
       transition: opacity 0.12s ease, transform 0.12s ease;
-      box-shadow: 0 0 12px rgba(34,211,238,0.6);
+      box-shadow: 0 0 8px rgba(34,211,238,0.6);
     }
 
     .cell.active .dot { opacity: 1; transform: scale(1); }
@@ -200,6 +209,40 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
+    }
+
+    .badge.loading {
+      background: #1e293b;
+      border-color: #22d3ee;
+      color: #22d3ee;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #22d3ee, #8b5cf6);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .error-badge {
+      background: #991b1b;
+      border-color: #ef4444;
+      color: #fca5a5;
     }
 
     .legend { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -233,6 +276,28 @@
           <option value="DuoSynth">DuoSynth</option>
           <option value="MembraneSynth">MembraneSynth (drums)</option>
           <option value="PluckSynth">PluckSynth</option>
+          <optgroup label="Sample-Based Instruments">
+            <option value="piano">Piano</option>
+            <option value="bass-electric">Bass (Electric)</option>
+            <option value="bassoon">Bassoon</option>
+            <option value="cello">Cello</option>
+            <option value="clarinet">Clarinet</option>
+            <option value="contrabass">Contrabass</option>
+            <option value="flute">Flute</option>
+            <option value="french-horn">French Horn</option>
+            <option value="guitar-acoustic">Guitar (Acoustic)</option>
+            <option value="guitar-electric">Guitar (Electric)</option>
+            <option value="guitar-nylon">Guitar (Nylon)</option>
+            <option value="harmonium">Harmonium</option>
+            <option value="harp">Harp</option>
+            <option value="organ">Organ</option>
+            <option value="saxophone">Saxophone</option>
+            <option value="trombone">Trombone</option>
+            <option value="trumpet">Trumpet</option>
+            <option value="tuba">Tuba</option>
+            <option value="violin">Violin</option>
+            <option value="xylophone">Xylophone</option>
+          </optgroup>
         </select>
       </div>
       <div class="stack">
@@ -260,6 +325,14 @@
       <span class="badge"><span class="swatch" style="background:#22d3ee"></span>Active note</span>
       <span class="badge"><span class="swatch" style="background:#8b5cf6"></span>Current step</span>
       <span class="badge">Click cells to toggle notes. Multiple notes per step are allowed.</span>
+      <span id="loading-status" class="badge loading" style="display:none;">⏳ Loading samples...</span>
+      <span id="error-status" class="badge error-badge" style="display:none;">❌ Error loading</span>
+    </div>
+    <div id="progress-container" style="display:none;">
+      <div class="progress-bar">
+        <div id="progress-fill" class="progress-fill"></div>
+      </div>
+      <div style="font-size: 11px; color: var(--muted); margin-top: 4px;" id="progress-text">0%</div>
     </div>
   </section>
 
@@ -269,7 +342,7 @@
         <thead>
           <tr>
             <th class="note-label">Note</th>
-            <th colspan="16">Steps</th>
+            <th colspan="32">Steps</th>
           </tr>
           <tr>
             <th class="note-label"></th>
@@ -277,6 +350,10 @@
             <th>5</th><th>6</th><th>7</th><th>8</th>
             <th>9</th><th>10</th><th>11</th><th>12</th>
             <th>13</th><th>14</th><th>15</th><th>16</th>
+            <th>17</th><th>18</th><th>19</th><th>20</th>
+            <th>21</th><th>22</th><th>23</th><th>24</th>
+            <th>25</th><th>26</th><th>27</th><th>28</th>
+            <th>29</th><th>30</th><th>31</th><th>32</th>
           </tr>
         </thead>
         <tbody id="grid-body"></tbody>
@@ -288,13 +365,15 @@
   <footer class="footer">Tone.js + D3 + MIDI.js ready. Audio starts on first click. Built for quick demos of Tone's built-in synth families.</footer>
 
   <script>
-    const notes = ['C5','B4','A4','G4','F4','E4','D4','C4'];
-    const steps = 16;
+    const notes = ['C5','B4','A#4','A4','G#4','G4','F#4','F4','E4','D#4','D4','C#4','C4'];
+    const steps = 32;
     const gridState = Array.from({ length: steps }, () => new Set());
 
     let synth = null;
     let sequence = null;
     let isPlaying = false;
+    let loadedInstruments = {}; // Cache for loaded sample instruments
+    let isLoadingInstrument = false;
 
     const gridBody = document.getElementById('grid-body');
     const playBtn = document.getElementById('play-btn');
@@ -310,12 +389,186 @@
     const randomizeBtn = document.getElementById('randomize');
     const shiftLeftBtn = document.getElementById('shift-left');
     const shiftRightBtn = document.getElementById('shift-right');
+    const loadingStatus = document.getElementById('loading-status');
+    const errorStatus = document.getElementById('error-status');
+    const progressContainer = document.getElementById('progress-container');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
 
     const stepGraph = d3.select('#step-graph').append('svg').attr('width', '100%').attr('height', 120);
 
     function buildSynth(name) {
-      if (synth) synth.dispose();
-      const opts = { volume: Tone.dbToGain(0) };
+      console.log('=== buildSynth called with:', name);
+      
+      // Dispose old synth
+      if (synth) {
+        console.log('Disposing old synth');
+        synth.dispose();
+      }
+      
+      // Check if SampleLibrary is available
+      if (typeof SampleLibrary === 'undefined') {
+        console.error('❌ SampleLibrary is not defined! The tonejs-instruments library failed to load.');
+        errorStatus.textContent = '❌ Sample library not loaded';
+        errorStatus.style.display = 'inline-flex';
+        setTimeout(() => errorStatus.style.display = 'none', 5000);
+        // Fallback to default synth
+        return new Tone.Synth().toDestination();
+      }
+      
+      console.log('✅ SampleLibrary is available');
+      
+      // Sample-based instruments using SampleLibrary
+      const sampleInstruments = ['bass-electric','bassoon','cello','clarinet','contrabass',
+        'flute','french-horn','guitar-acoustic','guitar-electric','guitar-nylon',
+        'harmonium','harp','organ','piano','saxophone','trombone','trumpet','tuba',
+        'violin','xylophone'];
+      
+      if (sampleInstruments.includes(name)) {
+        // Check if already loaded
+        if (loadedInstruments[name]) {
+          console.log(`✅ Using cached ${name}`);
+          return loadedInstruments[name];
+        }
+        
+        // Load new sample instrument
+        console.log(`⏳ Starting to load ${name}...`);
+        
+        isLoadingInstrument = true;
+        playBtn.disabled = true;
+        playBtn.textContent = 'Loading...';
+        loadingStatus.style.display = 'inline-flex';
+        loadingStatus.textContent = `⏳ Loading ${name} samples...`;
+        progressContainer.style.display = 'block';
+        errorStatus.style.display = 'none';
+        
+        let totalSamples = 0;
+        
+        try {
+          // Get sample definitions from SampleLibrary
+          const sampleDefs = SampleLibrary[name];
+          totalSamples = Object.keys(sampleDefs).length;
+          console.log(`Sample count: ${totalSamples}`);
+          console.log(`First 5 samples:`, Object.entries(sampleDefs).slice(0, 5));
+          
+          // Test: fetch one sample directly to verify URL works
+          const testUrl = `/samples/${name}/${Object.values(sampleDefs)[0]}`;
+          console.log('Testing local URL:', testUrl);
+          
+          fetch(testUrl)
+            .then(res => {
+              console.log('Fetch test result:', res.status, res.statusText);
+              if (res.ok) console.log('✅ Direct fetch successful!');
+            })
+            .catch(err => console.error('❌ Direct fetch failed:', err));
+          
+          // Create Tone.Sampler with Tone.js v15 API (urls property instead of first argument)
+          const instrument = new Tone.Sampler({
+            urls: sampleDefs,
+            baseUrl: `/samples/${name}/`, // Use local samples instead of CDN
+            onload: () => {
+              console.log(`✅ ${name} loaded successfully!`);
+              isLoadingInstrument = false;
+              playBtn.disabled = false;
+              playBtn.textContent = isPlaying ? 'Pause' : 'Play';
+              loadingStatus.style.display = 'none';
+              progressContainer.style.display = 'none';
+              progressFill.style.width = '100%';
+              progressText.textContent = '100%';
+            },
+            onerror: (err) => {
+              console.error(`❌ Error loading ${name}:`, err);
+              errorStatus.textContent = `❌ Error loading ${name}`;
+              errorStatus.style.display = 'inline-flex';
+            }
+          }).toDestination();
+          
+          console.log('Instrument created with v15 API:', instrument);
+          console.log('Buffers:', instrument._buffers);
+          console.log('Buffers baseUrl:', instrument._buffers?.baseUrl);
+          console.log('Buffers _loadingCount:', instrument._buffers?._loadingCount);
+          
+          // Monitor loading progress
+          if (instrument._buffers) {
+            const progressInterval = setInterval(() => {
+              if (instrument._buffers) {
+                const isLoaded = instrument._buffers.loaded;
+                const remainingCount = instrument._buffers._loadingCount || 0;
+                const currentLoaded = totalSamples - remainingCount;
+                
+                console.log(`Progress: ${currentLoaded}/${totalSamples} samples loaded (${remainingCount} remaining, complete: ${isLoaded})`);
+                
+                if (totalSamples > 0) {
+                  const percent = Math.round((currentLoaded / totalSamples) * 100);
+                  progressFill.style.width = percent + '%';
+                  progressText.textContent = `${percent}% (${currentLoaded}/${totalSamples} samples)`;
+                }
+                
+                // Check if loading is complete
+                if (isLoaded || remainingCount === 0) {
+                  console.log('✅ All samples loaded! Clearing interval');
+                  clearInterval(progressInterval);
+                  progressFill.style.width = '100%';
+                  progressText.textContent = '100%';
+                  
+                  // If onload didn't fire, trigger it manually
+                  if (isLoadingInstrument) {
+                    console.log('⚠️ onload callback did not fire, triggering manually');
+                    isLoadingInstrument = false;
+                    playBtn.disabled = false;
+                    playBtn.textContent = isPlaying ? 'Pause' : 'Play';
+                    loadingStatus.style.display = 'none';
+                    progressContainer.style.display = 'none';
+                  }
+                }
+                
+                if (!isLoadingInstrument) {
+                  clearInterval(progressInterval);
+                }
+              }
+            }, 500);
+            
+            // Timeout after 60 seconds
+            setTimeout(() => {
+              if (isLoadingInstrument) {
+                const remainingCount = instrument._buffers?._loadingCount || 0;
+                console.error(`❌ Loading timeout for ${name} - ${remainingCount} samples still pending`);
+                clearInterval(progressInterval);
+                isLoadingInstrument = false;
+                playBtn.disabled = false;
+                playBtn.textContent = 'Play';
+                loadingStatus.style.display = 'none';
+                progressContainer.style.display = 'none';
+                errorStatus.textContent = `❌ Timeout: ${remainingCount} samples failed`;
+                errorStatus.style.display = 'inline-flex';
+                setTimeout(() => errorStatus.style.display = 'none', 5000);
+              }
+            }, 60000);
+          }
+          
+          loadedInstruments[name] = instrument;
+          console.log('Instrument stored in cache');
+          return instrument;
+          
+        } catch (error) {
+          console.error('❌ Error loading instrument:', error);
+          console.error('Error stack:', error.stack);
+          isLoadingInstrument = false;
+          playBtn.disabled = false;
+          playBtn.textContent = 'Play';
+          loadingStatus.style.display = 'none';
+          progressContainer.style.display = 'none';
+          errorStatus.textContent = `❌ Error: ${error.message}`;
+          errorStatus.style.display = 'inline-flex';
+          setTimeout(() => errorStatus.style.display = 'none', 5000);
+          
+          // Fallback to default synth
+          return new Tone.Synth().toDestination();
+        }
+      }
+      
+      // Built-in synths
+      console.log(`Creating built-in synth: ${name}`);
       switch (name) {
         case 'AMSynth': return new Tone.AMSynth().toDestination();
         case 'FMSynth': return new Tone.FMSynth().toDestination();
@@ -408,8 +661,8 @@
         document.querySelectorAll('.cell').forEach(c => c.classList.remove('playing'));
         cells.forEach(c => c.classList.add('playing'));
         updateGraph(step);
-        notesNow.forEach(n => synth.triggerAttackRelease(n, '16n', time));
-      }, [...Array(steps).keys()], '16n');
+        notesNow.forEach(n => synth.triggerAttackRelease(n, '32n', time));
+      }, [...Array(steps).keys()], '32n');
       sequence.start(0);
     }
 
@@ -499,6 +752,32 @@
     }
 
     function init() {
+      console.log('=== Initializing Exhibit ===');
+      console.log('Tone.js loaded:', typeof Tone !== 'undefined');
+      console.log('Tone version:', Tone?.version);
+      console.log('SampleLibrary loaded:', typeof SampleLibrary !== 'undefined');
+      if (typeof SampleLibrary !== 'undefined') {
+        console.log('SampleLibrary.list:', SampleLibrary.list);
+        console.log('SampleLibrary.baseUrl:', SampleLibrary.baseUrl);
+        console.log('SampleLibrary.ext (before):', SampleLibrary.ext);
+        
+        // Set the file extension to .mp3 (replace the [mp3|ogg] placeholder)
+        SampleLibrary.setExt('.mp3');
+        console.log('SampleLibrary.ext (after setExt):', SampleLibrary.ext);
+        
+        // Test if a sample file exists by checking one instrument's data
+        console.log('Sample piano data (first few):', Object.keys(SampleLibrary.piano).slice(0, 5));
+        console.log('Sample piano A4 value:', SampleLibrary.piano['A4']);
+      }
+      console.log('D3 loaded:', typeof d3 !== 'undefined');
+      
+      // Monitor network errors
+      window.addEventListener('error', (e) => {
+        if (e.target.tagName === 'AUDIO' || e.target.tagName === 'SOURCE') {
+          console.error('🔴 Audio loading error:', e.target.src || e.target.currentSrc);
+        }
+      }, true);
+      
       synth = buildSynth(instrumentSelect.value);
       renderGrid();
       setupGridListeners();
@@ -506,6 +785,8 @@
       makeSequence();
       updateGraph();
       wireControls();
+      
+      console.log('=== Initialization complete ===');
     }
 
     init();
