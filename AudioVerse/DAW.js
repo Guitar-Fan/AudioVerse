@@ -372,31 +372,8 @@ function renderPlayheadCursor() {
     existingCursor.remove();
   }
   
-  // Create new playhead cursor that extends through timeline and tracks
-  const playheadCursor = document.createElement('div');
-  playheadCursor.id = 'playhead-cursor';
-  playheadCursor.style.position = 'fixed';
-  playheadCursor.style.top = '0';
-  playheadCursor.style.width = '2px';
-  playheadCursor.style.height = '100vh';
-  playheadCursor.style.background = 'linear-gradient(to bottom, var(--accent2), rgba(248, 81, 73, 0.6))';
-  playheadCursor.style.zIndex = '1000';
-  playheadCursor.style.pointerEvents = 'none';
-  playheadCursor.style.boxShadow = '0 0 16px rgba(248, 81, 73, 0.8), 0 0 3px rgba(248, 81, 73, 1)';
-  
-  // Calculate position relative to workspace
-  const workspace = document.getElementById('workspace');
-  const timelineRect = timelineDiv.getBoundingClientRect();
-  const workspaceRect = workspace.getBoundingClientRect();
-  
-  const playheadX = TRACK_HEADER_WIDTH + playheadTime * PIXELS_PER_SEC;
-  const scrollLeft = workspace.scrollLeft;
-  const relativeX = playheadX - scrollLeft;
-  
-  // Position relative to viewport
-  playheadCursor.style.left = (workspaceRect.left + relativeX) + 'px';
-  
-  document.body.appendChild(playheadCursor);
+  // Playhead cursor disabled - long red line removed
+  return;
   
   // Update position on scroll
   workspace.addEventListener('scroll', updatePlayheadCursorPosition);
