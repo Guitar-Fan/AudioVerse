@@ -1,0 +1,1893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CraftySound - Advanced Audio Synthesis Tool</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/meyda@5.6.0/dist/web/meyda.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia-wasm.web.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+        
+        #container {
+            display: grid;
+            grid-template-columns: 320px 1fr 350px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+        }
+        
+        #header {
+            grid-column: 1 / -1;
+            background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        #header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-left: 5px;
+        }
+        
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .btn.active {
+            background: rgba(34, 197, 94, 0.6);
+        }
+        
+        #left-panel, #right-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        #center-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .panel-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #a78bfa;
+            border-bottom: 2px solid rgba(167, 139, 250, 0.3);
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #c4b5fd;
+            font-weight: 500;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #8b5cf6;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #8b5cf6;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+        }
+        
+        select, input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+        
+        .wave-display {
+            width: 100%;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .visualization-canvas {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: crosshair;
+        }
+        
+        .oscillator-item {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .oscillator-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .remove-btn {
+            background: rgba(239, 68, 68, 0.3);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .remove-btn:hover {
+            background: rgba(239, 68, 68, 0.5);
+        }
+        
+        .add-btn {
+            background: rgba(34, 197, 94, 0.3);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .add-btn:hover {
+            background: rgba(34, 197, 94, 0.5);
+        }
+        
+        .small-btn {
+            background: rgba(99, 102, 241, 0.3);
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            margin-left: 5px;
+        }
+        
+        .small-btn:hover {
+            background: rgba(99, 102, 241, 0.5);
+        }
+        
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 2px;
+            margin-top: 10px;
+        }
+        
+        .key {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 11px;
+            transition: all 0.1s;
+        }
+        
+        .key:hover {
+            background: rgba(139, 92, 246, 0.3);
+        }
+        
+        .key.active {
+            background: rgba(139, 92, 246, 0.6);
+            transform: scale(0.95);
+        }
+        
+        .value-display {
+            display: inline-block;
+            min-width: 50px;
+            text-align: right;
+            font-size: 12px;
+            color: #a78bfa;
+            font-weight: 600;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.5);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(139, 92, 246, 0.7);
+        }
+        
+        #waveDrawModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #waveDrawModal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: #2d2d44;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+            max-width: 900px;
+            width: 90%;
+        }
+        
+        #waveDrawCanvas {
+            border: 2px solid #8b5cf6;
+            border-radius: 8px;
+            background: #1a1a2e;
+            cursor: crosshair;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .modal-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>    <div id="container">
+        <!-- Header -->
+        <div id="header">
+            <h1>🎵 CraftySound</h1>
+            <div>
+                <button class="btn" id="startAudio">Start Audio</button>
+                <button class="btn" id="exportBtn">Export Preset</button>
+                <button class="btn" id="importBtn">Import Preset</button>
+            </div>
+        </div>
+
+        <!-- Left Panel: Oscillator Controls -->
+        <div id="left-panel">
+            <div class="section-title">Oscillator Stack</div>
+            <div id="oscillators-container"></div>
+            <button class="add-btn" id="addOscillator">+ Add Oscillator</button>
+            
+            <div class="section-title" style="margin-top: 20px;">Global Settings</div>
+            <div class="control-group">
+                <label class="control-label">Master Volume: <span class="value-display" id="masterVolValue">-12 dB</span></label>
+                <input type="range" id="masterVol" min="-60" max="0" value="-12" step="1">
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Polyphony Mode</label>
+                <select id="polyphonyMode">
+                    <option value="mono">Monophonic</option>
+                    <option value="poly" selected>Polyphonic</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Max Voices: <span class="value-display" id="maxVoicesValue">8</span></label>
+                <input type="range" id="maxVoices" min="1" max="16" value="8" step="1">
+            </div>
+        </div>
+
+        <!-- Center Panel: Visualizations -->
+        <div id="center-panel">
+            <div class="panel-section" style="flex: 1;">
+                <div class="section-title">
+                    Live Waveform 
+                    <button class="small-btn" id="openWaveDrawer">✏️ Draw Custom Wave</button>
+                </div>
+                <canvas id="waveformCanvas" class="visualization-canvas" width="800" height="200"></canvas>
+            </div>
+            
+            <div class="panel-section" style="flex: 1;">
+                <div class="section-title">Spectrum Analyzer</div>
+                <canvas id="spectrumCanvas" class="visualization-canvas" width="800" height="200"></canvas>
+            </div>
+            
+            <div class="panel-section">
+                <div class="section-title">MIDI Keyboard</div>
+                <div class="control-group">
+                    <label class="control-label">Octave: <span class="value-display" id="octaveValue">4</span></label>
+                    <input type="range" id="octave" min="1" max="7" value="4" step="1">
+                </div>
+                <div class="keyboard" id="keyboard"></div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Envelope & Effects -->
+        <div id="right-panel">
+            <div class="section-title">Amplitude Envelope</div>
+            <div class="control-group">
+                <label class="control-label">Attack: <span class="value-display" id="attackValue">0.01 s</span></label>
+                <input type="range" id="attack" min="0.001" max="2" value="0.01" step="0.001">
+            </div>
+            <div class="control-group">
+                <label class="control-label">Decay: <span class="value-display" id="decayValue">0.1 s</span></label>
+                <input type="range" id="decay" min="0.001" max="2" value="0.1" step="0.001">
+            </div>
+            <div class="control-group">
+                <label class="control-label">Sustain: <span class="value-display" id="sustainValue">0.7</span></label>
+                <input type="range" id="sustain" min="0" max="1" value="0.7" step="0.01">
+            </div>
+            <div class="control-group">
+                <label class="control-label">Release: <span class="value-display" id="releaseValue">0.3 s</span></label>
+                <input type="range" id="release" min="0.001" max="5" value="0.3" step="0.001">
+            </div>
+            
+            <canvas id="envelopeCanvas" class="wave-display" width="300" height="150"></canvas>
+            
+            <div class="section-title" style="margin-top: 20px;">Effects Chain</div>
+            <div class="control-group">
+                <label class="control-label">Effect Type</label>
+                <select id="effectType">
+                    <optgroup label="Modulation">
+                        <option value="chorus">Chorus</option>
+                        <option value="phaser">Phaser</option>
+                        <option value="tremolo">Tremolo</option>
+                        <option value="vibrato">Vibrato</option>
+                        <option value="autopanner">Auto Panner</option>
+                    </optgroup>
+                    <optgroup label="Delay">
+                        <option value="feedbackdelay">Feedback Delay</option>
+                        <option value="pingpongdelay">Ping Pong Delay</option>
+                    </optgroup>
+                    <optgroup label="Reverb">
+                        <option value="reverb">Reverb</option>
+                        <option value="freeverb">Freeverb</option>
+                        <option value="jcreverb">JC Reverb</option>
+                    </optgroup>
+                    <optgroup label="Distortion">
+                        <option value="distortion">Distortion</option>
+                        <option value="bitcrusher">Bit Crusher</option>
+                        <option value="chebyshev">Chebyshev</option>
+                    </optgroup>
+                    <optgroup label="Dynamics">
+                        <option value="compressor">Compressor</option>
+                        <option value="limiter">Limiter</option>
+                    </optgroup>
+                </select>
+            </div>
+            <button class="small-btn" id="addEffect" style="width: 100%; margin-bottom: 15px;">+ Add Effect</button>
+            
+            <div class="section-title">Filter</div>
+            <div class="control-group">
+                <label class="control-label">Type</label>
+                <select id="filterType">
+                    <option value="lowpass">Lowpass</option>
+                    <option value="highpass">Highpass</option>
+                    <option value="bandpass">Bandpass</option>
+                    <option value="notch">Notch</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label class="control-label">Cutoff: <span class="value-display" id="cutoffValue">2000 Hz</span></label>
+                <input type="range" id="cutoff" min="20" max="20000" value="2000" step="1">
+            </div>
+            <div class="control-group">
+                <label class="control-label">Resonance: <span class="value-display" id="resonanceValue">1</span></label>
+                <input type="range" id="resonance" min="0.001" max="30" value="1" step="0.1">
+            </div>
+            
+            <div id="effectsChainContainer" style="margin-top: 15px;"></div>
+            
+            <div class="section-title" style="margin-top: 20px;">Audio Analysis</div>
+            <div id="analysisDisplay" style="font-size: 11px; line-height: 1.6; color: #c4b5fd;">
+                <div>RMS: <span id="rmsValue">0.00</span></div>
+                <div>Spectral Centroid: <span id="centroidValue">0 Hz</span></div>
+                <div>Spectral Rolloff: <span id="rolloffValue">0 Hz</span></div>
+                <div>Zero Crossing Rate: <span id="zcrValue">0</span></div>
+                <div>Active Voices: <span id="voicesValue">0</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Waveform Drawing Modal -->
+    <div id="waveDrawModal">
+        <div class="modal-content">
+            <h2 style="text-align: center; color: #a78bfa; margin-bottom: 20px;">Custom Waveform Designer</h2>
+            <p style="text-align: center; color: #c4b5fd; margin-bottom: 10px;">Draw your custom waveform - Click and drag to create, Right-click to clear</p>
+            <canvas id="waveDrawCanvas" width="1024" height="400"></canvas>
+            <div class="modal-controls">
+                <button class="btn" id="clearWave">Clear</button>
+                <button class="btn" id="generateSine">Generate Sine</button>
+                <button class="btn" id="generateSquare">Generate Square</button>
+                <button class="btn" id="generateSaw">Generate Saw</button>
+                <button class="btn" id="applyWave">Apply Waveform</button>
+                <button class="btn" id="closeWaveDrawer">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== GLOBAL STATE ====================
+        let audioStarted = false;
+        let masterGain, filter, analyzer, waveformAnalyzer;
+        let oscillators = [];
+        let activeNotes = new Map();
+        let currentOctave = 4;
+        let meydaAnalyzer = null;
+        let customWaveforms = new Map(); // Store custom waveforms per oscillator
+        let currentDrawingOscId = null;
+        let effectsChain = []; // Store active effects
+        
+        const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        
+        // Waveform drawing state
+        let isDrawing = false;
+        let wavePoints = [];
+        const WAVE_RESOLUTION = 1024; // High resolution for custom waveforms
+        
+        // ==================== HELPER FUNCTIONS ====================
+        function updateAnalysis(features) {
+            if (features) {
+                document.getElementById('rmsValue').textContent = (features.rms || 0).toFixed(4);
+                document.getElementById('centroidValue').textContent = Math.round(features.spectralCentroid || 0) + ' Hz';
+                document.getElementById('rolloffValue').textContent = Math.round(features.spectralRolloff || 0) + ' Hz';
+                document.getElementById('zcrValue').textContent = (features.zcr || 0).toFixed(2);
+            }
+        }
+        
+        // Fallback analysis when Meyda is not available or fails
+        function startFallbackAnalysis() {
+            function analyze() {
+                if (!audioStarted || !analyzer) {
+                    requestAnimationFrame(analyze);
+                    return;
+                }
+                
+                const spectrum = analyzer.getValue();
+                const waveform = waveformAnalyzer.getValue();
+                
+                // Calculate RMS (Root Mean Square)
+                let sumSquares = 0;
+                for (let i = 0; i < waveform.length; i++) {
+                    sumSquares += waveform[i] * waveform[i];
+                }
+                const rms = Math.sqrt(sumSquares / waveform.length);
+                
+                // Calculate Zero Crossing Rate
+                let zeroCrossings = 0;
+                for (let i = 1; i < waveform.length; i++) {
+                    if ((waveform[i] >= 0 && waveform[i - 1] < 0) || 
+                        (waveform[i] < 0 && waveform[i - 1] >= 0)) {
+                        zeroCrossings++;
+                    }
+                }
+                const zcr = zeroCrossings / waveform.length;
+                
+                // Calculate Spectral Centroid (weighted mean of frequencies)
+                let numerator = 0;
+                let denominator = 0;
+                const nyquist = Tone.context.sampleRate / 2;
+                
+                for (let i = 0; i < spectrum.length; i++) {
+                    const magnitude = Math.pow(10, spectrum[i] / 20); // Convert dB to linear
+                    const frequency = (i / spectrum.length) * nyquist;
+                    numerator += frequency * magnitude;
+                    denominator += magnitude;
+                }
+                const spectralCentroid = denominator > 0 ? numerator / denominator : 0;
+                
+                // Calculate Spectral Rolloff (frequency below which 85% of energy is contained)
+                let totalEnergy = 0;
+                for (let i = 0; i < spectrum.length; i++) {
+                    totalEnergy += Math.pow(10, spectrum[i] / 20);
+                }
+                
+                let cumulativeEnergy = 0;
+                let rolloffIndex = 0;
+                const threshold = 0.85 * totalEnergy;
+                
+                for (let i = 0; i < spectrum.length; i++) {
+                    cumulativeEnergy += Math.pow(10, spectrum[i] / 20);
+                    if (cumulativeEnergy >= threshold) {
+                        rolloffIndex = i;
+                        break;
+                    }
+                }
+                const spectralRolloff = (rolloffIndex / spectrum.length) * nyquist;
+                
+                // Update display
+                updateAnalysis({
+                    rms: rms,
+                    spectralCentroid: spectralCentroid,
+                    spectralRolloff: spectralRolloff,
+                    zcr: zcr
+                });
+                
+                requestAnimationFrame(analyze);
+            }
+            
+            analyze();
+        }
+        
+        // ==================== INITIALIZATION ====================
+        async function initAudio() {
+            if (audioStarted) return;
+            
+            try {
+                await Tone.start();
+                console.log('Audio is ready');
+                
+                // Create master signal chain - FIX: Use correct Tone.js API
+                masterGain = new Tone.Gain(Tone.dbToGain(-12)).toDestination();
+                filter = new Tone.Filter({
+                    type: 'lowpass',
+                    frequency: 2000,
+                    Q: 1
+                }).connect(masterGain);
+                
+                // Analyzers
+                analyzer = new Tone.Analyser('fft', 2048);
+                waveformAnalyzer = new Tone.Analyser('waveform', 2048);
+                masterGain.connect(analyzer);
+                masterGain.connect(waveformAnalyzer);
+                
+                // Meyda analyzer setup - with error handling for deprecated API
+                if (typeof Meyda !== 'undefined') {
+                    try {
+                        meydaAnalyzer = Meyda.createMeydaAnalyzer({
+                            audioContext: Tone.context.rawContext,
+                            source: masterGain._gainNode,
+                            bufferSize: 2048,
+                            featureExtractors: ['rms', 'spectralCentroid', 'spectralRolloff', 'zcr'],
+                            callback: updateAnalysis
+                        });
+                        meydaAnalyzer.start();
+                        console.log('Meyda analyzer started successfully');
+                    } catch (error) {
+                        console.warn('Meyda analyzer failed (deprecated API), using fallback analysis:', error.message);
+                        // Start fallback analysis loop
+                        startFallbackAnalysis();
+                    }
+                } else {
+                    console.warn('Meyda not available, using fallback analysis');
+                    startFallbackAnalysis();
+                }
+                
+                // Add initial oscillator
+                addOscillator();
+                
+                // Start visualizations
+                drawWaveform();
+                drawSpectrum();
+                drawEnvelope();
+                
+                audioStarted = true;
+                document.getElementById('startAudio').textContent = '✓ Audio Active';
+                document.getElementById('startAudio').classList.add('active');
+            } catch (error) {
+                console.error('Audio initialization error:', error);
+                alert('Failed to start audio: ' + error.message);
+            }
+        }
+        
+        // ==================== OSCILLATOR MANAGEMENT ====================
+        function createOscillatorConfig() {
+            return {
+                id: Date.now() + Math.random(),
+                instrument: 'Synth',
+                type: 'sine',
+                detune: 0,
+                volume: -6,
+                phase: 0,
+                partialCount: 8,
+                customWave: null
+            };
+        }
+        
+        function addOscillator() {
+            const config = createOscillatorConfig();
+            oscillators.push(config);
+            renderOscillatorUI();
+        }
+        
+        function removeOscillator(id) {
+            oscillators = oscillators.filter(osc => osc.id !== id);
+            customWaveforms.delete(id);
+            renderOscillatorUI();
+        }
+        
+        function renderOscillatorUI() {
+            const container = document.getElementById('oscillators-container');
+            container.innerHTML = '';
+            
+            oscillators.forEach((osc, index) => {
+                const div = document.createElement('div');
+                div.className = 'oscillator-item';
+                const hasCustomWave = customWaveforms.has(osc.id);
+                
+                div.innerHTML = `
+                    <div class="oscillator-header">
+                        <span style="font-weight: 600;">Oscillator ${index + 1}</span>
+                        <button class="remove-btn" onclick="removeOscillator(${osc.id})">Remove</button>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Instrument Type</label>
+                        <select onchange="updateOscillator(${osc.id}, 'instrument', this.value)">
+                            <optgroup label="Basic Synths">
+                                <option value="Synth" ${(osc.instrument || 'Synth') === 'Synth' ? 'selected' : ''}>Synth (Classic)</option>
+                                <option value="MonoSynth" ${osc.instrument === 'MonoSynth' ? 'selected' : ''}>MonoSynth</option>
+                                <option value="DuoSynth" ${osc.instrument === 'DuoSynth' ? 'selected' : ''}>DuoSynth</option>
+                                <option value="PolySynth" ${osc.instrument === 'PolySynth' ? 'selected' : ''}>PolySynth</option>
+                            </optgroup>
+                            <optgroup label="Modulation Synths">
+                                <option value="AMSynth" ${osc.instrument === 'AMSynth' ? 'selected' : ''}>AM Synth</option>
+                                <option value="FMSynth" ${osc.instrument === 'FMSynth' ? 'selected' : ''}>FM Synth</option>
+                            </optgroup>
+                            <optgroup label="Physical Models">
+                                <option value="PluckSynth" ${osc.instrument === 'PluckSynth' ? 'selected' : ''}>Pluck Synth</option>
+                                <option value="MembraneSynth" ${osc.instrument === 'MembraneSynth' ? 'selected' : ''}>Membrane Synth</option>
+                                <option value="MetalSynth" ${osc.instrument === 'MetalSynth' ? 'selected' : ''}>Metal Synth</option>
+                            </optgroup>
+                            <optgroup label="Noise">
+                                <option value="NoiseSynth" ${osc.instrument === 'NoiseSynth' ? 'selected' : ''}>Noise Synth</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group" id="waveform-${osc.id}" style="display: ${(osc.instrument === 'Synth' || !osc.instrument) ? 'block' : 'none'}">
+                        <label class="control-label">Waveform</label>
+                        <select onchange="updateOscillator(${osc.id}, 'type', this.value)">
+                            <option value="sine" ${osc.type === 'sine' ? 'selected' : ''}>Sine</option>
+                            <option value="triangle" ${osc.type === 'triangle' ? 'selected' : ''}>Triangle</option>
+                            <option value="square" ${osc.type === 'square' ? 'selected' : ''}>Square</option>
+                            <option value="sawtooth" ${osc.type === 'sawtooth' ? 'selected' : ''}>Sawtooth</option>
+                            <option value="custom" ${osc.type === 'custom' ? 'selected' : ''}>Custom ${hasCustomWave ? '✓' : '(Draw First)'}</option>
+                        </select>
+                    </div>
+                    
+                    <button class="small-btn" onclick="openWaveDrawerForOsc(${osc.id})" style="width: 100%; margin-bottom: 10px;">
+                        ${hasCustomWave ? '✏️ Edit Custom Wave' : '✏️ Draw Custom Wave'}
+                    </button>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Detune: <span class="value-display" id="detune-${osc.id}-val">${osc.detune} cents</span></label>
+                        <input type="range" min="-100" max="100" value="${osc.detune}" step="1"
+                               oninput="updateOscillator(${osc.id}, 'detune', parseFloat(this.value)); document.getElementById('detune-${osc.id}-val').textContent = this.value + ' cents'">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Volume: <span class="value-display" id="vol-${osc.id}-val">${osc.volume} dB</span></label>
+                        <input type="range" min="-60" max="0" value="${osc.volume}" step="1"
+                               oninput="updateOscillator(${osc.id}, 'volume', parseFloat(this.value)); document.getElementById('vol-${osc.id}-val').textContent = this.value + ' dB'">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Phase: <span class="value-display" id="phase-${osc.id}-val">${osc.phase}°</span></label>
+                        <input type="range" min="0" max="360" value="${osc.phase}" step="1"
+                               oninput="updateOscillator(${osc.id}, 'phase', parseFloat(this.value)); document.getElementById('phase-${osc.id}-val').textContent = this.value + '°'">
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function updateOscillator(id, param, value) {
+            const osc = oscillators.find(o => o.id === id);
+            if (osc) {
+                osc[param] = value;
+                
+                // Show/hide waveform selector based on instrument type
+                if (param === 'instrument') {
+                    const waveformDiv = document.getElementById(`waveform-${id}`);
+                    if (waveformDiv) {
+                        waveformDiv.style.display = (value === 'Synth') ? 'block' : 'none';
+                    }
+                    // Recreate active voices with new instrument
+                    const activeNotesCopy = Array.from(activeNotes.entries());
+                    activeNotesCopy.forEach(([noteKey, voice]) => {
+                        const oscNode = voice.oscillators.find(o => o.id === id);
+                        if (oscNode && oscNode.synth) {
+                            oscNode.synth.triggerRelease();
+                            setTimeout(() => oscNode.synth.dispose(), 100);
+                        }
+                    });
+                    return;
+                }
+                
+                // Update active voices
+                activeNotes.forEach(voice => {
+                    const oscNode = voice.oscillators.find(o => o.id === id);
+                    if (oscNode && oscNode.synth) {
+                        if (param === 'type' && oscNode.synth.oscillator) {
+                            if (value === 'custom' && customWaveforms.has(id)) {
+                                const customWave = customWaveforms.get(id);
+                                oscNode.synth.oscillator.type = 'custom';
+                                oscNode.synth.oscillator.partials = customWave;
+                            } else if (value !== 'custom') {
+                                oscNode.synth.oscillator.type = value;
+                            }
+                        }
+                        if (param === 'detune' && oscNode.synth.detune) oscNode.synth.detune.value = value;
+                        if (param === 'volume' && oscNode.synth.volume) oscNode.synth.volume.value = value;
+                    }
+                });
+            }
+        }
+        
+        // ==================== NOTE PLAYBACK ====================
+        function playNote(note, octave) {
+            if (!audioStarted) {
+                console.warn('Audio not started yet');
+                return;
+            }
+            
+            if (oscillators.length === 0) {
+                console.warn('No oscillators available');
+                return;
+            }
+            
+            const frequency = Tone.Frequency(note + octave).toFrequency();
+            const noteKey = note + octave;
+            
+            // Check polyphony mode
+            const polyphonyMode = document.getElementById('polyphonyMode').value;
+            const maxVoices = parseInt(document.getElementById('maxVoices').value);
+            
+            // Monophonic mode: stop all other notes
+            if (polyphonyMode === 'mono') {
+                activeNotes.forEach((voice, key) => {
+                    stopNote(key.slice(0, -1), key.slice(-1));
+                });
+            }
+            
+            // Polyphonic mode: check voice limit
+            if (activeNotes.has(noteKey)) return;
+            
+            if (activeNotes.size >= maxVoices) {
+                // Voice stealing: remove oldest note
+                const oldestKey = activeNotes.keys().next().value;
+                stopNote(oldestKey.slice(0, -1), oldestKey.slice(-1));
+            }
+            
+            const envelope = {
+                attack: parseFloat(document.getElementById('attack').value),
+                decay: parseFloat(document.getElementById('decay').value),
+                sustain: parseFloat(document.getElementById('sustain').value),
+                release: parseFloat(document.getElementById('release').value)
+            };
+            
+            const voice = {
+                oscillators: [],
+                key: noteKey
+            };
+            
+            oscillators.forEach(oscConfig => {
+                try {
+                    const instrumentType = oscConfig.instrument || 'Synth';
+                    let synth;
+                    
+                    // Create the appropriate instrument type
+                    switch(instrumentType) {
+                        case 'AMSynth':
+                            synth = new Tone.AMSynth({
+                                envelope: envelope,
+                                volume: oscConfig.volume
+                            });
+                            break;
+                        case 'FMSynth':
+                            synth = new Tone.FMSynth({
+                                envelope: envelope,
+                                volume: oscConfig.volume
+                            });
+                            break;
+                        case 'MonoSynth':
+                            synth = new Tone.MonoSynth({
+                                envelope: envelope,
+                                volume: oscConfig.volume
+                            });
+                            break;
+                        case 'DuoSynth':
+                            synth = new Tone.DuoSynth({
+                                voice0: { envelope: envelope },
+                                voice1: { envelope: envelope },
+                                volume: oscConfig.volume
+                            });
+                            break;
+                        case 'PluckSynth':
+                            synth = new Tone.PluckSynth({
+                                attackNoise: 1,
+                                dampening: 4000,
+                                resonance: 0.7,
+                                volume: oscConfig.volume
+                            });
+                            break;
+                        case 'MembraneSynth':
+                            synth = new Tone.MembraneSynth({
+                                pitchDecay: 0.05,
+                                octaves: 10,
+                                oscillator: { type: 'sine' },
+                                envelope: envelope,
+                                volume: oscConfig.volume
+                            });
+                            break;
+                        case 'MetalSynth':
+                            synth = new Tone.MetalSynth({
+                                frequency: 200,
+                                envelope: { attack: 0.001, decay: 0.1, release: 0.01 },
+                                harmonicity: 5.1,
+                                modulationIndex: 32,
+                                resonance: 4000,
+                                octaves: 1.5,
+                                volume: oscConfig.volume
+                            });
+                            break;
+                        case 'NoiseSynth':
+                            synth = new Tone.NoiseSynth({
+                                noise: { type: 'white' },
+                                envelope: envelope,
+                                volume: oscConfig.volume
+                            });
+                            break;
+                        case 'PolySynth':
+                            synth = new Tone.PolySynth(Tone.Synth, {
+                                envelope: envelope,
+                                volume: oscConfig.volume
+                            });
+                            break;
+                        case 'Synth':
+                        default:
+                            let oscillatorType = oscConfig.type;
+                            let oscillatorPartials = oscConfig.partialCount;
+                            
+                            // Handle custom waveform
+                            if (oscConfig.type === 'custom' && customWaveforms.has(oscConfig.id)) {
+                                oscillatorType = 'custom';
+                                oscillatorPartials = customWaveforms.get(oscConfig.id);
+                            } else if (oscConfig.type === 'custom') {
+                                oscillatorType = 'sine'; // Fallback if no custom wave
+                            }
+                            
+                            synth = new Tone.Synth({
+                                oscillator: {
+                                    type: oscillatorType,
+                                    partials: oscillatorPartials
+                                },
+                                envelope: envelope,
+                                volume: oscConfig.volume,
+                                detune: oscConfig.detune
+                            });
+                            break;
+                    }
+                    
+                    // Connect to filter and trigger
+                    synth.connect(filter);
+                    
+                    // Apply detune for basic synth types that support it
+                    if (synth.detune && oscConfig.detune) {
+                        synth.detune.value = oscConfig.detune;
+                    }
+                    
+                    synth.triggerAttack(frequency);
+                    
+                    voice.oscillators.push({
+                        id: oscConfig.id,
+                        synth: synth
+                    });
+                } catch (error) {
+                    console.error('Error creating synth:', error);
+                }
+            });
+            
+            if (voice.oscillators.length > 0) {
+                activeNotes.set(noteKey, voice);
+                updateActiveVoices();
+            }
+        }
+        
+        function stopNote(note, octave) {
+            const noteKey = note + octave;
+            const voice = activeNotes.get(noteKey);
+            
+            if (voice) {
+                const release = parseFloat(document.getElementById('release').value);
+                voice.oscillators.forEach(osc => {
+                    if (osc.synth) {
+                        try {
+                            osc.synth.triggerRelease();
+                            setTimeout(() => {
+                                osc.synth.dispose();
+                            }, release * 1000 + 100);
+                        } catch (error) {
+                            console.error('Error stopping note:', error);
+                        }
+                    }
+                });
+                activeNotes.delete(noteKey);
+                updateActiveVoices();
+            }
+        }
+        
+        function updateActiveVoices() {
+            document.getElementById('voicesValue').textContent = activeNotes.size;
+        }
+        
+        // ==================== CUSTOM WAVEFORM DRAWING ====================
+        function openWaveDrawerForOsc(oscId) {
+            currentDrawingOscId = oscId;
+            document.getElementById('waveDrawModal').classList.add('active');
+            
+            // Load existing waveform if available
+            if (customWaveforms.has(oscId)) {
+                loadWaveformToCanvas(customWaveforms.get(oscId));
+            } else {
+                clearWaveCanvas();
+                generateSineWave();
+            }
+        }
+        
+        function initWaveDrawCanvas() {
+            const canvas = document.getElementById('waveDrawCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Initialize empty waveform
+            wavePoints = new Array(WAVE_RESOLUTION).fill(0.5);
+            drawWaveCanvas();
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', (e) => {
+                isDrawing = true;
+                drawAtPosition(e);
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDrawing) {
+                    drawAtPosition(e);
+                }
+            });
+            
+            canvas.addEventListener('mouseup', () => {
+                isDrawing = false;
+            });
+            
+            canvas.addEventListener('mouseleave', () => {
+                isDrawing = false;
+            });
+            
+            canvas.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                clearWaveCanvas();
+            });
+        }
+        
+        function drawAtPosition(e) {
+            const canvas = document.getElementById('waveDrawCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const index = Math.floor((x / canvas.width) * WAVE_RESOLUTION);
+            const value = 1 - (y / canvas.height);
+            
+            if (index >= 0 && index < WAVE_RESOLUTION) {
+                wavePoints[index] = Math.max(0, Math.min(1, value));
+                
+                // Smooth neighboring points for better drawing
+                if (index > 0) {
+                    const blend = 0.3;
+                    wavePoints[index - 1] = wavePoints[index - 1] * (1 - blend) + wavePoints[index] * blend;
+                }
+                if (index < WAVE_RESOLUTION - 1) {
+                    const blend = 0.3;
+                    wavePoints[index + 1] = wavePoints[index + 1] * (1 - blend) + wavePoints[index] * blend;
+                }
+                
+                drawWaveCanvas();
+            }
+        }
+        
+        function drawWaveCanvas() {
+            const canvas = document.getElementById('waveDrawCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Clear
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Grid
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.2)';
+            ctx.lineWidth = 1;
+            
+            // Horizontal lines
+            for (let i = 0; i <= 4; i++) {
+                const y = (i / 4) * height;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            
+            // Vertical lines
+            for (let i = 0; i <= 8; i++) {
+                const x = (i / 8) * width;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            
+            // Center line
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, height / 2);
+            ctx.lineTo(width, height / 2);
+            ctx.stroke();
+            
+            // Draw waveform
+            ctx.strokeStyle = '#8b5cf6';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            for (let i = 0; i < wavePoints.length; i++) {
+                const x = (i / wavePoints.length) * width;
+                const y = (1 - wavePoints[i]) * height;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            
+            ctx.stroke();
+            
+            // Draw points
+            ctx.fillStyle = '#a78bfa';
+            const step = Math.floor(WAVE_RESOLUTION / 100);
+            for (let i = 0; i < wavePoints.length; i += step) {
+                const x = (i / wavePoints.length) * width;
+                const y = (1 - wavePoints[i]) * height;
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function clearWaveCanvas() {
+            wavePoints = new Array(WAVE_RESOLUTION).fill(0.5);
+            drawWaveCanvas();
+        }
+        
+        function generateSineWave() {
+            for (let i = 0; i < WAVE_RESOLUTION; i++) {
+                wavePoints[i] = (Math.sin((i / WAVE_RESOLUTION) * Math.PI * 2) + 1) / 2;
+            }
+            drawWaveCanvas();
+        }
+        
+        function generateSquareWave() {
+            for (let i = 0; i < WAVE_RESOLUTION; i++) {
+                wavePoints[i] = i < WAVE_RESOLUTION / 2 ? 1 : 0;
+            }
+            drawWaveCanvas();
+        }
+        
+        function generateSawWave() {
+            for (let i = 0; i < WAVE_RESOLUTION; i++) {
+                wavePoints[i] = i / WAVE_RESOLUTION;
+            }
+            drawWaveCanvas();
+        }
+        
+        function applyCustomWaveform() {
+            if (currentDrawingOscId === null) return;
+            
+            // Convert wavePoints to Fourier partials for Tone.js
+            const partials = wavePointsToPartials(wavePoints);
+            customWaveforms.set(currentDrawingOscId, partials);
+            
+            // Update oscillator config
+            const osc = oscillators.find(o => o.id === currentDrawingOscId);
+            if (osc) {
+                osc.type = 'custom';
+                osc.customWave = partials;
+            }
+            
+            renderOscillatorUI();
+            closeWaveDrawer();
+            
+            console.log('Custom waveform applied with', partials.length, 'partials');
+        }
+        
+        function wavePointsToPartials(points) {
+            // Convert waveform points to normalized values (-1 to 1)
+            const normalized = points.map(p => (p - 0.5) * 2);
+            
+            // Simple FFT-like conversion - extract first 32 harmonics
+            const numPartials = 32;
+            const partials = [];
+            
+            for (let h = 1; h <= numPartials; h++) {
+                let real = 0;
+                let imag = 0;
+                
+                for (let i = 0; i < normalized.length; i++) {
+                    const angle = (2 * Math.PI * h * i) / normalized.length;
+                    real += normalized[i] * Math.cos(angle);
+                    imag += normalized[i] * Math.sin(angle);
+                }
+                
+                const magnitude = Math.sqrt(real * real + imag * imag) / normalized.length;
+                partials.push(magnitude);
+            }
+            
+            // Normalize partials
+            const maxPartial = Math.max(...partials);
+            if (maxPartial > 0) {
+                return partials.map(p => p / maxPartial);
+            }
+            
+            return partials;
+        }
+        
+        function loadWaveformToCanvas(partials) {
+            // Reconstruct waveform from partials
+            wavePoints = new Array(WAVE_RESOLUTION).fill(0);
+            
+            for (let i = 0; i < WAVE_RESOLUTION; i++) {
+                let value = 0;
+                for (let h = 0; h < partials.length; h++) {
+                    value += partials[h] * Math.sin(((h + 1) * 2 * Math.PI * i) / WAVE_RESOLUTION);
+                }
+                wavePoints[i] = (value + 1) / 2; // Normalize to 0-1
+            }
+            
+            drawWaveCanvas();
+        }
+        
+        function closeWaveDrawer() {
+            document.getElementById('waveDrawModal').classList.remove('active');
+            currentDrawingOscId = null;
+        }
+        
+        // ==================== VISUALIZATIONS ====================
+        function drawWaveform() {
+            if (!audioStarted) {
+                requestAnimationFrame(drawWaveform);
+                return;
+            }
+            
+            const canvas = document.getElementById('waveformCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            const waveform = waveformAnalyzer.getValue();
+            
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Grid
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = (i / 4) * height;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            
+            // Center line
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, height / 2);
+            ctx.lineTo(width, height / 2);
+            ctx.stroke();
+            
+            // Waveform
+            ctx.strokeStyle = '#8b5cf6';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            const sliceWidth = width / waveform.length;
+            let x = 0;
+            
+            for (let i = 0; i < waveform.length; i++) {
+                const v = waveform[i];
+                const y = ((v + 1) / 2) * height;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+                
+                x += sliceWidth;
+            }
+            
+            ctx.stroke();
+            
+            requestAnimationFrame(drawWaveform);
+        }
+        
+        function drawSpectrum() {
+            if (!audioStarted) {
+                requestAnimationFrame(drawSpectrum);
+                return;
+            }
+            
+            const canvas = document.getElementById('spectrumCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            const spectrum = analyzer.getValue();
+            
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Grid
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = (i / 4) * height;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            
+            // Spectrum bars
+            const barWidth = width / spectrum.length;
+            
+            for (let i = 0; i < spectrum.length; i++) {
+                const value = spectrum[i];
+                const percent = (value + 140) / 140; // Normalize -140 to 0 dB
+                const barHeight = Math.max(0, percent * height);
+                
+                const hue = 270 - (percent * 60); // Purple to blue
+                ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+                ctx.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
+            }
+            
+            requestAnimationFrame(drawSpectrum);
+        }
+        
+        function drawEnvelope() {
+            const canvas = document.getElementById('envelopeCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            const attack = parseFloat(document.getElementById('attack').value);
+            const decay = parseFloat(document.getElementById('decay').value);
+            const sustain = parseFloat(document.getElementById('sustain').value);
+            const release = parseFloat(document.getElementById('release').value);
+            
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Grid
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = (i / 4) * height;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            
+            // Calculate time points
+            const totalTime = attack + decay + 0.5 + release; // 0.5 for sustain display
+            const attackX = (attack / totalTime) * width;
+            const decayX = ((attack + decay) / totalTime) * width;
+            const sustainX = ((attack + decay + 0.5) / totalTime) * width;
+            const releaseX = width;
+            
+            // Draw envelope
+            ctx.strokeStyle = '#8b5cf6';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, height);
+            ctx.lineTo(attackX, 10); // Attack
+            ctx.lineTo(decayX, height - (sustain * (height - 20))); // Decay
+            ctx.lineTo(sustainX, height - (sustain * (height - 20))); // Sustain
+            ctx.lineTo(releaseX, height); // Release
+            ctx.stroke();
+            
+            // Fill under curve
+            ctx.fillStyle = 'rgba(139, 92, 246, 0.2)';
+            ctx.lineTo(releaseX, height);
+            ctx.lineTo(0, height);
+            ctx.fill();
+            
+            // Labels
+            ctx.fillStyle = '#c4b5fd';
+            ctx.font = '10px sans-serif';
+            ctx.fillText('A', attackX - 5, height - 5);
+            ctx.fillText('D', decayX - 5, height - 5);
+            ctx.fillText('S', sustainX - 5, height - 5);
+            ctx.fillText('R', releaseX - 10, height - 5);
+        }
+        
+        // ==================== KEYBOARD SETUP ====================
+        function setupKeyboard() {
+            const keyboard = document.getElementById('keyboard');
+            keyboard.innerHTML = '';
+            
+            NOTES.forEach(note => {
+                const key = document.createElement('div');
+                key.className = 'key';
+                key.textContent = note;
+                key.dataset.note = note;
+                
+                key.addEventListener('mousedown', () => {
+                    playNote(note, currentOctave);
+                    key.classList.add('active');
+                });
+                
+                key.addEventListener('mouseup', () => {
+                    stopNote(note, currentOctave);
+                    key.classList.remove('active');
+                });
+                
+                key.addEventListener('mouseleave', () => {
+                    stopNote(note, currentOctave);
+                    key.classList.remove('active');
+                });
+                
+                keyboard.appendChild(key);
+            });
+        }
+        
+        // ==================== EFFECTS CHAIN ====================
+        function addEffect(effectType) {
+            if (!audioStarted) {
+                alert('Please start audio first');
+                return;
+            }
+            
+            let effect;
+            const effectId = Date.now() + Math.random();
+            
+            try {
+                switch(effectType) {
+                    case 'chorus':
+                        effect = new Tone.Chorus({
+                            frequency: 4,
+                            delayTime: 2.5,
+                            depth: 0.5,
+                            wet: 0.5
+                        });
+                        effect.start();
+                        break;
+                    case 'phaser':
+                        effect = new Tone.Phaser({
+                            frequency: 0.5,
+                            octaves: 3,
+                            baseFrequency: 350,
+                            wet: 0.7
+                        });
+                        effect.start();
+                        break;
+                    case 'tremolo':
+                        effect = new Tone.Tremolo({
+                            frequency: 9,
+                            depth: 0.75,
+                            wet: 0.8
+                        });
+                        effect.start();
+                        break;
+                    case 'vibrato':
+                        effect = new Tone.Vibrato({
+                            frequency: 5,
+                            depth: 0.1,
+                            wet: 0.6
+                        });
+                        break;
+                    case 'autopanner':
+                        effect = new Tone.AutoPanner({
+                            frequency: '4n',
+                            depth: 1,
+                            wet: 0.7
+                        });
+                        effect.start();
+                        break;
+                    case 'feedbackdelay':
+                        effect = new Tone.FeedbackDelay({
+                            delayTime: '8n',
+                            feedback: 0.5,
+                            wet: 0.3
+                        });
+                        break;
+                    case 'pingpongdelay':
+                        effect = new Tone.PingPongDelay({
+                            delayTime: '8n',
+                            feedback: 0.3,
+                            wet: 0.4
+                        });
+                        break;
+                    case 'reverb':
+                        effect = new Tone.Reverb({
+                            decay: 1.5,
+                            preDelay: 0.01,
+                            wet: 0.4
+                        });
+                        // Reverb needs to generate the impulse response
+                        effect.generate().then(() => {
+                            console.log('Reverb ready');
+                        });
+                        break;
+                    case 'freeverb':
+                        effect = new Tone.Freeverb({
+                            roomSize: 0.7,
+                            dampening: 3000,
+                            wet: 0.5
+                        });
+                        break;
+                    case 'jcreverb':
+                        effect = new Tone.JCReverb({
+                            roomSize: 0.4,
+                            wet: 0.5
+                        });
+                        break;
+                    case 'distortion':
+                        effect = new Tone.Distortion({
+                            distortion: 0.8,
+                            wet: 0.6
+                        });
+                        break;
+                    case 'bitcrusher':
+                        effect = new Tone.BitCrusher({
+                            bits: 4,
+                            wet: 0.5
+                        });
+                        break;
+                    case 'chebyshev':
+                        effect = new Tone.Chebyshev({
+                            order: 50,
+                            wet: 0.4
+                        });
+                        break;
+                    case 'compressor':
+                        effect = new Tone.Compressor({
+                            threshold: -24,
+                            ratio: 4,
+                            attack: 0.003,
+                            release: 0.25
+                        });
+                        break;
+                    case 'limiter':
+                        effect = new Tone.Limiter(-3);
+                        break;
+                    default:
+                        console.warn('Unknown effect type:', effectType);
+                        return;
+                }
+                
+                // Add to chain first
+                effectsChain.push({
+                    id: effectId,
+                    type: effectType,
+                    effect: effect
+                });
+                
+                // Reconnect audio chain
+                reconnectEffectsChain();
+                
+                renderEffectsChain();
+                
+                console.log(`Added ${effectType} effect`);
+                
+            } catch (error) {
+                console.error('Error adding effect:', error);
+                alert('Failed to add effect: ' + error.message);
+            }
+        }
+        
+        function removeEffect(effectId) {
+            const effectObj = effectsChain.find(e => e.id === effectId);
+            if (effectObj && effectObj.effect) {
+                effectObj.effect.disconnect();
+                effectObj.effect.dispose();
+            }
+            
+            effectsChain = effectsChain.filter(e => e.id !== effectId);
+            reconnectEffectsChain();
+            renderEffectsChain();
+        }
+        
+        function reconnectEffectsChain() {
+            // Disconnect everything first
+            filter.disconnect();
+            
+            effectsChain.forEach(e => {
+                if (e.effect) {
+                    try {
+                        e.effect.disconnect();
+                    } catch (err) {
+                        // Already disconnected
+                    }
+                }
+            });
+            
+            // Build chain: filter -> effects -> master gain
+            let currentNode = filter;
+            
+            // Connect effects in order
+            effectsChain.forEach(e => {
+                if (e.effect) {
+                    currentNode.connect(e.effect);
+                    currentNode = e.effect;
+                }
+            });
+            
+            // Connect final node to master gain
+            currentNode.connect(masterGain);
+            
+            console.log('Effects chain reconnected:', effectsChain.map(e => e.type).join(' -> '));
+        }
+        
+        function renderEffectsChain() {
+            const container = document.getElementById('effectsChainContainer');
+            container.innerHTML = '';
+            
+            if (effectsChain.length === 0) return;
+            
+            const title = document.createElement('div');
+            title.style.fontSize = '12px';
+            title.style.color = 'var(--text-muted)';
+            title.style.marginBottom = '8px';
+            title.textContent = 'Active Effects:';
+            container.appendChild(title);
+            
+            effectsChain.forEach((effectObj, index) => {
+                const div = document.createElement('div');
+                div.style.background = 'rgba(255, 255, 255, 0.08)';
+                div.style.padding = '8px';
+                div.style.borderRadius = '6px';
+                div.style.marginBottom = '6px';
+                div.style.display = 'flex';
+                div.style.justifyContent = 'space-between';
+                div.style.alignItems = 'center';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.style.fontSize = '11px';
+                nameSpan.textContent = `${index + 1}. ${effectObj.type}`;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-btn';
+                removeBtn.textContent = '×';
+                removeBtn.style.padding = '2px 6px';
+                removeBtn.style.fontSize = '14px';
+                removeBtn.onclick = () => removeEffect(effectObj.id);
+                
+                div.appendChild(nameSpan);
+                div.appendChild(removeBtn);
+                container.appendChild(div);
+            });
+        }
+        
+        // ==================== EVENT LISTENERS ====================
+        document.getElementById('startAudio').addEventListener('click', initAudio);
+        
+        document.getElementById('addOscillator').addEventListener('click', addOscillator);
+        
+        document.getElementById('openWaveDrawer').addEventListener('click', () => {
+            if (oscillators.length > 0) {
+                openWaveDrawerForOsc(oscillators[0].id);
+            } else {
+                alert('Please add an oscillator first');
+            }
+        });
+        
+        // Master volume
+        document.getElementById('masterVol').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('masterVolValue').textContent = val + ' dB';
+            if (masterGain) {
+                masterGain.gain.value = Tone.dbToGain(val);
+            }
+        });
+        
+        // Octave
+        document.getElementById('octave').addEventListener('input', (e) => {
+            currentOctave = parseInt(e.target.value);
+            document.getElementById('octaveValue').textContent = currentOctave;
+        });
+        
+        // Max Voices
+        document.getElementById('maxVoices').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            document.getElementById('maxVoicesValue').textContent = val;
+        });
+        
+        // Envelope controls
+        ['attack', 'decay', 'sustain', 'release'].forEach(param => {
+            document.getElementById(param).addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                const unit = param === 'sustain' ? '' : ' s';
+                document.getElementById(param + 'Value').textContent = val.toFixed(param === 'sustain' ? 2 : 3) + unit;
+                drawEnvelope();
+            });
+        });
+        
+        // Add Effect button
+        document.getElementById('addEffect').addEventListener('click', () => {
+            const effectType = document.getElementById('effectType').value;
+            addEffect(effectType);
+        });
+        
+        // Filter controls
+        document.getElementById('filterType').addEventListener('change', (e) => {
+            if (filter) {
+                filter.type = e.target.value;
+            }
+        });
+        
+        document.getElementById('cutoff').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('cutoffValue').textContent = Math.round(val) + ' Hz';
+            if (filter) {
+                filter.frequency.value = val;
+            }
+        });
+        
+        document.getElementById('resonance').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('resonanceValue').textContent = val.toFixed(1);
+            if (filter) {
+                filter.Q.value = val;
+            }
+        });
+        
+        // Wave drawer controls
+        document.getElementById('clearWave').addEventListener('click', clearWaveCanvas);
+        document.getElementById('generateSine').addEventListener('click', generateSineWave);
+        document.getElementById('generateSquare').addEventListener('click', generateSquareWave);
+        document.getElementById('generateSaw').addEventListener('click', generateSawWave);
+        document.getElementById('applyWave').addEventListener('click', applyCustomWaveform);
+        document.getElementById('closeWaveDrawer').addEventListener('click', closeWaveDrawer);
+        
+        // Export/Import
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const preset = {
+                oscillators: oscillators,
+                customWaveforms: Array.from(customWaveforms.entries()),
+                envelope: {
+                    attack: parseFloat(document.getElementById('attack').value),
+                    decay: parseFloat(document.getElementById('decay').value),
+                    sustain: parseFloat(document.getElementById('sustain').value),
+                    release: parseFloat(document.getElementById('release').value)
+                },
+                filter: {
+                    type: document.getElementById('filterType').value,
+                    cutoff: parseFloat(document.getElementById('cutoff').value),
+                    resonance: parseFloat(document.getElementById('resonance').value)
+                },
+                masterVolume: parseFloat(document.getElementById('masterVol').value)
+            };
+            
+            const dataStr = JSON.stringify(preset, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+            const exportFileDefaultName = 'craftysound-preset.json';
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        });
+        
+        document.getElementById('importBtn').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const preset = JSON.parse(event.target.result);
+                        
+                        // Load oscillators
+                        oscillators = preset.oscillators || [];
+                        
+                        // Load custom waveforms
+                        customWaveforms = new Map(preset.customWaveforms || []);
+                        
+                        // Load envelope
+                        if (preset.envelope) {
+                            document.getElementById('attack').value = preset.envelope.attack;
+                            document.getElementById('decay').value = preset.envelope.decay;
+                            document.getElementById('sustain').value = preset.envelope.sustain;
+                            document.getElementById('release').value = preset.envelope.release;
+                            
+                            document.getElementById('attackValue').textContent = preset.envelope.attack.toFixed(3) + ' s';
+                            document.getElementById('decayValue').textContent = preset.envelope.decay.toFixed(3) + ' s';
+                            document.getElementById('sustainValue').textContent = preset.envelope.sustain.toFixed(2);
+                            document.getElementById('releaseValue').textContent = preset.envelope.release.toFixed(3) + ' s';
+                        }
+                        
+                        // Load filter
+                        if (preset.filter) {
+                            document.getElementById('filterType').value = preset.filter.type;
+                            document.getElementById('cutoff').value = preset.filter.cutoff;
+                            document.getElementById('resonance').value = preset.filter.resonance;
+                            
+                            document.getElementById('cutoffValue').textContent = Math.round(preset.filter.cutoff) + ' Hz';
+                            document.getElementById('resonanceValue').textContent = preset.filter.resonance.toFixed(1);
+                            
+                            if (filter) {
+                                filter.type = preset.filter.type;
+                                filter.frequency.value = preset.filter.cutoff;
+                                filter.Q.value = preset.filter.resonance;
+                            }
+                        }
+                        
+                        // Load master volume
+                        if (preset.masterVolume !== undefined) {
+                            document.getElementById('masterVol').value = preset.masterVolume;
+                            document.getElementById('masterVolValue').textContent = preset.masterVolume + ' dB';
+                            if (masterGain) {
+                                masterGain.gain.value = Tone.dbToGain(preset.masterVolume);
+                            }
+                        }
+                        
+                        renderOscillatorUI();
+                        drawEnvelope();
+                        
+                        alert('Preset loaded successfully!');
+                    } catch (error) {
+                        alert('Error loading preset: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            const keyMap = {
+                'a': 'C', 'w': 'C#', 's': 'D', 'e': 'D#',
+                'd': 'E', 'f': 'F', 't': 'F#', 'g': 'G',
+                'y': 'G#', 'h': 'A', 'u': 'A#', 'j': 'B'
+            };
+            
+            const note = keyMap[e.key.toLowerCase()];
+            if (note && !e.repeat) {
+                playNote(note, currentOctave);
+                const keyElement = document.querySelector(`.key[data-note="${note}"]`);
+                if (keyElement) keyElement.classList.add('active');
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            const keyMap = {
+                'a': 'C', 'w': 'C#', 's': 'D', 'e': 'D#',
+                'd': 'E', 'f': 'F', 't': 'F#', 'g': 'G',
+                'y': 'G#', 'h': 'A', 'u': 'A#', 'j': 'B'
+            };
+            
+            const note = keyMap[e.key.toLowerCase()];
+            if (note) {
+                stopNote(note, currentOctave);
+                const keyElement = document.querySelector(`.key[data-note="${note}"]`);
+                if (keyElement) keyElement.classList.remove('active');
+            }
+        });
+        
+        // ==================== INITIALIZATION ====================
+        window.addEventListener('DOMContentLoaded', () => {
+            setupKeyboard();
+            initWaveDrawCanvas();
+            drawEnvelope();
+            
+            // Start animations even before audio is started
+            drawWaveform();
+            drawSpectrum();
+        });
+    </script>
+</body>
+</html>

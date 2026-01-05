@@ -34,6 +34,9 @@ let playheadTime = 0;
 let toneRecorder = null; // Tone.Recorder instance
 let toneRecordingMic = null; // Tone.UserMedia instance
 let toneRecordingGain = null; // Tone.Gain for monitoring
+let toneWaveform = null; // Tone.Waveform for visualization
+let recordingVisualization = null; // p5.js instance for waveform
+let recordingStartTime = 0; // For time display
 
 // --- Tone.js and Automation System State ---
 let toneStarted = false;
@@ -353,12 +356,64 @@ function renderTimeline() {
       }
     }
   }
-  // Playhead
+  // Playhead - extends to timeline only (track playheads handled separately)
   let playhead = document.createElement('div');
   playhead.className = 'playhead';
   playhead.style.left = (gridOffset + playheadTime * PIXELS_PER_SEC) + 'px';
   playhead.style.height = '100%';
   timelineDiv.appendChild(playhead);
+}
+
+// Render playhead cursor that extends through all tracks
+function renderPlayheadCursor() {
+  // Remove existing playhead cursor
+  const existingCursor = document.getElementById('playhead-cursor');
+  if (existingCursor) {
+    existingCursor.remove();
+  }
+  
+  // Create new playhead cursor that extends through timeline and tracks
+  const playheadCursor = document.createElement('div');
+  playheadCursor.id = 'playhead-cursor';
+  playheadCursor.style.position = 'fixed';
+  playheadCursor.style.top = '0';
+  playheadCursor.style.width = '2px';
+  playheadCursor.style.height = '100vh';
+  playheadCursor.style.background = 'linear-gradient(to bottom, var(--accent2), rgba(248, 81, 73, 0.6))';
+  playheadCursor.style.zIndex = '1000';
+  playheadCursor.style.pointerEvents = 'none';
+  playheadCursor.style.boxShadow = '0 0 16px rgba(248, 81, 73, 0.8), 0 0 3px rgba(248, 81, 73, 1)';
+  
+  // Calculate position relative to workspace
+  const workspace = document.getElementById('workspace');
+  const timelineRect = timelineDiv.getBoundingClientRect();
+  const workspaceRect = workspace.getBoundingClientRect();
+  
+  const playheadX = TRACK_HEADER_WIDTH + playheadTime * PIXELS_PER_SEC;
+  const scrollLeft = workspace.scrollLeft;
+  const relativeX = playheadX - scrollLeft;
+  
+  // Position relative to viewport
+  playheadCursor.style.left = (workspaceRect.left + relativeX) + 'px';
+  
+  document.body.appendChild(playheadCursor);
+  
+  // Update position on scroll
+  workspace.addEventListener('scroll', updatePlayheadCursorPosition);
+}
+
+function updatePlayheadCursorPosition() {
+  const playheadCursor = document.getElementById('playhead-cursor');
+  if (!playheadCursor) return;
+  
+  const workspace = document.getElementById('workspace');
+  const workspaceRect = workspace.getBoundingClientRect();
+  const scrollLeft = workspace.scrollLeft;
+  
+  const playheadX = TRACK_HEADER_WIDTH + playheadTime * PIXELS_PER_SEC;
+  const relativeX = playheadX - scrollLeft;
+  
+  playheadCursor.style.left = (workspaceRect.left + relativeX) + 'px';
 }
 
 // --- Tracks and Clips ---
@@ -679,7 +734,28 @@ function renderTracks() {
           e.preventDefault();
           return;
         }
+        
+        // Store drag data
         e.dataTransfer.setData('text/plain', JSON.stringify({tIdx, cIdx}));
+        e.dataTransfer.effectAllowed = 'move';
+        
+        // Create semi-transparent ghost image
+        const ghost = clipDiv.cloneNode(true);
+        ghost.style.opacity = '0.6';
+        ghost.style.transform = 'scale(1.02)';
+        ghost.style.filter = 'brightness(1.2)';
+        ghost.style.position = 'absolute';
+        ghost.style.top = '-9999px';
+        document.body.appendChild(ghost);
+        e.dataTransfer.setDragImage(ghost, e.offsetX, e.offsetY);
+        setTimeout(() => ghost.remove(), 0);
+        
+        // Add dragging class for animation
+        clipDiv.classList.add('clip-dragging');
+      });
+      
+      clipDiv.addEventListener('dragend', (e) => {
+        clipDiv.classList.remove('clip-dragging');
       });
 
       clipDiv.addEventListener('click', (e) => {
@@ -716,13 +792,32 @@ function renderTracks() {
       trackDiv.appendChild(recDiv);
     }
 
-    // Drag Over to Drop Clips
-    trackDiv.addEventListener('dragover', (e) => e.preventDefault());
+    // Drag Over to Drop Clips with visual feedback
+    trackDiv.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      
+      // Add hover effect to track
+      trackDiv.classList.add('track-drag-over');
+    });
+    
+    trackDiv.addEventListener('dragleave', (e) => {
+      trackDiv.classList.remove('track-drag-over');
+    });
+    
     trackDiv.addEventListener('drop', (e) => {
       e.preventDefault();
+      trackDiv.classList.remove('track-drag-over');
+      
       let data = JSON.parse(e.dataTransfer.getData('text/plain'));
       let relX = e.offsetX;
-      moveClip(data.tIdx, data.cIdx, tIdx, relX / PIXELS_PER_SEC);
+      let newStartTime = relX / PIXELS_PER_SEC;
+      
+      // Snap to measure markers
+      newStartTime = snapToMeasure(newStartTime);
+      
+      // Animate the move
+      moveClipAnimated(data.tIdx, data.cIdx, tIdx, newStartTime);
     });
 
     trackDiv.style.minWidth = (getTimelineWidth() - TRACK_HEADER_WIDTH) + 'px';
@@ -1406,13 +1501,26 @@ recordBtn.onclick = async () => {
     // Create gain node for monitoring
     toneRecordingGain = new Tone.Gain(0.8);
     
-    // Connect: Mic -> Gain -> Recorder and Destination (for monitoring)
+    // Create waveform analyzer for visualization
+    toneWaveform = new Tone.Waveform(2048);
+    
+    // Connect: Mic -> Gain -> [Recorder + Waveform] and Destination (for monitoring)
     toneRecordingMic.connect(toneRecordingGain);
     toneRecordingGain.connect(toneRecorder);
+    toneRecordingGain.connect(toneWaveform);
     toneRecordingGain.toDestination(); // Enable monitoring
     
     // Start recording with Tone.Recorder
     toneRecorder.start();
+    
+    // Clean up any existing visualization first
+    if (recordingVisualization) {
+      stopRecordingVisualization();
+    }
+    
+    // Initialize recording visualization
+    recordingStartTime = Date.now();
+    initRecordingVisualization();
     
     recordedChunks = [];
     liveRecordingBuffer = [];
@@ -1434,63 +1542,83 @@ recordBtn.onclick = async () => {
 };
 
 async function processRecordedAudio() {
+  // Prevent multiple simultaneous calls
+  if (!isRecording || !toneRecorder) {
+    console.warn('Cannot process recording - not currently recording or no recorder instance');
+    return;
+  }
+  
+  // Set isRecording to false IMMEDIATELY to prevent duplicate calls
+  isRecording = false;
+  recordBtn.disabled = false;
+  stopBtn.disabled = true;
+  
   try {
-    // Stop Tone.Recorder and get the recorded blob
-    if (!toneRecorder) {
-      console.warn('No Tone.Recorder instance found');
-      isRecording = false;
-      recordBtn.disabled = false;
-      stopBtn.disabled = true;
-      return;
-    }
-    
+    console.log('Stopping Tone.Recorder...');
     const blob = await toneRecorder.stop();
-    
-    // Clean up Tone.js recording nodes
-    cleanupToneRecordingNodes();
+    console.log('Tone.Recorder stopped, blob size:', blob ? blob.size : 0);
     
     if (!blob || blob.size === 0) {
       console.warn('No audio data recorded');
-      isRecording = false;
-      recordBtn.disabled = false;
-      stopBtn.disabled = true;
       return;
     }
     
-    // Process recorded audio using Tone.js Buffer for better synchronization
+    // Process recorded audio using Web Audio API
     const arrayBuffer = await blob.arrayBuffer();
+    console.log('ArrayBuffer created, size:', arrayBuffer.byteLength);
     
-    // Use Tone.js context for decoding (ensures compatibility)
-    Tone.context.decodeAudioData(arrayBuffer, (buffer) => {
-      let targetTracks = tracks.filter(t => t.armed);
-      if (targetTracks.length === 0) targetTracks = [tracks[selectedTrackIndex]];
+    // Decode audio data using the audio context
+    const audioContext = Tone.context.rawContext || Tone.context._context;
+    console.log('Using audio context to decode...');
+    
+    const buffer = await audioContext.decodeAudioData(arrayBuffer);
+    console.log('Audio decoded successfully, duration:', buffer.duration, 'channels:', buffer.numberOfChannels);
+    
+    // Find target tracks
+    let targetTracks = tracks.filter(t => t.armed);
+    console.log('Armed tracks found:', targetTracks.length);
+    
+    if (targetTracks.length === 0) {
+      console.log('No armed tracks, using selected track index:', selectedTrackIndex);
+      targetTracks = [tracks[selectedTrackIndex]];
+    }
+    
+    console.log('Adding recording to', targetTracks.length, 'track(s)');
+    console.log('Recording start time:', liveRecordingStart, 'duration:', buffer.duration);
+    
+    // Add to tracks
+    targetTracks.forEach(track => {
+      let trackIndex = tracks.indexOf(track);
+      console.log('Adding clip to track index:', trackIndex);
       
-      targetTracks.forEach(track => {
-        let trackIndex = tracks.indexOf(track);
-        // Create a URL for the blob to enable Tone.js Player integration
-        const audioUrl = URL.createObjectURL(blob);
-        addClipToTrackWithHowler(trackIndex, buffer, liveRecordingStart, buffer.duration, null, 'Recording', audioUrl, blob.type);
-      });
-      
-      liveRecordingBuffer = [];
-      saveState();
-      render();
-      console.log('Recording processed and added to track(s) with Tone.js');
-    }, (error) => {
-      console.error('Failed to decode recorded audio:', error);
-      alert('Failed to process recorded audio');
+      // Create a URL for the blob to enable Tone.js Player integration
+      const audioUrl = URL.createObjectURL(blob);
+      addClipToTrack(trackIndex, buffer, liveRecordingStart, buffer.duration, null, 'Recording', audioUrl, blob.type);
+      console.log('Clip added. Track now has', tracks[trackIndex].clips.length, 'clips');
     });
+    
+    liveRecordingBuffer = [];
+    saveState();
+    render();
+    console.log('Recording processed and added to track(s) successfully');
     
   } catch (error) {
     console.error('Error processing recorded audio:', error);
-  } finally {
+    // Re-enable recording on error
     isRecording = false;
     recordBtn.disabled = false;
     stopBtn.disabled = true;
+  } finally {
+    // Clean up Tone.js recording nodes AFTER all processing is complete
+    cleanupToneRecordingNodes();
+    console.log('Recording cleanup complete');
   }
 }
 
 function cleanupToneRecordingNodes() {
+  // Stop visualization first
+  stopRecordingVisualization();
+  
   // Disconnect and dispose Tone.js recording nodes
   try {
     if (toneRecordingGain) {
@@ -1540,6 +1668,11 @@ function stopRecording() {
   if (isRecording) {
     // Process the recorded audio with Tone.js
     processRecordedAudio();
+    
+    // Stop metronome if it was started for recording
+    if (metronomeEnabled) {
+      stopMetronome();
+    }
   } else {
     // Force cleanup if not recording
     cleanupRecordingNodes();
@@ -1738,6 +1871,7 @@ async function startPlayback() {
     }
     
     renderTimeline();
+    updatePlayheadCursorPosition(); // Update full-height cursor position
     
     // More generous stopping condition - only stop if we exceed reasonable limits
     const maxReasonableTime = Math.max(MAX_TIME, getFurthestClipEnd() + 30); // 30 seconds past last clip
@@ -1875,16 +2009,16 @@ function skipForwardOneMeasure() {
 }
 
 // --- Clip Management ---
-function addClipToTrack(trackIndex, buffer, startTime, duration, color, name) {
+function addClipToTrack(trackIndex, buffer, startTime, duration, color, name, audioUrl = null, mimeType = null) {
   if (trackIndex >= tracks.length) return;
-  tracks[trackIndex].clips.push(createClip(buffer, startTime, duration, 0, color, name));
+  tracks[trackIndex].clips.push(createClip(buffer, startTime, duration, 0, color, name, audioUrl, mimeType));
   render();
 }
 
 function addClipToTrackWithHowler(trackIndex, buffer, startTime, duration, color, name, audioUrl, mimeType) {
   if (trackIndex >= tracks.length) return;
-  tracks[trackIndex].clips.push(createClip(buffer, startTime, duration, 0, color, name, audioUrl, mimeType));
-  render();
+  // Use the updated addClipToTrack function
+  addClipToTrack(trackIndex, buffer, startTime, duration, color, name, audioUrl, mimeType);
 }
 
 function addClipToFirstTrack(buffer, startTime, duration, color, name) {
@@ -2325,6 +2459,80 @@ function moveClip(fromTrackIdx, clipIdx, toTrackIdx, newStartTime) {
   render();
 }
 
+function moveClipAnimated(fromTrackIdx, clipIdx, toTrackIdx, newStartTime) {
+  if (fromTrackIdx >= tracks.length || toTrackIdx >= tracks.length) return;
+  
+  const clip = tracks[fromTrackIdx].clips[clipIdx];
+  if (!clip) return;
+  
+  // Get the clip element for animation
+  const trackDivs = document.querySelectorAll('.track');
+  const oldTrackDiv = trackDivs[fromTrackIdx];
+  const clipElements = oldTrackDiv.querySelectorAll('.clip');
+  const clipElement = clipElements[clipIdx];
+  
+  if (clipElement) {
+    // Add smooth transition
+    clipElement.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    clipElement.classList.add('clip-moving');
+    
+    // Small delay to let animation start
+    setTimeout(() => {
+      moveClip(fromTrackIdx, clipIdx, toTrackIdx, newStartTime);
+      
+      // Find the moved clip element and remove animation classes
+      setTimeout(() => {
+        const newTrackDiv = trackDivs[toTrackIdx];
+        const newClipElements = newTrackDiv.querySelectorAll('.clip');
+        newClipElements.forEach(el => {
+          el.classList.remove('clip-moving');
+          el.style.transition = '';
+        });
+      }, 50);
+    }, 50);
+  } else {
+    // Fallback to instant move
+    moveClip(fromTrackIdx, clipIdx, toTrackIdx, newStartTime);
+  }
+}
+
+function snapToMeasure(time) {
+  const secPerBar = getSecPerBar();
+  const secPerBeat = getSecPerBeat();
+  
+  // Find nearest measure marker (bar or beat)
+  const measures = [];
+  const totalBars = Math.ceil(time / secPerBar) + 2;
+  
+  // Add bar markers
+  for (let bar = 0; bar <= totalBars; bar++) {
+    measures.push(bar * secPerBar);
+    // Add beat markers within each bar
+    for (let beat = 1; beat < timeSigNum; beat++) {
+      measures.push(bar * secPerBar + beat * secPerBeat);
+    }
+  }
+  
+  // Find closest measure
+  let closest = measures[0];
+  let minDiff = Math.abs(time - closest);
+  
+  for (const measure of measures) {
+    const diff = Math.abs(time - measure);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = measure;
+    }
+  }
+  
+  // Only snap if within reasonable distance (0.5 seconds)
+  if (minDiff < 0.5) {
+    return closest;
+  }
+  
+  return time;
+}
+
 function trimClip(tIdx, cIdx, newDuration, fromStart = false) {
   const clip = tracks[tIdx].clips[cIdx];
   if (fromStart) {
@@ -2405,22 +2613,24 @@ function drawSpectrum(canvas, track) {
 }
 
 // --- Enhanced Waveform Drawing with Selection ---
+// High-resolution waveform visualization using Tone.js + P5.js
 function drawWaveform(canvas, audioBufferOrBuffer, offset, duration, isRawBuffer, isSelected = false) {
   const ctx = canvas.getContext('2d');
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   
-  // Selection highlight
+  // Selection highlight with gradient
   if (isSelected) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, 'rgba(29, 233, 182, 0.15)');
+    gradient.addColorStop(1, 'rgba(29, 233, 182, 0.05)');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
   
-  ctx.strokeStyle = isRawBuffer ? "rgba(255,60,60,1)" : (isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(50,50,70,0.99)');
-  ctx.lineWidth = 2.2;
-  ctx.beginPath();
-  
   let channel;
   let sampleRate = 44100;
+  
+  // Extract audio data from buffer
   if (isRawBuffer && (Array.isArray(audioBufferOrBuffer) || audioBufferOrBuffer instanceof Float32Array)) {
     channel = audioBufferOrBuffer;
     sampleRate = audioCtx ? audioCtx.sampleRate : 44100;
@@ -2432,23 +2642,121 @@ function drawWaveform(canvas, audioBufferOrBuffer, offset, duration, isRawBuffer
   }
   
   const start = Math.floor(offset * sampleRate);
-  const end = Math.min(channel.length, Math.floor((offset+duration) * sampleRate));
+  const end = Math.min(channel.length, Math.floor((offset + duration) * sampleRate));
   const samples = end - start;
-  const step = Math.max(1, Math.floor(samples / canvas.width));
   
-  for (let x = 0; x < canvas.width; x++) {
-    const idx = start + Math.floor(x * samples / canvas.width);
+  // Use high-resolution rendering when zoomed in (more detail)
+  const samplesPerPixel = samples / canvas.width;
+  const useHighRes = samplesPerPixel < 100 || zoomLevel > 1.5;
+  
+  if (useHighRes) {
+    // High-resolution mode: Draw detailed waveform with P5.js-inspired smooth rendering
+    drawHighResWaveform(ctx, channel, start, end, canvas.width, canvas.height, isRawBuffer, isSelected);
+  } else {
+    // Standard mode: Fast min-max rendering for zoomed out views
+    drawStandardWaveform(ctx, channel, start, end, canvas.width, canvas.height, isRawBuffer, isSelected);
+  }
+}
+
+// High-resolution waveform with smooth curves (P5.js inspired)
+function drawHighResWaveform(ctx, channel, start, end, width, height, isRawBuffer, isSelected) {
+  const samples = end - start;
+  const samplesPerPixel = Math.max(1, samples / width);
+  
+  // Color scheme
+  const baseColor = isRawBuffer ? 'rgba(255, 60, 60, 0.9)' : (isSelected ? 'rgba(29, 233, 182, 0.9)' : 'rgba(66, 165, 245, 0.85)');
+  const fillColor = isRawBuffer ? 'rgba(255, 60, 60, 0.25)' : (isSelected ? 'rgba(29, 233, 182, 0.25)' : 'rgba(66, 165, 245, 0.2)');
+  
+  // Draw filled area (bottom half - positive values)
+  ctx.fillStyle = fillColor;
+  ctx.beginPath();
+  ctx.moveTo(0, height / 2);
+  
+  for (let x = 0; x < width; x++) {
+    const idx = start + Math.floor(x * samplesPerPixel);
+    let sum = 0;
+    let count = 0;
+    
+    // Average multiple samples for smoother appearance
+    for (let j = 0; j < samplesPerPixel && idx + j < end; j++) {
+      sum += channel[idx + j];
+      count++;
+    }
+    
+    const avg = count > 0 ? sum / count : 0;
+    const y = height / 2 - (avg * height / 2);
+    ctx.lineTo(x, y);
+  }
+  
+  ctx.lineTo(width, height / 2);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Draw waveform line with enhanced detail
+  ctx.strokeStyle = baseColor;
+  ctx.lineWidth = zoomLevel > 2 ? 2.5 : 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  
+  for (let x = 0; x < width; x++) {
+    const idx = start + Math.floor(x * samplesPerPixel);
     let min = 1.0, max = -1.0;
+    
+    // Calculate min/max for this pixel with subpixel accuracy
+    for (let j = 0; j < Math.ceil(samplesPerPixel) && idx + j < end; j++) {
+      const val = channel[idx + j];
+      min = Math.min(min, val);
+      max = Math.max(max, val);
+    }
+    
+    const y1 = height / 2 - (max * height / 2);
+    const y2 = height / 2 - (min * height / 2);
+    
+    if (x === 0) {
+      ctx.moveTo(x, y1);
+    }
+    
+    ctx.moveTo(x, y1);
+    ctx.lineTo(x, y2);
+  }
+  
+  ctx.stroke();
+  
+  // Add center line for reference
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, height / 2);
+  ctx.lineTo(width, height / 2);
+  ctx.stroke();
+}
+
+// Standard waveform rendering for performance
+function drawStandardWaveform(ctx, channel, start, end, width, height, isRawBuffer, isSelected) {
+  const samples = end - start;
+  const step = Math.max(1, Math.floor(samples / width));
+  
+  ctx.strokeStyle = isRawBuffer ? "rgba(255,60,60,1)" : (isSelected ? 'rgba(29, 233, 182, 0.9)' : 'rgba(66, 165, 245, 0.8)');
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  
+  for (let x = 0; x < width; x++) {
+    const idx = start + Math.floor(x * samples / width);
+    let min = 1.0, max = -1.0;
+    
     for (let j = 0; j < step && idx + j < end; j++) {
       const val = channel[idx + j];
       min = Math.min(min, val);
       max = Math.max(max, val);
     }
-    const y1 = (1 - (max+1)/2) * canvas.height;
-    const y2 = (1 - (min+1)/2) * canvas.height;
+    
+    const y1 = (1 - (max + 1) / 2) * height;
+    const y2 = (1 - (min + 1) / 2) * height;
     ctx.moveTo(x, y1);
     ctx.lineTo(x, y2);
   }
+  
   ctx.stroke();
 }
 
@@ -3259,6 +3567,7 @@ function stopMetronome() {
 function render() {
   renderTimeline();
   renderTracks();
+  renderPlayheadCursor();
 }
 
 // --- File Upload ---
@@ -3362,17 +3671,92 @@ addTrackBtn.onclick = () => {
 };
 
 // --- Zoom Controls ---
+// Smooth zoom with better UX and scroll position preservation
 zoomInBtn.onclick = () => {
-  zoomLevel = Math.min(zoomLevel * 1.5, 4);
+  const workspace = document.getElementById('workspace');
+  const scrollLeft = workspace.scrollLeft;
+  const scrollTop = workspace.scrollTop;
+  const centerX = scrollLeft + workspace.clientWidth / 2;
+  
+  // Calculate zoom center position in timeline
+  const timelinePos = centerX / PIXELS_PER_SEC;
+  
+  // Apply zoom
+  zoomLevel = Math.min(zoomLevel * 1.25, 10); // Increased max zoom to 10x
   PIXELS_PER_SEC = BASE_PIXELS_PER_SEC * zoomLevel;
+  
+  // Re-render with new zoom
   render();
+  
+  // Restore scroll position centered on same point
+  setTimeout(() => {
+    const newCenterX = timelinePos * PIXELS_PER_SEC;
+    workspace.scrollLeft = newCenterX - workspace.clientWidth / 2;
+    workspace.scrollTop = scrollTop;
+  }, 0);
+  
+  console.log('Zoomed in to', zoomLevel.toFixed(2) + 'x');
 };
 
 zoomOutBtn.onclick = () => {
-  zoomLevel = Math.max(zoomLevel / 1.5, 0.25);
+  const workspace = document.getElementById('workspace');
+  const scrollLeft = workspace.scrollLeft;
+  const scrollTop = workspace.scrollTop;
+  const centerX = scrollLeft + workspace.clientWidth / 2;
+  
+  // Calculate zoom center position in timeline
+  const timelinePos = centerX / PIXELS_PER_SEC;
+  
+  // Apply zoom
+  zoomLevel = Math.max(zoomLevel / 1.25, 0.1); // Decreased min zoom to 0.1x
   PIXELS_PER_SEC = BASE_PIXELS_PER_SEC * zoomLevel;
+  
+  // Re-render with new zoom
   render();
+  
+  // Restore scroll position centered on same point
+  setTimeout(() => {
+    const newCenterX = timelinePos * PIXELS_PER_SEC;
+    workspace.scrollLeft = newCenterX - workspace.clientWidth / 2;
+    workspace.scrollTop = scrollTop;
+  }, 0);
+  
+  console.log('Zoomed out to', zoomLevel.toFixed(2) + 'x');
 };
+
+// Add mouse wheel zoom (with Ctrl/Cmd key)
+document.getElementById('workspace').addEventListener('wheel', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    
+    const workspace = document.getElementById('workspace');
+    const rect = workspace.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left + workspace.scrollLeft;
+    const mouseY = e.clientY - rect.top + workspace.scrollTop;
+    
+    // Calculate mouse position in timeline
+    const timelinePos = mouseX / PIXELS_PER_SEC;
+    
+    // Zoom in or out based on wheel direction
+    const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+    const newZoomLevel = Math.max(0.1, Math.min(10, zoomLevel * zoomDelta));
+    
+    if (newZoomLevel !== zoomLevel) {
+      zoomLevel = newZoomLevel;
+      PIXELS_PER_SEC = BASE_PIXELS_PER_SEC * zoomLevel;
+      
+      // Re-render
+      render();
+      
+      // Keep mouse position fixed during zoom
+      setTimeout(() => {
+        const newMouseX = timelinePos * PIXELS_PER_SEC;
+        workspace.scrollLeft = newMouseX - (e.clientX - rect.left);
+        workspace.scrollTop = mouseY - (e.clientY - rect.top);
+      }, 0);
+    }
+  }
+}, { passive: false });
 
 // --- Settings Controls ---
 bpmInput.onchange = () => {
@@ -8656,6 +9040,125 @@ function openTrackAutomation(trackIndex) {
 }
 
 // Initialize on DOM ready
+
+// --- Live Recording Visualization with p5.js and Tone.js ---
+function initRecordingVisualization() {
+  const vizContainer = document.getElementById('recordingVisualization');
+  const canvasContainer = document.getElementById('waveformCanvas');
+  const timeDisplay = document.getElementById('recordingTime');
+  
+  // Show visualization container
+  vizContainer.style.display = 'block';
+  
+  // Create p5.js instance for waveform visualization
+  recordingVisualization = new p5((sketch) => {
+    sketch.setup = function() {
+      const canvas = sketch.createCanvas(400, 120);
+      canvas.parent('waveformCanvas');
+      sketch.background(42, 42, 42);
+      sketch.frameRate(60);
+    };
+    
+    sketch.draw = function() {
+      if (!toneWaveform || !isRecording) {
+        return;
+      }
+      
+      // Update recording time
+      const elapsed = (Date.now() - recordingStartTime) / 1000;
+      const minutes = Math.floor(elapsed / 60);
+      const seconds = Math.floor(elapsed % 60);
+      const deciseconds = Math.floor((elapsed % 1) * 10);
+      timeDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${deciseconds}`;
+      
+      // Get waveform data from Tone.Waveform
+      const waveformData = toneWaveform.getValue();
+      
+      // Clear background
+      sketch.background(42, 42, 42);
+      
+      // Draw grid
+      sketch.stroke(74, 74, 74, 100);
+      sketch.strokeWeight(1);
+      for (let i = 0; i < 5; i++) {
+        const y = (i / 4) * 120;
+        sketch.line(0, y, 400, y);
+      }
+      
+      // Draw center line
+      sketch.stroke(245, 166, 35, 80);
+      sketch.line(0, 60, 400, 60);
+      
+      // Draw waveform
+      sketch.noFill();
+      sketch.strokeWeight(2);
+      
+      // Create gradient effect
+      const samples = waveformData.length;
+      const step = sketch.width / samples;
+      
+      for (let i = 0; i < samples - 1; i++) {
+        const x1 = i * step;
+        const x2 = (i + 1) * step;
+        
+        // Normalize waveform data (-1 to 1) to canvas height
+        const y1 = sketch.map(waveformData[i], -1, 1, 120, 0);
+        const y2 = sketch.map(waveformData[i + 1], -1, 1, 120, 0);
+        
+        // Color gradient based on amplitude
+        const amplitude = Math.abs(waveformData[i]);
+        if (amplitude > 0.7) {
+          sketch.stroke(208, 2, 27); // Red for loud
+        } else if (amplitude > 0.3) {
+          sketch.stroke(245, 166, 35); // Orange for medium
+        } else {
+          sketch.stroke(126, 211, 33); // Green for quiet
+        }
+        
+        sketch.line(x1, y1, x2, y2);
+      }
+      
+      // Draw peak indicators
+      const maxAmplitude = Math.max(...waveformData.map(Math.abs));
+      if (maxAmplitude > 0.9) {
+        sketch.fill(208, 2, 27, 100);
+        sketch.noStroke();
+        sketch.rect(0, 0, 400, 10);
+        sketch.rect(0, 110, 400, 10);
+      }
+    };
+  }, canvasContainer);
+}
+
+function stopRecordingVisualization() {
+  console.log('Stopping recording visualization...');
+  const vizContainer = document.getElementById('recordingVisualization');
+  
+  if (vizContainer) {
+    vizContainer.style.display = 'none';
+  }
+  
+  if (recordingVisualization) {
+    try {
+      recordingVisualization.remove();
+      console.log('p5.js instance removed');
+    } catch (e) {
+      console.warn('Error removing p5.js instance:', e);
+    }
+    recordingVisualization = null;
+  }
+  
+  if (toneWaveform) {
+    try {
+      toneWaveform.dispose();
+      console.log('Tone.Waveform disposed');
+    } catch (e) {
+      console.warn('Error disposing Tone.Waveform:', e);
+    }
+    toneWaveform = null;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     trackAutomationManager = new TrackAutomationManager();

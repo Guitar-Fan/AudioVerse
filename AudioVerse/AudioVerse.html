@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="AudioVerse: advanced DAW web app for audio editing and recording.">
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- P5.js for high-resolution waveform visualization -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
   <link rel="stylesheet" href="DAWstyling.css">
 </head>
 <body class="min-w-0 bg-gray-900 text-white overflow-hidden">
@@ -271,6 +273,16 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Live Recording Visualization -->
+  <div id="recordingVisualization" style="display: none; position: fixed; bottom: 80px; right: 20px; background: rgba(42, 42, 42, 0.95); border: 2px solid #f5a623; border-radius: 8px; padding: 12px; z-index: 1000; box-shadow: 0 4px 20px rgba(245, 166, 35, 0.3);">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+      <div style="width: 10px; height: 10px; background: #d0021b; border-radius: 50%; animation: pulse 1s infinite;"></div>
+      <span style="color: #f5a623; font-weight: bold; font-size: 14px;">RECORDING</span>
+      <span id="recordingTime" style="color: #7ed321; font-family: monospace; font-size: 13px;">00:00.0</span>
+    </div>
+    <div id="waveformCanvas" style="width: 400px; height: 120px; background: #2a2a2a; border: 1px solid #4a4a4a; border-radius: 4px;"></div>
   </div>
 
   <!-- Arrangement View Window -->

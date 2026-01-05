@@ -219,4 +219,30 @@ Next step will be getting Rovodev to populate a csv file
 
 For AudioVerse.html, the recording starts successfully, but can't stop (according to js console) or save the file as a blob to the track.
 Use Tone.js for this. Also replace the audio blob waveform visualization to use Tone.js in conjunction with P5.js library for high resolution waveform visualization of audio blob on arrangement view.
-Work on zoom controls for smooth, high resolution zooming in track area. Extend timeline cursor to go all the way down.
+Work on zoom controls for smooth, high resolution zooming in track area. Extend playback cursor to go all the way down.
+
+Looks like rovodev isn't good at troubleshooting
+
+Carefully observe the the csv then 
+
+now it stops but the recording blob never visually saves to track that has arm recording enabled
+
+i don't see any changes in eruda console, how about you code a live visualization of recording waveform using tone.js and p5.js visualization conjunction
+
+create a completely seperate 1 file audio tool called CraftySound to the Home folder, using Tone.js, Essentia.js, Meyda.js, P5.js, and other needed cdn-called libraries. Users can use it craft a mono/polyphonic virtual midi instrument using low level parameters of sound. Users can combine monophonic waves/sounds to make polyphonic realistic sounds like guitars. Offer a lot of interactive control like drawing waves, and offer a lot of visualization of every capturable and editable aspect of audio
+
+No audio is produced in CraftySound, add feature drawing custom waveform to oscillate with high resolution grid wave mapping capture.
+
+Make clip drag and drop experience smoothly animated all the way through, have the clip stop at measure markers
+
+make craftysound drawing feature visually functional, and page audible
+
+don't use dirty tricks to play with me my boy
+
+allow for multiple oscilators to trigger at once, look at ToneJS_Deep_exploration to add all the capable features of tone.js into craftySound
+
+should find best book on fusion 360, i actually made something so colored
+
+make FXs work they aren't working: Audio is ready
+Meyda analyzer failed (deprecated API), using fallback analysis: this._m.audioContext.createScriptProcessor is not a function
+Unknown effect type: lowpass it looks i love my tool so much
