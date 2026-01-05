@@ -333,6 +333,291 @@
             justify-content: center;
             margin-top: 20px;
         }
+        
+        /* Effect GUI Styles */
+        .effect-gui-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .effect-gui-modal.active {
+            display: flex;
+        }
+        
+        .effect-gui-content {
+            background: linear-gradient(135deg, #1a1d29 0%, #252836 100%);
+            border: 3px solid #3a3f52;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .effect-gui-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(167, 139, 250, 0.3);
+        }
+        
+        .effect-gui-title {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00d9ff, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .effect-gui-close {
+            background: rgba(239, 68, 68, 0.3);
+            border: 2px solid rgba(239, 68, 68, 0.5);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .effect-gui-close:hover {
+            background: rgba(239, 68, 68, 0.6);
+            transform: rotate(90deg);
+        }
+        
+        .effect-params-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+        
+        /* Knob Control */
+        .knob-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .knob-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+        }
+        
+        .knob {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #3a3f52, #1a1d29);
+            border: 4px solid #2d3142;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), inset 0 2px 8px rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            position: relative;
+            transition: box-shadow 0.2s;
+        }
+        
+        .knob:hover {
+            box-shadow: 0 6px 20px rgba(0, 217, 255, 0.4), inset 0 2px 8px rgba(255, 255, 255, 0.2);
+        }
+        
+        .knob-indicator {
+            position: absolute;
+            width: 4px;
+            height: 30px;
+            background: linear-gradient(180deg, #00d9ff, #a78bfa);
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 2px;
+            box-shadow: 0 0 10px rgba(0, 217, 255, 0.6);
+        }
+        
+        .knob-value-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 11px;
+            font-weight: 700;
+            color: #00d9ff;
+            text-shadow: 0 0 5px rgba(0, 217, 255, 0.5);
+        }
+        
+        .knob-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #a78bfa;
+            font-weight: 600;
+        }
+        
+        /* Fader Control */
+        .fader-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .fader-container {
+            width: 40px;
+            height: 120px;
+            background: linear-gradient(90deg, #1a1d29, #252836, #1a1d29);
+            border: 2px solid #3a3f52;
+            border-radius: 8px;
+            position: relative;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        .fader-track {
+            position: absolute;
+            width: 4px;
+            height: calc(100% - 40px);
+            background: linear-gradient(180deg, #00d9ff, #a78bfa);
+            left: 50%;
+            top: 20px;
+            transform: translateX(-50%);
+            border-radius: 2px;
+            box-shadow: 0 0 8px rgba(0, 217, 255, 0.4);
+        }
+        
+        .fader-handle {
+            position: absolute;
+            width: 36px;
+            height: 20px;
+            background: linear-gradient(135deg, #3a3f52, #2d3142);
+            border: 2px solid #00d9ff;
+            border-radius: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            transition: box-shadow 0.2s;
+        }
+        
+        .fader-handle:hover {
+            box-shadow: 0 4px 12px rgba(0, 217, 255, 0.6);
+        }
+        
+        .fader-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #a78bfa;
+            font-weight: 600;
+        }
+        
+        /* Toggle Switch */
+        .toggle-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .toggle-switch {
+            width: 60px;
+            height: 30px;
+            background: #1a1d29;
+            border: 2px solid #3a3f52;
+            border-radius: 15px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .toggle-switch.active {
+            background: linear-gradient(135deg, #00d9ff, #34d399);
+            border-color: #00d9ff;
+        }
+        
+        .toggle-handle {
+            width: 22px;
+            height: 22px;
+            background: #f0f0f5;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+        }
+        
+        .toggle-switch.active .toggle-handle {
+            left: 32px;
+        }
+        
+        .toggle-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #a78bfa;
+            font-weight: 600;
+        }
+        
+        /* LED Indicator */
+        .led-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #2d3142;
+            border: 2px solid #3a3f52;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s;
+        }
+        
+        .led-indicator.active {
+            background: #34d399;
+            border-color: #34d399;
+            box-shadow: 0 0 10px #34d399, inset 0 1px 3px rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Analog Screen */
+        .analog-screen {
+            background: linear-gradient(135deg, #0a0e1a, #1a1d29);
+            border: 3px solid #3a3f52;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            color: #00d9ff;
+            text-shadow: 0 0 5px rgba(0, 217, 255, 0.5);
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.6);
+        }
+        
+        .screen-line {
+            font-size: 12px;
+            margin: 4px 0;
+            letter-spacing: 1px;
+        }
+        
+        .effect-clickable {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .effect-clickable:hover {
+            background: rgba(0, 217, 255, 0.15) !important;
+            transform: translateX(3px);
+        }
     </style>
 </head>
 <body>    <div id="container">
@@ -488,16 +773,32 @@
     <div id="waveDrawModal">
         <div class="modal-content">
             <h2 style="text-align: center; color: #a78bfa; margin-bottom: 20px;">Custom Waveform Designer</h2>
-            <p style="text-align: center; color: #c4b5fd; margin-bottom: 10px;">Draw your custom waveform - Click and drag to create, Right-click to clear</p>
+            <p style="text-align: center; color: #c4b5fd; margin-bottom: 5px;"><strong>Draw EXACTLY ONE wavelength (one complete cycle)</strong></p>
+            <p style="text-align: center; color: #a0a0b0; font-size: 12px; margin-bottom: 10px;">Click and drag to draw • Right-click to clear • Left/Right edges will be connected</p>
             <canvas id="waveDrawCanvas" width="1024" height="400"></canvas>
+            <p style="text-align: center; color: #34d399; font-size: 12px; margin-top: 10px;">
+                <span id="waveformQuality">128 points • 64 harmonics • Periodic waveform</span>
+            </p>
             <div class="modal-controls">
                 <button class="btn" id="clearWave">Clear</button>
                 <button class="btn" id="generateSine">Generate Sine</button>
                 <button class="btn" id="generateSquare">Generate Square</button>
                 <button class="btn" id="generateSaw">Generate Saw</button>
+                <button class="btn" id="previewWave">Preview Result</button>
                 <button class="btn" id="applyWave">Apply Waveform</button>
                 <button class="btn" id="closeWaveDrawer">Close</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Effect GUI Modal -->
+    <div class="effect-gui-modal" id="effectGuiModal">
+        <div class="effect-gui-content">
+            <div class="effect-gui-header">
+                <div class="effect-gui-title" id="effectGuiTitle">Effect Controls</div>
+                <button class="effect-gui-close" id="effectGuiClose">×</button>
+            </div>
+            <div id="effectGuiBody"></div>
         </div>
     </div>
 
@@ -512,13 +813,14 @@
         let customWaveforms = new Map(); // Store custom waveforms per oscillator
         let currentDrawingOscId = null;
         let effectsChain = []; // Store active effects
+        let currentEditingEffect = null; // Current effect being edited
         
         const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
         
         // Waveform drawing state
         let isDrawing = false;
         let wavePoints = [];
-        const WAVE_RESOLUTION = 1024; // High resolution for custom waveforms
+        const WAVE_RESOLUTION = 128; // One complete wavelength with controllable resolution
         
         // ==================== HELPER FUNCTIONS ====================
         function updateAnalysis(features) {
@@ -1061,20 +1363,27 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             
-            const index = Math.floor((x / canvas.width) * WAVE_RESOLUTION);
+            const index = Math.floor((x / canvas.width) * (WAVE_RESOLUTION - 1));
             const value = 1 - (y / canvas.height);
             
             if (index >= 0 && index < WAVE_RESOLUTION) {
                 wavePoints[index] = Math.max(0, Math.min(1, value));
                 
                 // Smooth neighboring points for better drawing
-                if (index > 0) {
-                    const blend = 0.3;
+                if (index > 0 && index < WAVE_RESOLUTION - 1) {
+                    const blend = 0.2;
                     wavePoints[index - 1] = wavePoints[index - 1] * (1 - blend) + wavePoints[index] * blend;
                 }
-                if (index < WAVE_RESOLUTION - 1) {
-                    const blend = 0.3;
+                if (index < WAVE_RESOLUTION - 2) {
+                    const blend = 0.2;
                     wavePoints[index + 1] = wavePoints[index + 1] * (1 - blend) + wavePoints[index] * blend;
+                }
+                
+                // Enforce periodicity: keep first and last points synced
+                if (index === 0) {
+                    wavePoints[WAVE_RESOLUTION - 1] = wavePoints[0];
+                } else if (index === WAVE_RESOLUTION - 1) {
+                    wavePoints[0] = wavePoints[WAVE_RESOLUTION - 1];
                 }
                 
                 drawWaveCanvas();
@@ -1091,11 +1400,11 @@
             ctx.fillStyle = '#1a1a2e';
             ctx.fillRect(0, 0, width, height);
             
-            // Grid
+            // Grid - 8 vertical divisions for one wavelength
             ctx.strokeStyle = 'rgba(139, 92, 246, 0.2)';
             ctx.lineWidth = 1;
             
-            // Horizontal lines
+            // Horizontal lines (amplitude)
             for (let i = 0; i <= 4; i++) {
                 const y = (i / 4) * height;
                 ctx.beginPath();
@@ -1104,7 +1413,7 @@
                 ctx.stroke();
             }
             
-            // Vertical lines
+            // Vertical lines (phase divisions of wavelength)
             for (let i = 0; i <= 8; i++) {
                 const x = (i / 8) * width;
                 ctx.beginPath();
@@ -1113,7 +1422,30 @@
                 ctx.stroke();
             }
             
-            // Center line
+            // Wavelength markers
+            ctx.strokeStyle = 'rgba(255, 100, 100, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            // Start of wavelength
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, height);
+            ctx.stroke();
+            // End of wavelength
+            ctx.beginPath();
+            ctx.moveTo(width, 0);
+            ctx.lineTo(width, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Labels for wavelength
+            ctx.fillStyle = '#f87171';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText('Start', 5, 15);
+            ctx.fillText('End', width - 30, 15);
+            ctx.fillText('(must match)', width - 70, 30);
+            
+            // Center line (zero amplitude)
             ctx.strokeStyle = 'rgba(139, 92, 246, 0.5)';
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -1121,13 +1453,23 @@
             ctx.lineTo(width, height / 2);
             ctx.stroke();
             
-            // Draw waveform
+            // Zero crossing markers
+            ctx.fillStyle = '#34d399';
+            ctx.font = '10px sans-serif';
+            ctx.fillText('0', 3, height / 2 - 5);
+            
+            // Enforce periodicity: make last point match first point
+            if (wavePoints.length > 0) {
+                wavePoints[wavePoints.length - 1] = wavePoints[0];
+            }
+            
+            // Draw waveform (user's drawing)
             ctx.strokeStyle = '#8b5cf6';
             ctx.lineWidth = 3;
             ctx.beginPath();
             
             for (let i = 0; i < wavePoints.length; i++) {
-                const x = (i / wavePoints.length) * width;
+                const x = (i / (wavePoints.length - 1)) * width;
                 const y = (1 - wavePoints[i]) * height;
                 
                 if (i === 0) {
@@ -1139,16 +1481,126 @@
             
             ctx.stroke();
             
-            // Draw points
+            // Draw individual control points
             ctx.fillStyle = '#a78bfa';
-            const step = Math.floor(WAVE_RESOLUTION / 100);
-            for (let i = 0; i < wavePoints.length; i += step) {
-                const x = (i / wavePoints.length) * width;
+            for (let i = 0; i < wavePoints.length; i++) {
+                const x = (i / (wavePoints.length - 1)) * width;
                 const y = (1 - wavePoints[i]) * height;
                 ctx.beginPath();
-                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.arc(x, y, 2, 0, Math.PI * 2);
                 ctx.fill();
             }
+            
+            // Highlight start/end points
+            ctx.fillStyle = '#f87171';
+            ctx.beginPath();
+            ctx.arc(0, (1 - wavePoints[0]) * height, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(width, (1 - wavePoints[wavePoints.length - 1]) * height, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function previewWaveform() {
+            // Store the original waveform
+            const originalWavePoints = [...wavePoints];
+            
+            // Convert to partials and back to see the result
+            const partials = wavePointsToPartials(wavePoints);
+            loadWaveformToCanvas(partials);
+            
+            // Redraw with both waveforms
+            const canvas = document.getElementById('waveDrawCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Clear and redraw grid
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Grid
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.2)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = (i / 4) * height;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            for (let i = 0; i <= 8; i++) {
+                const x = (i / 8) * width;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            
+            // Wavelength markers
+            ctx.strokeStyle = 'rgba(255, 100, 100, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, height);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(width, 0);
+            ctx.lineTo(width, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Center line
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, height / 2);
+            ctx.lineTo(width, height / 2);
+            ctx.stroke();
+            
+            // Draw original waveform (semi-transparent)
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < originalWavePoints.length; i++) {
+                const x = (i / (originalWavePoints.length - 1)) * width;
+                const y = (1 - originalWavePoints[i]) * height;
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+            
+            // Draw reconstructed waveform (bright green)
+            ctx.strokeStyle = '#34d399';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let i = 0; i < wavePoints.length; i++) {
+                const x = (i / (wavePoints.length - 1)) * width;
+                const y = (1 - wavePoints[i]) * height;
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+            
+            // Add legend
+            ctx.fillStyle = '#8b5cf6';
+            ctx.font = '12px sans-serif';
+            ctx.fillText('Your Drawing (faded purple)', 10, height - 35);
+            ctx.fillStyle = '#34d399';
+            ctx.fillText('Result with 64 Harmonics (green)', 10, height - 20);
+            
+            // Restore original for continued editing
+            setTimeout(() => {
+                wavePoints = originalWavePoints;
+                drawWaveCanvas();
+            }, 3000);
         }
         
         function clearWaveCanvas() {
@@ -1201,10 +1653,11 @@
             // Convert waveform points to normalized values (-1 to 1)
             const normalized = points.map(p => (p - 0.5) * 2);
             
-            // Simple FFT-like conversion - extract first 32 harmonics
-            const numPartials = 32;
+            // Use more harmonics for better accuracy (Tone.js supports up to 128)
+            const numPartials = 64;
             const partials = [];
             
+            // Perform Discrete Fourier Transform to get harmonics
             for (let h = 1; h <= numPartials; h++) {
                 let real = 0;
                 let imag = 0;
@@ -1215,29 +1668,53 @@
                     imag += normalized[i] * Math.sin(angle);
                 }
                 
-                const magnitude = Math.sqrt(real * real + imag * imag) / normalized.length;
+                // Calculate magnitude (amplitude of this harmonic)
+                // Multiply by 2 for proper scaling (DFT normalization)
+                const magnitude = (2 / normalized.length) * Math.sqrt(real * real + imag * imag);
                 partials.push(magnitude);
             }
             
-            // Normalize partials
-            const maxPartial = Math.max(...partials);
+            // Normalize to prevent clipping - find max and scale to 1.0
+            const maxPartial = Math.max(...partials.filter(p => !isNaN(p) && isFinite(p)));
             if (maxPartial > 0) {
-                return partials.map(p => p / maxPartial);
+                return partials.map(p => {
+                    const normalized = p / maxPartial;
+                    return isNaN(normalized) || !isFinite(normalized) ? 0 : normalized;
+                });
             }
             
-            return partials;
+            // Fallback if all partials are zero
+            return partials.map(p => isNaN(p) || !isFinite(p) ? 0 : p);
         }
         
         function loadWaveformToCanvas(partials) {
-            // Reconstruct waveform from partials
-            wavePoints = new Array(WAVE_RESOLUTION).fill(0);
+            // Reconstruct waveform from partials using additive synthesis
+            wavePoints = new Array(WAVE_RESOLUTION);
+            
+            // Find the maximum value for normalization
+            let maxValue = 0;
+            let minValue = 0;
             
             for (let i = 0; i < WAVE_RESOLUTION; i++) {
                 let value = 0;
                 for (let h = 0; h < partials.length; h++) {
+                    // Add each harmonic with its amplitude
                     value += partials[h] * Math.sin(((h + 1) * 2 * Math.PI * i) / WAVE_RESOLUTION);
                 }
-                wavePoints[i] = (value + 1) / 2; // Normalize to 0-1
+                wavePoints[i] = value;
+                maxValue = Math.max(maxValue, value);
+                minValue = Math.min(minValue, value);
+            }
+            
+            // Normalize to 0-1 range for display
+            const range = maxValue - minValue;
+            if (range > 0) {
+                for (let i = 0; i < WAVE_RESOLUTION; i++) {
+                    wavePoints[i] = (wavePoints[i] - minValue) / range;
+                }
+            } else {
+                // If all values are the same, center at 0.5
+                wavePoints.fill(0.5);
             }
             
             drawWaveCanvas();
@@ -1639,11 +2116,12 @@
             title.style.fontSize = '12px';
             title.style.color = 'var(--text-muted)';
             title.style.marginBottom = '8px';
-            title.textContent = 'Active Effects:';
+            title.textContent = 'Active Effects (click to edit):';
             container.appendChild(title);
             
             effectsChain.forEach((effectObj, index) => {
                 const div = document.createElement('div');
+                div.className = 'effect-clickable';
                 div.style.background = 'rgba(255, 255, 255, 0.08)';
                 div.style.padding = '8px';
                 div.style.borderRadius = '6px';
@@ -1652,21 +2130,334 @@
                 div.style.justifyContent = 'space-between';
                 div.style.alignItems = 'center';
                 
+                // Make the name part clickable
                 const nameSpan = document.createElement('span');
                 nameSpan.style.fontSize = '11px';
+                nameSpan.style.flex = '1';
                 nameSpan.textContent = `${index + 1}. ${effectObj.type}`;
+                nameSpan.onclick = () => openEffectGUI(effectObj);
                 
                 const removeBtn = document.createElement('button');
                 removeBtn.className = 'remove-btn';
                 removeBtn.textContent = '×';
                 removeBtn.style.padding = '2px 6px';
                 removeBtn.style.fontSize = '14px';
-                removeBtn.onclick = () => removeEffect(effectObj.id);
+                removeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    removeEffect(effectObj.id);
+                };
                 
                 div.appendChild(nameSpan);
                 div.appendChild(removeBtn);
+                div.onclick = () => openEffectGUI(effectObj);
                 container.appendChild(div);
             });
+        }
+        
+        // ==================== EFFECT GUI ====================
+        function openEffectGUI(effectObj) {
+            currentEditingEffect = effectObj;
+            const modal = document.getElementById('effectGuiModal');
+            const title = document.getElementById('effectGuiTitle');
+            const body = document.getElementById('effectGuiBody');
+            
+            title.textContent = `${effectObj.type.toUpperCase()} • Effect Controls`;
+            body.innerHTML = '';
+            
+            // Create effect-specific GUI
+            createEffectGUI(effectObj, body);
+            
+            modal.classList.add('active');
+        }
+        
+        function closeEffectGUI() {
+            document.getElementById('effectGuiModal').classList.remove('active');
+            currentEditingEffect = null;
+        }
+        
+        function createEffectGUI(effectObj, container) {
+            const effect = effectObj.effect;
+            
+            // Add analog-style screen
+            const screen = document.createElement('div');
+            screen.className = 'analog-screen';
+            screen.innerHTML = `
+                <div class="screen-line">> EFFECT: ${effectObj.type.toUpperCase()}</div>
+                <div class="screen-line">> STATUS: ACTIVE</div>
+                <div class="screen-line">> SIGNAL FLOW: REALTIME</div>
+            `;
+            container.appendChild(screen);
+            
+            // Create parameter grid
+            const grid = document.createElement('div');
+            grid.className = 'effect-params-grid';
+            container.appendChild(grid);
+            
+            // Effect-specific parameters
+            switch(effectObj.type) {
+                case 'chorus':
+                    addKnobControl(grid, 'Frequency', effect.frequency, 0.1, 20, 0.1, 'Hz');
+                    addKnobControl(grid, 'Delay Time', effect.delayTime, 0.5, 10, 0.1, 'ms');
+                    addKnobControl(grid, 'Depth', effect.depth, 0, 1, 0.01, '');
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'phaser':
+                    addKnobControl(grid, 'Frequency', effect.frequency, 0.01, 10, 0.01, 'Hz');
+                    addKnobControl(grid, 'Octaves', effect.octaves, 0.1, 10, 0.1, '');
+                    addKnobControl(grid, 'Base Freq', effect.baseFrequency, 100, 2000, 10, 'Hz');
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'tremolo':
+                    addKnobControl(grid, 'Frequency', effect.frequency, 0.1, 30, 0.1, 'Hz');
+                    addKnobControl(grid, 'Depth', effect.depth, 0, 1, 0.01, '');
+                    addToggleControl(grid, 'Spread', effect.spread);
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'vibrato':
+                    addKnobControl(grid, 'Frequency', effect.frequency, 0.1, 20, 0.1, 'Hz');
+                    addKnobControl(grid, 'Depth', effect.depth, 0, 1, 0.01, '');
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'autopanner':
+                    addKnobControl(grid, 'Frequency', effect.frequency, 0.1, 20, 0.1, 'Hz');
+                    addKnobControl(grid, 'Depth', effect.depth, 0, 1, 0.01, '');
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'feedbackdelay':
+                    addKnobControl(grid, 'Delay Time', effect.delayTime, 0.001, 1, 0.001, 's');
+                    addKnobControl(grid, 'Feedback', effect.feedback, 0, 0.95, 0.01, '');
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'pingpongdelay':
+                    addKnobControl(grid, 'Delay Time', effect.delayTime, 0.001, 1, 0.001, 's');
+                    addKnobControl(grid, 'Feedback', effect.feedback, 0, 0.95, 0.01, '');
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'reverb':
+                    addKnobControl(grid, 'Decay', effect.decay, 0.1, 10, 0.1, 's');
+                    addKnobControl(grid, 'Pre-Delay', effect.preDelay, 0, 0.1, 0.001, 's');
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'freeverb':
+                    addKnobControl(grid, 'Room Size', effect.roomSize, 0, 1, 0.01, '');
+                    addKnobControl(grid, 'Dampening', effect.dampening, 100, 10000, 100, 'Hz');
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'jcreverb':
+                    addKnobControl(grid, 'Room Size', effect.roomSize, 0, 1, 0.01, '');
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'distortion':
+                    addKnobControl(grid, 'Distortion', effect.distortion, 0, 1, 0.01, '');
+                    addToggleControl(grid, 'Oversample', effect.oversample);
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'bitcrusher':
+                    addKnobControl(grid, 'Bits', effect.bits, 1, 16, 1, '');
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'chebyshev':
+                    addKnobControl(grid, 'Order', effect.order, 1, 100, 1, '');
+                    addFaderControl(grid, 'Wet/Dry', effect.wet, 0, 1, 0.01);
+                    break;
+                    
+                case 'compressor':
+                    addKnobControl(grid, 'Threshold', effect.threshold, -100, 0, 1, 'dB');
+                    addKnobControl(grid, 'Ratio', effect.ratio, 1, 20, 0.1, ':1');
+                    addKnobControl(grid, 'Attack', effect.attack, 0.001, 1, 0.001, 's');
+                    addKnobControl(grid, 'Release', effect.release, 0.001, 1, 0.001, 's');
+                    addKnobControl(grid, 'Knee', effect.knee, 0, 40, 1, 'dB');
+                    break;
+                    
+                case 'limiter':
+                    addKnobControl(grid, 'Threshold', effect.threshold, -100, 0, 1, 'dB');
+                    break;
+            }
+        }
+        
+        function addKnobControl(container, label, param, min, max, step, unit) {
+            const div = document.createElement('div');
+            div.className = 'knob-control';
+            
+            const knobContainer = document.createElement('div');
+            knobContainer.className = 'knob-container';
+            
+            const knob = document.createElement('div');
+            knob.className = 'knob';
+            
+            const indicator = document.createElement('div');
+            indicator.className = 'knob-indicator';
+            
+            const valueDisplay = document.createElement('div');
+            valueDisplay.className = 'knob-value-display';
+            
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'knob-label';
+            labelDiv.textContent = label;
+            
+            const led = document.createElement('div');
+            led.className = 'led-indicator active';
+            
+            // Get current value
+            let currentValue = param.value !== undefined ? param.value : param;
+            
+            const updateKnob = (value) => {
+                const percent = (value - min) / (max - min);
+                const degrees = percent * 270 - 135; // -135 to +135 degrees
+                indicator.style.transform = `translateX(-50%) rotate(${degrees}deg)`;
+                indicator.style.transformOrigin = '50% 100%';
+                valueDisplay.textContent = value.toFixed(step < 1 ? 2 : 0);
+            };
+            
+            let isDragging = false;
+            let startY = 0;
+            let startValue = currentValue;
+            
+            knob.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startY = e.clientY;
+                startValue = currentValue;
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaY = startY - e.clientY;
+                const range = max - min;
+                const newValue = Math.max(min, Math.min(max, startValue + (deltaY / 100) * range));
+                currentValue = newValue;
+                
+                if (param.value !== undefined) {
+                    param.value = newValue;
+                } else if (typeof param === 'object' && param.set) {
+                    param.set(newValue);
+                }
+                
+                updateKnob(newValue);
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            updateKnob(currentValue);
+            
+            knob.appendChild(indicator);
+            knob.appendChild(valueDisplay);
+            knobContainer.appendChild(knob);
+            div.appendChild(led);
+            div.appendChild(knobContainer);
+            div.appendChild(labelDiv);
+            container.appendChild(div);
+        }
+        
+        function addFaderControl(container, label, param, min, max, step) {
+            const div = document.createElement('div');
+            div.className = 'fader-control';
+            
+            const faderContainer = document.createElement('div');
+            faderContainer.className = 'fader-container';
+            
+            const track = document.createElement('div');
+            track.className = 'fader-track';
+            
+            const handle = document.createElement('div');
+            handle.className = 'fader-handle';
+            
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'fader-label';
+            labelDiv.textContent = label;
+            
+            let currentValue = param.value !== undefined ? param.value : param;
+            
+            const updateFader = (value) => {
+                const percent = (value - min) / (max - min);
+                const pos = (1 - percent) * (100 - 25); // 25px for handle height
+                handle.style.top = `${pos}px`;
+            };
+            
+            let isDragging = false;
+            
+            handle.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const rect = faderContainer.getBoundingClientRect();
+                const y = Math.max(0, Math.min(rect.height - 20, e.clientY - rect.top - 10));
+                const percent = 1 - (y / (rect.height - 20));
+                const newValue = min + percent * (max - min);
+                currentValue = newValue;
+                
+                if (param.value !== undefined) {
+                    param.value = newValue;
+                } else if (typeof param === 'object' && param.set) {
+                    param.set(newValue);
+                }
+                
+                updateFader(newValue);
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            updateFader(currentValue);
+            
+            faderContainer.appendChild(track);
+            faderContainer.appendChild(handle);
+            div.appendChild(faderContainer);
+            div.appendChild(labelDiv);
+            container.appendChild(div);
+        }
+        
+        function addToggleControl(container, label, param) {
+            const div = document.createElement('div');
+            div.className = 'toggle-control';
+            
+            const toggle = document.createElement('div');
+            toggle.className = 'toggle-switch';
+            
+            const toggleHandle = document.createElement('div');
+            toggleHandle.className = 'toggle-handle';
+            
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'toggle-label';
+            labelDiv.textContent = label;
+            
+            let currentValue = param.value !== undefined ? param.value : param;
+            if (currentValue) {
+                toggle.classList.add('active');
+            }
+            
+            toggle.addEventListener('click', () => {
+                currentValue = !currentValue;
+                if (param.value !== undefined) {
+                    param.value = currentValue;
+                } else if (typeof param === 'object' && param.set) {
+                    param.set(currentValue);
+                }
+                toggle.classList.toggle('active');
+            });
+            
+            toggle.appendChild(toggleHandle);
+            div.appendChild(toggle);
+            div.appendChild(labelDiv);
+            container.appendChild(div);
         }
         
         // ==================== EVENT LISTENERS ====================
@@ -1747,8 +2538,19 @@
         document.getElementById('generateSine').addEventListener('click', generateSineWave);
         document.getElementById('generateSquare').addEventListener('click', generateSquareWave);
         document.getElementById('generateSaw').addEventListener('click', generateSawWave);
+        document.getElementById('previewWave').addEventListener('click', previewWaveform);
         document.getElementById('applyWave').addEventListener('click', applyCustomWaveform);
         document.getElementById('closeWaveDrawer').addEventListener('click', closeWaveDrawer);
+        
+        // Effect GUI close
+        document.getElementById('effectGuiClose').addEventListener('click', closeEffectGUI);
+        
+        // Click outside modal to close
+        document.getElementById('effectGuiModal').addEventListener('click', (e) => {
+            if (e.target.id === 'effectGuiModal') {
+                closeEffectGUI();
+            }
+        });
         
         // Export/Import
         document.getElementById('exportBtn').addEventListener('click', () => {

@@ -1411,6 +1411,7 @@ label.upload-btn input[type="file"] { display: none; }
 .editor-header {
   background: var(--panel);
   border-bottom: 1px solid var(--timeline);
+  margin-top: 80px; /* Push down to avoid transport bar overlap */
 }
 
 .editor-content {

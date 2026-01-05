@@ -246,3 +246,44 @@ should find best book on fusion 360, i actually made something so colored
 make FXs work they aren't working: Audio is ready
 Meyda analyzer failed (deprecated API), using fallback analysis: this._m.audioContext.createScriptProcessor is not a function
 Unknown effect type: lowpass it looks i love my tool so much
+
+List all the features AudioVerse DAW has in concise bullets in a txt file
+
+the transport strip is covering the controls in the Audio editor, move the controls like pitch shift in Audio editor view down so they aren't covered
+
+This is Audioverse DAW (Digital Audio Workstation), an extensive playground for working with audio.
+Comprehensive Features List currently includes:
+-Record, upload and playback audio - Multiple track support
++Play multiple audio blobs simultaneously
++Intuitive playback and transport controls
+-Multi-Track workflow
++Solo, mute, arm recording buttons for each track
++Customize track with renaming and changing track colored
+-Mixer view
++Each track/channel has its own VOLUME FADER, applied FXs, STEREO PANNING
++Mixer view has decent aesthetics, animation and organized layout (especially with faders)
+-Audio FXs collection
++9 Audio FXs, each with its own custom user interface
++Reverbs, Delay, Chorus, Distortion, EQ, Compressors (I spent a lot of time on these FXs)
+-Interactive Audio Editor (Modeled after Edison plugin from FL Studio)
++Big, detailed waveform visualization
++PITCH SHIFT any selected part of the audio blob
++Volume automation (that doesn't currently work)
+-Audio blob editing context menu  
++Right click audio blob editing: Copy, paste, duplicate, SPLIT AT PLAYHEAD/CENTER, Quantize, rename, move to new track
++Advanced audio blob editing: REVERSE, TIME WARP
+-Placeholder features: Audio analysis, dynamic tempo map, 
+-Access animated quick guide by clicking Audioverse animated logo
+*Massive UI overhaul to look more like Reaper DAW
+*Live visualization of audio being recorded
+
+*Items are newly added features
+CAPTILIZED words are features I think are the most exciting of Audioverse DAW!
+Video shows comparison of Pre-Flavortown Audioverse DAW and Post-Flavortown
+
+CraftySound html doesn't accurately apply waveform what user drew. That resulting waveform looks different.
+
+I want the custom draw to draw exactly 1 wavelength, that the oscillator will oscillate. have slightly less resolution, so each point on grid will actually do something, make sure to require 2 crests and 2 trophs 
+
+Make each FX have a custom GUI for adjusting parameters (use interesting ways to modify parameters, dials, faders, buttons, fake analog screen)
+
