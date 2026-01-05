@@ -3,129 +3,173 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tone.js Instrument Exhibit</title>
+  <title>Tone.js Instrument Exhibits - Professional Edition</title>
+  
+  <!-- Tabler UI Framework -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  
+  <!-- Audio Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/tone@latest/build/Tone.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/nbrosowsky/tonejs-instruments@master/Tonejs-Instruments.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/MIDI.js/0.3.1/MIDI.min.js"></script>
   <script src="https://unpkg.com/d3@^7.0.0/dist/d3.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  <script>eruda.init();</script>
+  
+  <!-- Tabler JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
   <style>
+    /* Override Tabler defaults for dark theme audio production environment */
     :root {
-      --bg: #0f172a;
-      --panel: #111827;
-      --card: #1f2937;
-      --accent: #22d3ee;
-      --accent-2: #a855f7;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --grid: #1f2937;
-      --cell-active: #22d3ee22;
-      --cell-border: #334155;
-      --step-highlight: #22d3ee55;
+      --tblr-body-bg: #0a0e1a;
+      --tblr-border-color: #1e293b;
+      --tblr-card-bg: #111827;
     }
 
-    * { box-sizing: border-box; }
     body {
-      margin: 0;
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: radial-gradient(circle at 20% 20%, rgba(34,211,238,0.08), transparent 35%),
-                  radial-gradient(circle at 80% 0%, rgba(168,85,247,0.08), transparent 30%),
-                  var(--bg);
-      color: var(--text);
+      background: linear-gradient(135deg, #0a0e1a 0%, #1a1f35 100%);
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      padding: 20px;
-    }
-
-    header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      background: var(--panel);
-      border: 1px solid #1f2937;
-      border-radius: 14px;
-      padding: 14px 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-    }
-
-    h1 {
+      padding: 0;
       margin: 0;
-      font-size: 20px;
-      letter-spacing: 0.2px;
     }
 
-    .subtitle {
-      color: var(--muted);
-      font-size: 14px;
-      margin: 2px 0 0;
+    .navbar {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+      border-bottom: 2px solid #334155;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     }
 
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
+    .navbar-brand {
+      font-weight: 700;
+      font-size: 1.4rem;
+      background: linear-gradient(135deg, #22d3ee, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .page-body {
+      padding: 2rem 0;
     }
 
     .card {
-      background: var(--panel);
-      border: 1px solid #1f2937;
-      border-radius: 14px;
-      padding: 14px;
-      box-shadow: 0 18px 50px rgba(0,0,0,0.25);
+      background: linear-gradient(135deg, #111827 0%, #1a1f35 100%);
+      border: 1px solid #1e293b;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    .stack { display: flex; flex-direction: column; gap: 10px; }
-
-    label { font-size: 12px; color: var(--muted); }
-
-    select, input[type="number"], input[type="range"] {
-      background: var(--card);
-      border: 1px solid #273146;
-      color: var(--text);
-      border-radius: 10px;
-      padding: 8px 10px;
-      font-size: 14px;
-      outline: none;
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 24px 70px rgba(34,211,238,0.15);
     }
 
-    button {
-      background: linear-gradient(120deg, #22d3ee, #8b5cf6);
-      color: #0b1021;
+    .card-header {
+      background: linear-gradient(135deg, #1e293b 0%, #111827 100%);
+      border-bottom: 1px solid #334155;
+      padding: 1rem 1.5rem;
+    }
+
+    .card-title {
+      color: #22d3ee;
+      font-weight: 600;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-control, .form-select {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #e5e7eb;
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+      background: #1a1f35;
+      border-color: #22d3ee;
+      box-shadow: 0 0 0 0.25rem rgba(34,211,238,0.15);
+      color: #e5e7eb;
+    }
+
+    .form-label {
+      color: #94a3b8;
+      font-weight: 500;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-range {
+      --tblr-form-range-track-bg: #1e293b;
+      --tblr-form-range-thumb-bg: #22d3ee;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #22d3ee, #8b5cf6);
       border: none;
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform 0.12s ease, box-shadow 0.12s ease;
-      box-shadow: 0 10px 30px rgba(34,211,238,0.25);
+      font-weight: 600;
+      transition: all 0.2s ease;
+      box-shadow: 0 8px 24px rgba(34,211,238,0.25);
     }
 
-    button:active { transform: translateY(1px) scale(0.99); }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(34,211,238,0.35);
+      background: linear-gradient(135deg, #0ea5e9, #7c3aed);
     }
 
-    .ghost-btn {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid #273146;
-      box-shadow: none;
+    .btn-outline-secondary {
+      border-color: #334155;
+      color: #94a3b8;
     }
 
+    .btn-outline-secondary:hover {
+      background: #1e293b;
+      border-color: #475569;
+      color: #e5e7eb;
+    }
+
+    .btn-ghost-secondary {
+      color: #94a3b8;
+    }
+
+    .btn-ghost-secondary:hover {
+      background: #1e293b;
+      color: #e5e7eb;
+    }
+
+    .badge {
+      font-weight: 500;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .alert {
+      border: none;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+    }
+
+    .alert-info {
+      color: #22d3ee;
+      border-left: 3px solid #22d3ee;
+    }
+
+    .alert-warning {
+      color: #fbbf24;
+      border-left: 3px solid #fbbf24;
+    }
+
+    .alert-danger {
+      color: #f87171;
+      border-left: 3px solid #f87171;
+    }
+
+    /* Sequencer Grid Styles */
     .grid-wrapper {
       overflow-x: auto;
       border-radius: 12px;
-      border: 1px solid #1f2937;
-      background: var(--card);
+      border: 1px solid #1e293b;
+      background: #0f172a;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
     }
 
     .sequencer {
@@ -135,234 +179,361 @@
     }
 
     .sequencer th, .sequencer td {
-      border: 1px solid var(--cell-border);
+      border: 1px solid #1e293b;
       text-align: center;
       padding: 0;
     }
 
     .sequencer th {
-      background: #111827;
-      color: var(--muted);
+      background: #0a0e1a;
+      color: #64748b;
       font-weight: 600;
-      font-size: 12px;
+      font-size: 0.75rem;
       position: sticky;
       top: 0;
       z-index: 2;
+      padding: 0.5rem;
     }
 
     .note-label {
       width: 70px;
-      background: #0b1220;
-      color: var(--muted);
+      background: #0a0e1a;
+      color: #94a3b8;
       font-weight: 600;
-      font-size: 12px;
+      font-size: 0.75rem;
       position: sticky;
       left: 0;
       z-index: 1;
+      border-right: 2px solid #334155;
     }
 
     .cell {
       width: 32px;
-      height: 24px;
-      background: var(--grid);
+      height: 28px;
+      background: #111827;
       cursor: pointer;
       position: relative;
-      transition: background 0.15s ease, box-shadow 0.15s ease;
+      transition: all 0.15s ease;
+    }
+
+    .cell:hover {
+      background: #1e293b;
     }
 
     .cell.active {
-      background: linear-gradient(135deg, #22d3ee22, #8b5cf622);
-      box-shadow: inset 0 0 0 1px #22d3ee44;
+      background: linear-gradient(135deg, rgba(34,211,238,0.2), rgba(139,92,246,0.2));
+      box-shadow: inset 0 0 0 1px rgba(34,211,238,0.4);
     }
 
     .cell .dot {
-      width: 8px;
-      height: 8px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
       background: #22d3ee;
       position: absolute;
       inset: 0;
       margin: auto;
       opacity: 0;
-      transform: scale(0.9);
-      transition: opacity 0.12s ease, transform 0.12s ease;
-      box-shadow: 0 0 8px rgba(34,211,238,0.6);
+      transform: scale(0.8);
+      transition: all 0.15s ease;
+      box-shadow: 0 0 12px rgba(34,211,238,0.8);
     }
 
-    .cell.active .dot { opacity: 1; transform: scale(1); }
-
-    .cell.playing { background: var(--step-highlight); }
-
-    .transport { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-    .small { font-size: 13px; color: var(--muted); }
-
-    #step-graph { width: 100%; height: 120px; }
-
-    .badge {
-      background: #0f172a;
-      border: 1px solid #273146;
-      color: var(--muted);
-      border-radius: 10px;
-      padding: 6px 10px;
-      font-size: 12px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
+    .cell.active .dot { 
+      opacity: 1; 
+      transform: scale(1);
     }
 
-    .badge.loading {
-      background: #1e293b;
-      border-color: #22d3ee;
-      color: #22d3ee;
-      animation: pulse 2s ease-in-out infinite;
+    .cell.playing { 
+      background: linear-gradient(135deg, rgba(139,92,246,0.4), rgba(34,211,238,0.3));
+      animation: pulse-cell 0.3s ease;
     }
 
-    @keyframes pulse {
+    @keyframes pulse-cell {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.6; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Graph Styles */
+    #step-graph { 
+      width: 100%; 
+      height: 140px; 
+      background: #0a0e1a;
+      border-radius: 8px;
+      padding: 0.5rem;
+    }
+
+    /* Progress Bar */
+    .progress {
+      background: #1e293b;
+      height: 8px;
     }
 
     .progress-bar {
-      width: 100%;
-      height: 6px;
-      background: #1e293b;
-      border-radius: 3px;
-      overflow: hidden;
-      margin-top: 8px;
-    }
-
-    .progress-fill {
-      height: 100%;
       background: linear-gradient(90deg, #22d3ee, #8b5cf6);
-      width: 0%;
       transition: width 0.3s ease;
     }
 
-    .error-badge {
-      background: #991b1b;
-      border-color: #ef4444;
-      color: #fca5a5;
+    /* Transport Controls */
+    .transport-section {
+      background: linear-gradient(135deg, #0f172a, #1a1f35);
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 1.5rem;
     }
 
-    .legend { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .legend .swatch { width: 10px; height: 10px; border-radius: 50%; }
+    /* Icon styling */
+    .ti {
+      vertical-align: middle;
+    }
 
-    .footer { color: var(--muted); font-size: 12px; }
+    /* Rotating animation for loading icons */
+    .rotating {
+      animation: rotate 1s linear infinite;
+    }
+
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Custom scrollbar */
+    .grid-wrapper::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    .grid-wrapper::-webkit-scrollbar-track {
+      background: #0a0e1a;
+    }
+
+    .grid-wrapper::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+
+    .grid-wrapper::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <h1>Tone.js Instrument Exhibit</h1>
-      <p class="subtitle">Audition built-in Tone.js synths with a lightweight sequencer. Click to toggle steps, hit Play, and swap instruments on the fly.</p>
-    </div>
-    <div class="controls">
-      <button id="play-btn">Play</button>
-      <button id="stop-btn" class="ghost-btn">Stop</button>
-      <button id="clear-btn" class="ghost-btn">Clear Grid</button>
-    </div>
-  </header>
-
-  <section class="card stack">
-    <div class="controls">
-      <div class="stack">
-        <label for="instrument-select">Instrument</label>
-        <select id="instrument-select">
-          <option value="Synth">Synth (default)</option>
-          <option value="AMSynth">AMSynth</option>
-          <option value="FMSynth">FMSynth</option>
-          <option value="MonoSynth">MonoSynth</option>
-          <option value="DuoSynth">DuoSynth</option>
-          <option value="MembraneSynth">MembraneSynth (drums)</option>
-          <option value="PluckSynth">PluckSynth</option>
-          <optgroup label="Sample-Based Instruments">
-            <option value="piano">Piano</option>
-            <option value="bass-electric">Bass (Electric)</option>
-            <option value="bassoon">Bassoon</option>
-            <option value="cello">Cello</option>
-            <option value="clarinet">Clarinet</option>
-            <option value="contrabass">Contrabass</option>
-            <option value="flute">Flute</option>
-            <option value="french-horn">French Horn</option>
-            <option value="guitar-acoustic">Guitar (Acoustic)</option>
-            <option value="guitar-electric">Guitar (Electric)</option>
-            <option value="guitar-nylon">Guitar (Nylon)</option>
-            <option value="harmonium">Harmonium</option>
-            <option value="harp">Harp</option>
-            <option value="organ">Organ</option>
-            <option value="saxophone">Saxophone</option>
-            <option value="trombone">Trombone</option>
-            <option value="trumpet">Trumpet</option>
-            <option value="tuba">Tuba</option>
-            <option value="violin">Violin</option>
-            <option value="xylophone">Xylophone</option>
-          </optgroup>
-        </select>
-      </div>
-      <div class="stack">
-        <label for="tempo">Tempo: <span id="tempo-value">110</span> BPM</label>
-        <input id="tempo" type="range" min="60" max="180" value="110">
-      </div>
-      <div class="stack">
-        <label for="swing">Swing: <span id="swing-value">0%</span></label>
-        <input id="swing" type="range" min="0" max="60" value="0">
-      </div>
-      <div class="stack">
-        <label for="volume">Volume: <span id="volume-value">0 dB</span></label>
-        <input id="volume" type="range" min="-24" max="6" value="0">
-      </div>
-      <div class="stack">
-        <label>Utilities</label>
-        <div class="controls">
-          <button id="randomize" class="ghost-btn">Random Fill</button>
-          <button id="shift-left" class="ghost-btn">Shift ◀</button>
-          <button id="shift-right" class="ghost-btn">Shift ▶</button>
+  <!-- Professional Desktop Navigation Bar -->
+  <header class="navbar navbar-dark sticky-top d-print-none">
+    <div class="container-xl">
+      <h1 class="navbar-brand">
+        <i class="ti ti-music"></i>
+        Tone.js Instrument Exhibit
+      </h1>
+      <div class="navbar-nav flex-row order-md-last">
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" id="play-btn">
+            <i class="ti ti-player-play"></i>
+            Play
+          </button>
+          <button class="btn btn-outline-secondary" id="stop-btn">
+            <i class="ti ti-player-stop"></i>
+            Stop
+          </button>
+          <button class="btn btn-ghost-secondary" id="clear-btn">
+            <i class="ti ti-trash"></i>
+            Clear
+          </button>
         </div>
       </div>
     </div>
-    <div class="legend">
-      <span class="badge"><span class="swatch" style="background:#22d3ee"></span>Active note</span>
-      <span class="badge"><span class="swatch" style="background:#8b5cf6"></span>Current step</span>
-      <span class="badge">Click cells to toggle notes. Multiple notes per step are allowed.</span>
-      <span id="loading-status" class="badge loading" style="display:none;">⏳ Loading samples...</span>
-      <span id="error-status" class="badge error-badge" style="display:none;">❌ Error loading</span>
-    </div>
-    <div id="progress-container" style="display:none;">
-      <div class="progress-bar">
-        <div id="progress-fill" class="progress-fill"></div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="page-body">
+    <div class="container-xl">
+      
+      <!-- Instrument & Transport Controls Card -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="ti ti-adjustments-horizontal"></i>
+            Instrument & Controls
+          </h3>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <!-- Instrument Selection -->
+            <div class="col-lg-3 col-md-6">
+              <label class="form-label" for="instrument-select">
+                <i class="ti ti-instrument"></i>
+                Instrument
+              </label>
+              <select id="instrument-select" class="form-select">
+                <option value="Synth">Synth (default)</option>
+                <option value="AMSynth">AMSynth</option>
+                <option value="FMSynth">FMSynth</option>
+                <option value="MonoSynth">MonoSynth</option>
+                <option value="DuoSynth">DuoSynth</option>
+                <option value="MembraneSynth">MembraneSynth (drums)</option>
+                <option value="PluckSynth">PluckSynth</option>
+                <optgroup label="Sample-Based Instruments">
+                  <option value="piano">Piano</option>
+                  <option value="bass-electric">Bass (Electric)</option>
+                  <option value="bassoon">Bassoon</option>
+                  <option value="cello">Cello</option>
+                  <option value="clarinet">Clarinet</option>
+                  <option value="contrabass">Contrabass</option>
+                  <option value="flute">Flute</option>
+                  <option value="french-horn">French Horn</option>
+                  <option value="guitar-acoustic">Guitar (Acoustic)</option>
+                  <option value="guitar-electric">Guitar (Electric)</option>
+                  <option value="guitar-nylon">Guitar (Nylon)</option>
+                  <option value="harmonium">Harmonium</option>
+                  <option value="harp">Harp</option>
+                  <option value="organ">Organ</option>
+                  <option value="saxophone">Saxophone</option>
+                  <option value="trombone">Trombone</option>
+                  <option value="trumpet">Trumpet</option>
+                  <option value="tuba">Tuba</option>
+                  <option value="violin">Violin</option>
+                  <option value="xylophone">Xylophone</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <!-- Tempo Control -->
+            <div class="col-lg-3 col-md-6">
+              <label class="form-label" for="tempo">
+                <i class="ti ti-metronome"></i>
+                Tempo: <span id="tempo-value" class="text-cyan">110</span> BPM
+              </label>
+              <input id="tempo" type="range" class="form-range" min="60" max="180" value="110">
+            </div>
+
+            <!-- Swing Control -->
+            <div class="col-lg-3 col-md-6">
+              <label class="form-label" for="swing">
+                <i class="ti ti-wave-sine"></i>
+                Swing: <span id="swing-value" class="text-cyan">0%</span>
+              </label>
+              <input id="swing" type="range" class="form-range" min="0" max="60" value="0">
+            </div>
+
+            <!-- Volume Control -->
+            <div class="col-lg-3 col-md-6">
+              <label class="form-label" for="volume">
+                <i class="ti ti-volume"></i>
+                Volume: <span id="volume-value" class="text-cyan">0 dB</span>
+              </label>
+              <input id="volume" type="range" class="form-range" min="-24" max="6" value="0">
+            </div>
+          </div>
+
+          <!-- Utility Buttons -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="btn-list">
+                <button id="randomize" class="btn btn-outline-secondary">
+                  <i class="ti ti-dice"></i>
+                  Random Fill
+                </button>
+                <button id="shift-left" class="btn btn-outline-secondary">
+                  <i class="ti ti-arrow-left"></i>
+                  Shift Left
+                </button>
+                <button id="shift-right" class="btn btn-outline-secondary">
+                  <i class="ti ti-arrow-right"></i>
+                  Shift Right
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status Alerts -->
+          <div class="mt-3">
+            <div id="loading-alert" class="alert alert-info d-none" role="alert">
+              <i class="ti ti-loader-2 rotating"></i>
+              <span id="loading-status">Loading samples...</span>
+            </div>
+            <div id="error-alert" class="alert alert-danger d-none" role="alert">
+              <i class="ti ti-alert-circle"></i>
+              <span id="error-status">Error loading instrument</span>
+            </div>
+            <div id="progress-container" class="d-none">
+              <div class="progress">
+                <div id="progress-fill" class="progress-bar" role="progressbar" style="width: 0%"></div>
+              </div>
+              <small class="text-muted mt-1 d-block" id="progress-text">0%</small>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div class="mt-3 d-flex gap-2 flex-wrap">
+            <span class="badge bg-info">
+              <i class="ti ti-circle-filled" style="color: #22d3ee;"></i>
+              Active Note
+            </span>
+            <span class="badge bg-purple">
+              <i class="ti ti-circle-filled" style="color: #8b5cf6;"></i>
+              Current Step
+            </span>
+            <span class="badge bg-secondary">
+              <i class="ti ti-click"></i>
+              Click cells to toggle notes
+            </span>
+          </div>
+        </div>
       </div>
-      <div style="font-size: 11px; color: var(--muted); margin-top: 4px;" id="progress-text">0%</div>
-    </div>
-  </section>
 
-  <section class="card stack">
-    <div class="grid-wrapper">
-      <table class="sequencer" aria-label="step sequencer grid">
-        <thead>
-          <tr>
-            <th class="note-label">Note</th>
-            <th colspan="32">Steps</th>
-          </tr>
-          <tr>
-            <th class="note-label"></th>
-            <th>1</th><th>2</th><th>3</th><th>4</th>
-            <th>5</th><th>6</th><th>7</th><th>8</th>
-            <th>9</th><th>10</th><th>11</th><th>12</th>
-            <th>13</th><th>14</th><th>15</th><th>16</th>
-            <th>17</th><th>18</th><th>19</th><th>20</th>
-            <th>21</th><th>22</th><th>23</th><th>24</th>
-            <th>25</th><th>26</th><th>27</th><th>28</th>
-            <th>29</th><th>30</th><th>31</th><th>32</th>
-          </tr>
-        </thead>
-        <tbody id="grid-body"></tbody>
-      </table>
-    </div>
-    <div id="step-graph"></div>
-  </section>
+      <!-- Step Sequencer Card -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="ti ti-grid-pattern"></i>
+            Step Sequencer (32 Steps)
+          </h3>
+        </div>
+        <div class="card-body">
+          <div class="grid-wrapper">
+            <table class="sequencer" aria-label="step sequencer grid">
+              <thead>
+                <tr>
+                  <th class="note-label">Note</th>
+                  <th colspan="32">Steps</th>
+                </tr>
+                <tr>
+                  <th class="note-label"></th>
+                  <th>1</th><th>2</th><th>3</th><th>4</th>
+                  <th>5</th><th>6</th><th>7</th><th>8</th>
+                  <th>9</th><th>10</th><th>11</th><th>12</th>
+                  <th>13</th><th>14</th><th>15</th><th>16</th>
+                  <th>17</th><th>18</th><th>19</th><th>20</th>
+                  <th>21</th><th>22</th><th>23</th><th>24</th>
+                  <th>25</th><th>26</th><th>27</th><th>28</th>
+                  <th>29</th><th>30</th><th>31</th><th>32</th>
+                </tr>
+              </thead>
+              <tbody id="grid-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-  <footer class="footer">Tone.js + D3 + MIDI.js ready. Audio starts on first click. Built for quick demos of Tone's built-in synth families.</footer>
+      <!-- Visualization Card -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="ti ti-chart-bar"></i>
+            Step Density Visualization
+          </h3>
+        </div>
+        <div class="card-body">
+          <div id="step-graph"></div>
+        </div>
+      </div>
+
+      <!-- Footer Info -->
+      <div class="text-center text-muted small mb-4">
+        <i class="ti ti-info-circle"></i>
+        Tone.js + D3 + Tabler UI • Press <kbd>Space</kbd> to play/pause • Built for AudioVerse Universe
+      </div>
+    </div>
+  </div>
 
   <script>
     const notes = ['C5','B4','A#4','A4','G#4','G4','F#4','F4','E4','D#4','D4','C#4','C4'];
@@ -389,7 +560,9 @@
     const randomizeBtn = document.getElementById('randomize');
     const shiftLeftBtn = document.getElementById('shift-left');
     const shiftRightBtn = document.getElementById('shift-right');
+    const loadingAlert = document.getElementById('loading-alert');
     const loadingStatus = document.getElementById('loading-status');
+    const errorAlert = document.getElementById('error-alert');
     const errorStatus = document.getElementById('error-status');
     const progressContainer = document.getElementById('progress-container');
     const progressFill = document.getElementById('progress-fill');
@@ -409,9 +582,9 @@
       // Check if SampleLibrary is available
       if (typeof SampleLibrary === 'undefined') {
         console.error('❌ SampleLibrary is not defined! The tonejs-instruments library failed to load.');
-        errorStatus.textContent = '❌ Sample library not loaded';
-        errorStatus.style.display = 'inline-flex';
-        setTimeout(() => errorStatus.style.display = 'none', 5000);
+        errorStatus.textContent = 'Sample library not loaded';
+        errorAlert.classList.remove('d-none');
+        setTimeout(() => errorAlert.classList.add('d-none'), 5000);
         // Fallback to default synth
         return new Tone.Synth().toDestination();
       }
@@ -436,11 +609,11 @@
         
         isLoadingInstrument = true;
         playBtn.disabled = true;
-        playBtn.textContent = 'Loading...';
-        loadingStatus.style.display = 'inline-flex';
-        loadingStatus.textContent = `⏳ Loading ${name} samples...`;
-        progressContainer.style.display = 'block';
-        errorStatus.style.display = 'none';
+        playBtn.innerHTML = '<i class="ti ti-loader-2 rotating"></i> Loading...';
+        loadingStatus.textContent = `Loading ${name} samples...`;
+        loadingAlert.classList.remove('d-none');
+        progressContainer.classList.remove('d-none');
+        errorAlert.classList.add('d-none');
         
         let totalSamples = 0;
         
@@ -470,16 +643,16 @@
               console.log(`✅ ${name} loaded successfully!`);
               isLoadingInstrument = false;
               playBtn.disabled = false;
-              playBtn.textContent = isPlaying ? 'Pause' : 'Play';
-              loadingStatus.style.display = 'none';
-              progressContainer.style.display = 'none';
+              playBtn.innerHTML = isPlaying ? '<i class="ti ti-player-pause"></i> Pause' : '<i class="ti ti-player-play"></i> Play';
+              loadingAlert.classList.add('d-none');
+              progressContainer.classList.add('d-none');
               progressFill.style.width = '100%';
               progressText.textContent = '100%';
             },
             onerror: (err) => {
               console.error(`❌ Error loading ${name}:`, err);
-              errorStatus.textContent = `❌ Error loading ${name}`;
-              errorStatus.style.display = 'inline-flex';
+              errorStatus.textContent = `Error loading ${name}`;
+              errorAlert.classList.remove('d-none');
             }
           }).toDestination();
           
@@ -516,9 +689,9 @@
                     console.log('⚠️ onload callback did not fire, triggering manually');
                     isLoadingInstrument = false;
                     playBtn.disabled = false;
-                    playBtn.textContent = isPlaying ? 'Pause' : 'Play';
-                    loadingStatus.style.display = 'none';
-                    progressContainer.style.display = 'none';
+                    playBtn.innerHTML = isPlaying ? '<i class="ti ti-player-pause"></i> Pause' : '<i class="ti ti-player-play"></i> Play';
+                    loadingAlert.classList.add('d-none');
+                    progressContainer.classList.add('d-none');
                   }
                 }
                 
@@ -536,12 +709,12 @@
                 clearInterval(progressInterval);
                 isLoadingInstrument = false;
                 playBtn.disabled = false;
-                playBtn.textContent = 'Play';
-                loadingStatus.style.display = 'none';
-                progressContainer.style.display = 'none';
-                errorStatus.textContent = `❌ Timeout: ${remainingCount} samples failed`;
-                errorStatus.style.display = 'inline-flex';
-                setTimeout(() => errorStatus.style.display = 'none', 5000);
+                playBtn.innerHTML = '<i class="ti ti-player-play"></i> Play';
+                loadingAlert.classList.add('d-none');
+                progressContainer.classList.add('d-none');
+                errorStatus.textContent = `Timeout: ${remainingCount} samples failed`;
+                errorAlert.classList.remove('d-none');
+                setTimeout(() => errorAlert.classList.add('d-none'), 5000);
               }
             }, 60000);
           }
@@ -555,12 +728,12 @@
           console.error('Error stack:', error.stack);
           isLoadingInstrument = false;
           playBtn.disabled = false;
-          playBtn.textContent = 'Play';
-          loadingStatus.style.display = 'none';
-          progressContainer.style.display = 'none';
-          errorStatus.textContent = `❌ Error: ${error.message}`;
-          errorStatus.style.display = 'inline-flex';
-          setTimeout(() => errorStatus.style.display = 'none', 5000);
+          playBtn.innerHTML = '<i class="ti ti-player-play"></i> Play';
+          loadingAlert.classList.add('d-none');
+          progressContainer.classList.add('d-none');
+          errorStatus.textContent = `Error: ${error.message}`;
+          errorAlert.classList.remove('d-none');
+          setTimeout(() => errorAlert.classList.add('d-none'), 5000);
           
           // Fallback to default synth
           return new Tone.Synth().toDestination();
@@ -678,13 +851,13 @@
       if (!sequence) makeSequence();
       Tone.Transport.start('+0.1');
       isPlaying = true;
-      playBtn.textContent = 'Pause';
+      playBtn.innerHTML = '<i class="ti ti-player-pause"></i> Pause';
     }
 
     function handlePause() {
       Tone.Transport.pause();
       isPlaying = false;
-      playBtn.textContent = 'Play';
+      playBtn.innerHTML = '<i class="ti ti-player-play"></i> Play';
       document.querySelectorAll('.cell').forEach(c => c.classList.remove('playing'));
       updateGraph(null);
     }
@@ -694,7 +867,7 @@
       if (sequence) sequence.dispose();
       sequence = null;
       isPlaying = false;
-      playBtn.textContent = 'Play';
+      playBtn.innerHTML = '<i class="ti ti-player-play"></i> Play';
       document.querySelectorAll('.cell').forEach(c => c.classList.remove('playing'));
       updateGraph(null);
     }

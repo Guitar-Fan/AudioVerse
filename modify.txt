@@ -170,6 +170,10 @@ In AudioVerse DAW:
 -Implement Tone.js instruments slowly and carefully
 -missing zoom controls
 
+Look in AudioVerse.html (and its local and web dependcies), carefully replace the recording and 
+time system from Web Audio API to Tone.js for it's advantages in audio handling. Look at WhyTonejs.txt for
+why I want Tone JS library in my Website Digital Audio Workstation; AudioVerse.html.
+
 make the devlog shorter with the +items being the details, -items being the headlines/general 
 *items are general without detail items to elaborate
 
@@ -199,10 +203,20 @@ expand grid, and make it chromatic and each box is smaller
 
 -code custom parameters for each not quite usually an unpkg link
 
-Audioverse DAW could be improved
+Note: when using audio files, always use locally
 
-the sampled based instruments aren't being called correctly
+acli --help
 
-Exhibit never load the samples, have progress visual and better error handling and javascript console logging.
-it actually g
-it doesn't load at all
+acli rovodev
+
+Can you see what is in my repository
+
+If I clear session history for rovo dev cli, will the session context reset?
+
+I forgot to ask for it to make small edits at a time
+
+Next step will be getting Rovodev to populate a csv file
+
+For AudioVerse.html, the recording starts successfully, but can't stop (according to js console) or save the file as a blob to the track.
+Use Tone.js for this. Also replace the audio blob waveform visualization to use Tone.js in conjunction with P5.js library for high resolution waveform visualization of audio blob on arrangement view.
+Work on zoom controls for smooth, high resolution zooming in track area. Extend timeline cursor to go all the way down.

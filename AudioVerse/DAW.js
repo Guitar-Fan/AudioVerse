@@ -30,6 +30,11 @@ let recordingInputNode = null;
 let recordingGainNode = null;
 let playheadTime = 0;
 
+// --- Tone.js Recording State ---
+let toneRecorder = null; // Tone.Recorder instance
+let toneRecordingMic = null; // Tone.UserMedia instance
+let toneRecordingGain = null; // Tone.Gain for monitoring
+
 // --- Tone.js and Automation System State ---
 let toneStarted = false;
 let currentAutomationType = 'volume'; // Only volume automation now
@@ -1381,172 +1386,41 @@ recordBtn.onclick = async () => {
       render();
     }
     
-    initAudioContext();
+    // Initialize Tone.js context
+    await initToneContext();
     
-    // Get audio stream with optimal settings for consistent recording
-    recordingStream = await navigator.mediaDevices.getUserMedia({ 
-      audio: {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false,
-        sampleRate: audioCtx.sampleRate,
-        channelCount: 1
-      } 
-    });
+    // Record start time using Tone.Transport for better synchronization
+    liveRecordingStart = Tone.Transport.seconds;
     
-    // Create MediaRecorder with higher quality settings
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-      ? 'audio/webm;codecs=opus' 
-      : 'audio/webm';
+    // Use Tone.js UserMedia and Recorder for better audio handling
+    if (!toneRecordingMic) {
+      toneRecordingMic = new Tone.UserMedia();
+    }
     
-    mediaRecorder = new MediaRecorder(recordingStream, { 
-      mimeType: mimeType,
-      audioBitsPerSecond: 128000 // Higher quality
-    });
+    // Open microphone with Tone.js
+    await toneRecordingMic.open();
+    
+    // Create Tone.Recorder for high-quality recording
+    toneRecorder = new Tone.Recorder();
+    
+    // Create gain node for monitoring
+    toneRecordingGain = new Tone.Gain(0.8);
+    
+    // Connect: Mic -> Gain -> Recorder and Destination (for monitoring)
+    toneRecordingMic.connect(toneRecordingGain);
+    toneRecordingGain.connect(toneRecorder);
+    toneRecordingGain.toDestination(); // Enable monitoring
+    
+    // Start recording with Tone.Recorder
+    toneRecorder.start();
     
     recordedChunks = [];
     liveRecordingBuffer = [];
-    liveRecordingStart = playheadTime;
     
-    // Create audio processing chain
-    recordingInputNode = audioCtx.createMediaStreamSource(recordingStream);
-    recordingGainNode = audioCtx.createGain();
-    recordingGainNode.gain.value = 0.8;
-    
-    // Use modern AudioWorklet for live monitoring (fallback to ScriptProcessor if not available)
-    try {
-      // Try to use AudioWorklet for better performance
-      await audioCtx.audioWorklet.addModule('data:text/javascript;base64,' + btoa(`
-        class RecordingProcessor extends AudioWorkletProcessor {
-          constructor() {
-            super();
-            this.isRecording = false;
-            this.bufferChunks = [];
-            this.port.onmessage = (e) => {
-              if (e.data.type === 'start') {
-                this.isRecording = true;
-                this.bufferChunks = [];
-              } else if (e.data.type === 'stop') {
-                this.isRecording = false;
-                this.port.postMessage({ type: 'buffer', data: this.bufferChunks });
-                this.bufferChunks = [];
-              }
-            };
-          }
-          
-          process(inputs, outputs, parameters) {
-            const input = inputs[0];
-            const output = outputs[0];
-            
-            if (input.length > 0 && this.isRecording) {
-              const inputChannel = input[0];
-              
-              // Store for live preview
-              this.bufferChunks.push(new Float32Array(inputChannel));
-              
-              // Pass through for monitoring
-              if (output.length > 0) {
-                output[0].set(inputChannel);
-              }
-              
-              // Send updates periodically for UI
-              if (this.bufferChunks.length % 100 === 0) {
-                this.port.postMessage({ type: 'update', length: this.bufferChunks.length });
-              }
-            }
-            
-            return true;
-          }
-        }
-        
-        registerProcessor('recording-processor', RecordingProcessor);
-      `));
-      
-      recordingWorklet = new AudioWorkletNode(audioCtx, 'recording-processor');
-      
-      recordingWorklet.port.onmessage = (e) => {
-        if (e.data.type === 'buffer') {
-          // Convert worklet buffer chunks to single array
-          const totalLength = e.data.data.reduce((sum, chunk) => sum + chunk.length, 0);
-          liveRecordingBuffer = new Float32Array(totalLength);
-          let offset = 0;
-          for (const chunk of e.data.data) {
-            liveRecordingBuffer.set(chunk, offset);
-            offset += chunk.length;
-          }
-        } else if (e.data.type === 'update') {
-          // Trigger UI update periodically
-          render();
-        }
-      };
-      
-      // Connect audio chain with worklet
-      recordingInputNode.connect(recordingWorklet);
-      recordingWorklet.connect(recordingGainNode);
-      recordingGainNode.connect(audioCtx.destination);
-      
-    } catch (workletError) {
-      console.warn('AudioWorklet not available, using ScriptProcessor fallback:', workletError);
-      
-      // Fallback to ScriptProcessor with optimizations
-      recordingWorklet = audioCtx.createScriptProcessor(2048, 1, 1); // Smaller buffer for less latency
-      
-      recordingWorklet.onaudioprocess = (e) => {
-        if (!isRecording) return;
-        
-        const inputData = e.inputBuffer.getChannelData(0);
-        const outputData = e.outputBuffer.getChannelData(0);
-        
-        // Copy input to output for monitoring
-        outputData.set(inputData);
-        
-        // Efficiently append to buffer using typed arrays
-        const currentLength = liveRecordingBuffer.length;
-        const newBuffer = new Float32Array(currentLength + inputData.length);
-        newBuffer.set(liveRecordingBuffer);
-        newBuffer.set(inputData, currentLength);
-        liveRecordingBuffer = newBuffer;
-        
-        // Limit buffer size to prevent memory issues (5 minutes max)
-        if (liveRecordingBuffer.length > audioCtx.sampleRate * 300) {
-          console.warn('Recording buffer limit reached, stopping recording');
-          stopRecording();
-        }
-      };
-      
-      // Connect audio chain with script processor
-      recordingInputNode.connect(recordingWorklet);
-      recordingWorklet.connect(recordingGainNode);
-      recordingGainNode.connect(audioCtx.destination);
-    }
-    
-    // Connect to analyser for visual feedback
-    recordingInputNode.connect(analyserNode);
-    
-    // MediaRecorder event handlers
-    mediaRecorder.ondataavailable = e => { 
-      if (e.data.size > 0) recordedChunks.push(e.data); 
-    };
-    
-    mediaRecorder.onstop = async () => {
-      await processRecordedAudio();
-    };
-    
-    mediaRecorder.onerror = (e) => {
-      console.error('MediaRecorder error:', e);
-      stopRecording();
-    };
-
-    // Start recording
-    mediaRecorder.start(100); // Collect data every 100ms for smoother recording
+    // Set recording state
     isRecording = true;
     recordBtn.disabled = true;
     stopBtn.disabled = false;
-    
-    // Start worklet recording if available
-    if (recordingWorklet.port) {
-      recordingWorklet.port.postMessage({ type: 'start' });
-    }
     
     if (metronomeEnabled) startMetronome();
     
@@ -1561,39 +1435,47 @@ recordBtn.onclick = async () => {
 
 async function processRecordedAudio() {
   try {
-    // Stop worklet recording
-    if (recordingWorklet && recordingWorklet.port) {
-      recordingWorklet.port.postMessage({ type: 'stop' });
+    // Stop Tone.Recorder and get the recorded blob
+    if (!toneRecorder) {
+      console.warn('No Tone.Recorder instance found');
+      isRecording = false;
+      recordBtn.disabled = false;
+      stopBtn.disabled = true;
+      return;
     }
     
-    // Clean up audio connections
-    cleanupRecordingNodes();
+    const blob = await toneRecorder.stop();
     
-    if (recordedChunks.length === 0) { 
+    // Clean up Tone.js recording nodes
+    cleanupToneRecordingNodes();
+    
+    if (!blob || blob.size === 0) {
       console.warn('No audio data recorded');
-      isRecording = false; 
-      recordBtn.disabled = false; 
-      stopBtn.disabled = true; 
-      return; 
+      isRecording = false;
+      recordBtn.disabled = false;
+      stopBtn.disabled = true;
+      return;
     }
     
-    // Process recorded audio
-    const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+    // Process recorded audio using Tone.js Buffer for better synchronization
     const arrayBuffer = await blob.arrayBuffer();
     
-    audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
+    // Use Tone.js context for decoding (ensures compatibility)
+    Tone.context.decodeAudioData(arrayBuffer, (buffer) => {
       let targetTracks = tracks.filter(t => t.armed);
       if (targetTracks.length === 0) targetTracks = [tracks[selectedTrackIndex]];
       
       targetTracks.forEach(track => {
         let trackIndex = tracks.indexOf(track);
-        addClipToTrack(trackIndex, buffer, liveRecordingStart, buffer.duration);
+        // Create a URL for the blob to enable Tone.js Player integration
+        const audioUrl = URL.createObjectURL(blob);
+        addClipToTrackWithHowler(trackIndex, buffer, liveRecordingStart, buffer.duration, null, 'Recording', audioUrl, blob.type);
       });
       
       liveRecordingBuffer = [];
       saveState();
       render();
-      console.log('Recording processed and added to track(s)');
+      console.log('Recording processed and added to track(s) with Tone.js');
     }, (error) => {
       console.error('Failed to decode recorded audio:', error);
       alert('Failed to process recorded audio');
@@ -1608,8 +1490,34 @@ async function processRecordedAudio() {
   }
 }
 
+function cleanupToneRecordingNodes() {
+  // Disconnect and dispose Tone.js recording nodes
+  try {
+    if (toneRecordingGain) {
+      toneRecordingGain.disconnect();
+      toneRecordingGain.dispose();
+      toneRecordingGain = null;
+    }
+    
+    if (toneRecorder) {
+      toneRecorder.dispose();
+      toneRecorder = null;
+    }
+    
+    if (toneRecordingMic) {
+      toneRecordingMic.close();
+      // Don't dispose mic, keep it for next recording
+    }
+  } catch (error) {
+    console.error('Error cleaning up Tone.js recording nodes:', error);
+  }
+}
+
 function cleanupRecordingNodes() {
-  // Disconnect and clean up all recording-related nodes
+  // Clean up both Tone.js and legacy Web Audio API nodes
+  cleanupToneRecordingNodes();
+  
+  // Legacy cleanup (for backward compatibility)
   if (recordingInputNode) {
     recordingInputNode.disconnect();
     recordingInputNode = null;
@@ -1629,10 +1537,11 @@ function cleanupRecordingNodes() {
 }
 
 function stopRecording() {
-  if (isRecording && mediaRecorder && mediaRecorder.state === "recording") {
-    mediaRecorder.stop();
+  if (isRecording) {
+    // Process the recorded audio with Tone.js
+    processRecordedAudio();
   } else {
-    // Force cleanup if MediaRecorder didn't stop properly
+    // Force cleanup if not recording
     cleanupRecordingNodes();
     isRecording = false;
     recordBtn.disabled = false;
@@ -1672,19 +1581,27 @@ async function startPlayback() {
   playBtn.disabled = true;
   pauseBtn.disabled = false;
   
-  const startTime = audioCtx.currentTime;
-  const startOffset = playheadTime;
+  // Initialize Tone.js context if not already started
+  await initToneContext();
   
-  console.log('Starting playback at', startOffset, 'seconds, max bars:', getTotalBars()); // Debug log
+  // Configure Tone.Transport with current BPM and time signature
+  Tone.Transport.bpm.value = bpm;
+  Tone.Transport.timeSignature = [timeSigNum, timeSigDen];
+  
+  // Set Transport position to current playhead time
+  Tone.Transport.seconds = playheadTime;
+  
+  const startOffset = playheadTime;
+  const startTime = Tone.now(); // Use Tone.now() for better synchronization
+  
+  console.log('Starting playback at', startOffset, 'seconds, max bars:', getTotalBars());
   
   // Clear any existing sources
   stopAllAudioSources();
   
-  // Start Tone.js Transport if available
-  if (toneStarted && typeof Tone !== 'undefined') {
-    Tone.Transport.start();
-    console.log('Tone.js Transport started');
-  }
+  // Start Tone.js Transport (handles timing and synchronization)
+  Tone.Transport.start('+0', startOffset);
+  console.log('Tone.js Transport started at', startOffset, 'seconds');
   
   // Start metronome if enabled
   if (metronomeEnabled) startMetronome();
@@ -1754,18 +1671,20 @@ async function startPlayback() {
   
   console.log('Active audio sources:', activeAudioSources.length); // Debug log
   
-  // Update playhead during playback
+  // Update playhead during playback using Tone.Transport for precise timing
   const updatePlayheadLoop = () => {
     if (!playing) {
       console.log('Playhead loop stopped: not playing');
       return;
     }
     
-    // Use Tone.js transport time if available, otherwise fall back to AudioContext
-    if (toneStarted && typeof Tone !== 'undefined' && Tone.Transport.state === 'started') {
-      playheadTime = startOffset + Tone.Transport.seconds;
+    // Always use Tone.Transport for timing (better synchronization)
+    if (Tone.Transport.state === 'started') {
+      playheadTime = Tone.Transport.seconds;
     } else {
-      playheadTime = startOffset + (audioCtx.currentTime - startTime);
+      console.warn('Tone.Transport not started, stopping playback');
+      stopAll();
+      return;
     }
     
     // Debug log occasionally (every 60 frames = ~1 second)
@@ -1875,7 +1794,7 @@ function stopAllAudioSources() {
 function pauseAll() {
   if (!playing) return;
   
-  console.log('Pausing playback'); // Debug log
+  console.log('Pausing playback');
   
   playing = false;
   playBtn.disabled = false;
@@ -1888,19 +1807,24 @@ function pauseAll() {
   
   stopMetronome();
   
-  // Stop Tone.js transport and all active audio sources
-  if (toneStarted && typeof Tone !== 'undefined') {
-    Tone.Transport.stop();
+  // Pause Tone.Transport (maintains position for resume)
+  if (Tone.Transport.state === 'started') {
+    Tone.Transport.pause();
+    console.log('Tone.Transport paused at', Tone.Transport.seconds, 'seconds');
   }
-  stopAllAudioSources();
   
-
+  stopAllAudioSources();
 }
 
 function stopAll() {
   pauseAll();
-  // Don't automatically reset to 0 - let user control playhead position
-  // playheadTime = 0; // Remove this line
+  
+  // Stop Tone.Transport when stopping playback
+  if (Tone.Transport.state === 'started') {
+    Tone.Transport.stop();
+    console.log('Tone.Transport stopped');
+  }
+  
   renderTimeline();
 }
 
@@ -2051,9 +1975,6 @@ function initAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    // TODO: Initialize Tone.js later when pitch shifting is properly implemented
-    // Tone.setContext(audioCtx);
-    
     // Master gain node
     masterGainNode = audioCtx.createGain();
     masterGainNode.connect(audioCtx.destination);
@@ -2067,13 +1988,48 @@ function initAudioContext() {
   // Resume audio context if suspended (required for user interaction)
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
-    // TODO: Resume Tone.js context when pitch shifting is implemented
-    // if (Tone.context.state === 'suspended') {
-    //   Tone.start();
-    // }
   }
   
   return audioCtx;
+}
+
+// Initialize Tone.js context and configure Transport for better timing
+async function initToneContext() {
+  if (!toneStarted) {
+    try {
+      // Start Tone.js context
+      await Tone.start();
+      toneStarted = true;
+      
+      // Sync Tone.js with our BPM and time signature
+      Tone.Transport.bpm.value = bpm;
+      Tone.Transport.timeSignature = [timeSigNum, timeSigDen];
+      
+      // Initialize audioCtx from Tone's context if needed
+      if (!audioCtx) {
+        audioCtx = Tone.context.rawContext;
+        
+        // Set up master gain and analyser using Tone's context
+        masterGainNode = audioCtx.createGain();
+        masterGainNode.connect(audioCtx.destination);
+        
+        analyserNode = audioCtx.createAnalyser();
+        analyserNode.fftSize = 2048;
+        analyserNode.connect(masterGainNode);
+      }
+      
+      console.log('Tone.js context initialized with BPM:', bpm, 'Time signature:', timeSigNum + '/' + timeSigDen);
+    } catch (error) {
+      console.error('Failed to initialize Tone.js:', error);
+      // Fallback to regular Web Audio API
+      initAudioContext();
+    }
+  }
+  
+  // Resume if suspended
+  if (Tone.context.state === 'suspended') {
+    await Tone.context.resume();
+  }
 }
 
 function getTrackGainNode(trackIndex) {
@@ -7201,6 +7157,14 @@ class ResizableManager {
         this.addModalResizeHandles(modal);
       }
     });
+  }
+  
+  // Make a single modal resizable (singular version)
+  makeModalResizable(modal) {
+    if (modal && !modal.classList.contains('resizable')) {
+      modal.classList.add('resizable');
+      this.addModalResizeHandles(modal);
+    }
   }
   
   addModalResizeHandles(modal) {

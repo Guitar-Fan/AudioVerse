@@ -1045,13 +1045,27 @@ label.upload-btn input[type="file"] { display: none; }
 }
 
 .settings-bar .zoom-btn {
-  background: var(--timeline);
-  border: 1px solid var(--accent2);
-  color: var(--accent2);
-  font-size: 1.1em;
-  padding: 0.22em 0.7em;
-  border-radius: 5px;
-  margin: 0 0.2em;
+  background: var(--reaper-button-bg);
+  border: 1px solid var(--reaper-panel-border);
+  color: var(--reaper-text-primary);
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  margin: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-bar .zoom-btn:hover {
+  background: var(--reaper-button-hover);
+  border-color: var(--reaper-bg-lighter);
+}
+
+.settings-bar .zoom-btn svg {
+  stroke: currentColor;
 }
 
 /* Context Menu */
