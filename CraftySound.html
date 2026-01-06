@@ -661,15 +661,17 @@
         <div id="center-panel">
             <div class="panel-section" style="flex: 1;">
                 <div class="section-title">
-                    Live Waveform 
+                    Spectrogram 
+                    <button class="small-btn" id="toggleVizMode">📊 Switch View</button>
                     <button class="small-btn" id="openWaveDrawer">✏️ Draw Custom Wave</button>
                 </div>
-                <canvas id="waveformCanvas" class="visualization-canvas" width="800" height="200"></canvas>
+                <canvas id="spectrogramCanvas" class="visualization-canvas" width="800" height="200" style="display:block;"></canvas>
+                <canvas id="waveformCanvas" class="visualization-canvas" width="800" height="200" style="display:none;"></canvas>
             </div>
             
             <div class="panel-section" style="flex: 1;">
-                <div class="section-title">Spectrum Analyzer</div>
-                <canvas id="spectrumCanvas" class="visualization-canvas" width="800" height="200"></canvas>
+                <div class="section-title">Harmonics Analyzer</div>
+                <canvas id="harmonicsCanvas" class="visualization-canvas" width="800" height="200"></canvas>
             </div>
             
             <div class="panel-section">
@@ -922,9 +924,9 @@
                     Q: 1
                 }).connect(masterGain);
                 
-                // Analyzers
-                analyzer = new Tone.Analyser('fft', 2048);
-                waveformAnalyzer = new Tone.Analyser('waveform', 2048);
+                // Analyzers - reduced FFT size for better performance
+                analyzer = new Tone.Analyser('fft', 512);
+                waveformAnalyzer = new Tone.Analyser('waveform', 512);
                 masterGain.connect(analyzer);
                 masterGain.connect(waveformAnalyzer);
                 
@@ -976,7 +978,12 @@
                 detune: 0,
                 volume: -6,
                 phase: 0,
+                partials: 0,
                 partialCount: 8,
+                harmonicity: 3,
+                modulationIndex: 10,
+                spread: 20,
+                count: 3,
                 customWave: null
             };
         }
@@ -1035,11 +1042,31 @@
                     <div class="control-group" id="waveform-${osc.id}" style="display: ${(osc.instrument === 'Synth' || !osc.instrument) ? 'block' : 'none'}">
                         <label class="control-label">Waveform</label>
                         <select onchange="updateOscillator(${osc.id}, 'type', this.value)">
-                            <option value="sine" ${osc.type === 'sine' ? 'selected' : ''}>Sine</option>
-                            <option value="triangle" ${osc.type === 'triangle' ? 'selected' : ''}>Triangle</option>
-                            <option value="square" ${osc.type === 'square' ? 'selected' : ''}>Square</option>
-                            <option value="sawtooth" ${osc.type === 'sawtooth' ? 'selected' : ''}>Sawtooth</option>
-                            <option value="custom" ${osc.type === 'custom' ? 'selected' : ''}>Custom ${hasCustomWave ? '✓' : '(Draw First)'}</option>
+                            <optgroup label="Basic">
+                                <option value="sine" ${osc.type === 'sine' ? 'selected' : ''}>Sine</option>
+                                <option value="triangle" ${osc.type === 'triangle' ? 'selected' : ''}>Triangle</option>
+                                <option value="square" ${osc.type === 'square' ? 'selected' : ''}>Square</option>
+                                <option value="sawtooth" ${osc.type === 'sawtooth' ? 'selected' : ''}>Sawtooth</option>
+                            </optgroup>
+                            <optgroup label="Fat (Unison)">
+                                <option value="fatsine" ${osc.type === 'fatsine' ? 'selected' : ''}>Fat Sine</option>
+                                <option value="fattriangle" ${osc.type === 'fattriangle' ? 'selected' : ''}>Fat Triangle</option>
+                                <option value="fatsquare" ${osc.type === 'fatsquare' ? 'selected' : ''}>Fat Square</option>
+                                <option value="fatsawtooth" ${osc.type === 'fatsawtooth' ? 'selected' : ''}>Fat Sawtooth</option>
+                            </optgroup>
+                            <optgroup label="AM/FM">
+                                <option value="amsine" ${osc.type === 'amsine' ? 'selected' : ''}>AM Sine</option>
+                                <option value="amsquare" ${osc.type === 'amsquare' ? 'selected' : ''}>AM Square</option>
+                                <option value="amsawtooth" ${osc.type === 'amsawtooth' ? 'selected' : ''}>AM Sawtooth</option>
+                                <option value="amtriangle" ${osc.type === 'amtriangle' ? 'selected' : ''}>AM Triangle</option>
+                                <option value="fmsine" ${osc.type === 'fmsine' ? 'selected' : ''}>FM Sine</option>
+                                <option value="fmsquare" ${osc.type === 'fmsquare' ? 'selected' : ''}>FM Square</option>
+                                <option value="fmsawtooth" ${osc.type === 'fmsawtooth' ? 'selected' : ''}>FM Sawtooth</option>
+                                <option value="fmtriangle" ${osc.type === 'fmtriangle' ? 'selected' : ''}>FM Triangle</option>
+                            </optgroup>
+                            <optgroup label="Custom">
+                                <option value="custom" ${osc.type === 'custom' ? 'selected' : ''}>Custom ${hasCustomWave ? '✓' : '(Draw First)'}</option>
+                            </optgroup>
                         </select>
                     </div>
                     
@@ -1064,6 +1091,36 @@
                         <input type="range" min="0" max="360" value="${osc.phase}" step="1"
                                oninput="updateOscillator(${osc.id}, 'phase', parseFloat(this.value)); document.getElementById('phase-${osc.id}-val').textContent = this.value + '°'">
                     </div>
+                    
+                    <div class="control-group" id="partials-${osc.id}" style="display: ${(osc.instrument === 'Synth' || !osc.instrument) && (osc.type !== 'sine') ? 'block' : 'none'}">
+                        <label class="control-label">Partials: <span class="value-display" id="partials-${osc.id}-val">${osc.partials || 0}</span></label>
+                        <input type="range" min="0" max="32" value="${osc.partials || 0}" step="1"
+                               oninput="updateOscillator(${osc.id}, 'partials', parseInt(this.value)); document.getElementById('partials-${osc.id}-val').textContent = this.value">
+                    </div>
+                    
+                    <div class="control-group" id="harmonicity-${osc.id}" style="display: ${osc.instrument === 'FMSynth' || osc.instrument === 'AMSynth' ? 'block' : 'none'}">
+                        <label class="control-label">Harmonicity: <span class="value-display" id="harmonicity-${osc.id}-val">${osc.harmonicity || 3}</span></label>
+                        <input type="range" min="0.1" max="10" value="${osc.harmonicity || 3}" step="0.1"
+                               oninput="updateOscillator(${osc.id}, 'harmonicity', parseFloat(this.value)); document.getElementById('harmonicity-${osc.id}-val').textContent = this.value">
+                    </div>
+                    
+                    <div class="control-group" id="modulationindex-${osc.id}" style="display: ${osc.instrument === 'FMSynth' ? 'block' : 'none'}">
+                        <label class="control-label">Mod Index: <span class="value-display" id="modindex-${osc.id}-val">${osc.modulationIndex || 10}</span></label>
+                        <input type="range" min="0" max="100" value="${osc.modulationIndex || 10}" step="1"
+                               oninput="updateOscillator(${osc.id}, 'modulationIndex', parseFloat(this.value)); document.getElementById('modindex-${osc.id}-val').textContent = this.value">
+                    </div>
+                    
+                    <div class="control-group" id="spread-${osc.id}" style="display: ${(osc.instrument === 'Synth' || !osc.instrument) && osc.type && osc.type.startsWith('fat') ? 'block' : 'none'}">
+                        <label class="control-label">Spread: <span class="value-display" id="spread-${osc.id}-val">${osc.spread || 20}</span></label>
+                        <input type="range" min="0" max="100" value="${osc.spread || 20}" step="1"
+                               oninput="updateOscillator(${osc.id}, 'spread', parseInt(this.value)); document.getElementById('spread-${osc.id}-val').textContent = this.value">
+                    </div>
+                    
+                    <div class="control-group" id="count-${osc.id}" style="display: ${(osc.instrument === 'Synth' || !osc.instrument) && osc.type && osc.type.startsWith('fat') ? 'block' : 'none'}">
+                        <label class="control-label">Count: <span class="value-display" id="count-${osc.id}-val">${osc.count || 3}</span></label>
+                        <input type="range" min="1" max="7" value="${osc.count || 3}" step="1"
+                               oninput="updateOscillator(${osc.id}, 'count', parseInt(this.value)); document.getElementById('count-${osc.id}-val').textContent = this.value">
+                    </div>
                 `;
                 container.appendChild(div);
             });
@@ -1074,12 +1131,16 @@
             if (osc) {
                 osc[param] = value;
                 
-                // Show/hide waveform selector based on instrument type
+                // Show/hide parameter controls based on instrument/waveform type
                 if (param === 'instrument') {
                     const waveformDiv = document.getElementById(`waveform-${id}`);
-                    if (waveformDiv) {
-                        waveformDiv.style.display = (value === 'Synth') ? 'block' : 'none';
-                    }
+                    const harmDiv = document.getElementById(`harmonicity-${id}`);
+                    const modIdxDiv = document.getElementById(`modulationindex-${id}`);
+                    
+                    if (waveformDiv) waveformDiv.style.display = (value === 'Synth') ? 'block' : 'none';
+                    if (harmDiv) harmDiv.style.display = (value === 'FMSynth' || value === 'AMSynth') ? 'block' : 'none';
+                    if (modIdxDiv) modIdxDiv.style.display = (value === 'FMSynth') ? 'block' : 'none';
+                    
                     // Recreate active voices with new instrument
                     const activeNotesCopy = Array.from(activeNotes.entries());
                     activeNotesCopy.forEach(([noteKey, voice]) => {
@@ -1092,21 +1153,59 @@
                     return;
                 }
                 
-                // Update active voices
+                // Show/hide controls based on waveform type
+                if (param === 'type') {
+                    const partialsDiv = document.getElementById(`partials-${id}`);
+                    const spreadDiv = document.getElementById(`spread-${id}`);
+                    const countDiv = document.getElementById(`count-${id}`);
+                    
+                    if (partialsDiv) partialsDiv.style.display = value !== 'sine' ? 'block' : 'none';
+                    if (spreadDiv) spreadDiv.style.display = value && value.startsWith('fat') ? 'block' : 'none';
+                    if (countDiv) countDiv.style.display = value && value.startsWith('fat') ? 'block' : 'none';
+                }
+                
+                // Update active voices with new parameter values
                 activeNotes.forEach(voice => {
                     const oscNode = voice.oscillators.find(o => o.id === id);
                     if (oscNode && oscNode.synth) {
-                        if (param === 'type' && oscNode.synth.oscillator) {
-                            if (value === 'custom' && customWaveforms.has(id)) {
-                                const customWave = customWaveforms.get(id);
-                                oscNode.synth.oscillator.type = 'custom';
-                                oscNode.synth.oscillator.partials = customWave;
-                            } else if (value !== 'custom') {
-                                oscNode.synth.oscillator.type = value;
+                        try {
+                            // Basic oscillator parameters
+                            if (param === 'type' && oscNode.synth.oscillator) {
+                                if (value === 'custom' && customWaveforms.has(id)) {
+                                    const customWave = customWaveforms.get(id);
+                                    oscNode.synth.oscillator.type = 'custom';
+                                    oscNode.synth.oscillator.partials = customWave;
+                                } else if (value !== 'custom') {
+                                    oscNode.synth.oscillator.type = value;
+                                }
                             }
+                            if (param === 'detune' && oscNode.synth.detune) oscNode.synth.detune.value = value;
+                            if (param === 'volume' && oscNode.synth.volume) oscNode.synth.volume.value = value;
+                            if (param === 'phase' && oscNode.synth.oscillator && oscNode.synth.oscillator.phase) {
+                                oscNode.synth.oscillator.phase.value = value;
+                            }
+                            
+                            // Advanced oscillator parameters
+                            if (param === 'partials' && oscNode.synth.oscillator && oscNode.synth.oscillator.partialCount) {
+                                oscNode.synth.oscillator.partialCount = value;
+                            }
+                            if (param === 'spread' && oscNode.synth.oscillator && oscNode.synth.oscillator.spread) {
+                                oscNode.synth.oscillator.spread = value;
+                            }
+                            if (param === 'count' && oscNode.synth.oscillator && oscNode.synth.oscillator.count) {
+                                oscNode.synth.oscillator.count = value;
+                            }
+                            
+                            // FM/AM Synth parameters
+                            if (param === 'harmonicity' && oscNode.synth.harmonicity) {
+                                oscNode.synth.harmonicity.value = value;
+                            }
+                            if (param === 'modulationIndex' && oscNode.synth.modulationIndex) {
+                                oscNode.synth.modulationIndex.value = value;
+                            }
+                        } catch (e) {
+                            console.warn(`Could not update ${param} on oscillator ${id}:`, e);
                         }
-                        if (param === 'detune' && oscNode.synth.detune) oscNode.synth.detune.value = value;
-                        if (param === 'volume' && oscNode.synth.volume) oscNode.synth.volume.value = value;
                     }
                 });
             }
@@ -1168,12 +1267,15 @@
                     switch(instrumentType) {
                         case 'AMSynth':
                             synth = new Tone.AMSynth({
+                                harmonicity: oscConfig.harmonicity || 3,
                                 envelope: envelope,
                                 volume: oscConfig.volume
                             });
                             break;
                         case 'FMSynth':
                             synth = new Tone.FMSynth({
+                                harmonicity: oscConfig.harmonicity || 3,
+                                modulationIndex: oscConfig.modulationIndex || 10,
                                 envelope: envelope,
                                 volume: oscConfig.volume
                             });
@@ -1235,25 +1337,41 @@
                         case 'Synth':
                         default:
                             let oscillatorType = oscConfig.type;
-                            let oscillatorPartials = oscConfig.partialCount;
+                            let oscillatorConfig = {
+                                type: oscillatorType,
+                                partialCount: oscConfig.partialCount || 8
+                            };
+                            
+                            // Handle fat oscillators
+                            if (oscillatorType && oscillatorType.startsWith('fat')) {
+                                oscillatorConfig.spread = oscConfig.spread || 20;
+                                oscillatorConfig.count = oscConfig.count || 3;
+                            }
                             
                             // Handle custom waveform
                             if (oscConfig.type === 'custom' && customWaveforms.has(oscConfig.id)) {
-                                oscillatorType = 'custom';
-                                oscillatorPartials = customWaveforms.get(oscConfig.id);
+                                oscillatorConfig.type = 'custom';
+                                oscillatorConfig.partials = customWaveforms.get(oscConfig.id);
                             } else if (oscConfig.type === 'custom') {
-                                oscillatorType = 'sine'; // Fallback if no custom wave
+                                oscillatorConfig.type = 'sine'; // Fallback if no custom wave
+                            }
+                            
+                            // Handle partials for non-sine waves
+                            if (oscillatorType !== 'sine' && oscConfig.partials > 0) {
+                                oscillatorConfig.partialCount = oscConfig.partials;
                             }
                             
                             synth = new Tone.Synth({
-                                oscillator: {
-                                    type: oscillatorType,
-                                    partials: oscillatorPartials
-                                },
+                                oscillator: oscillatorConfig,
                                 envelope: envelope,
                                 volume: oscConfig.volume,
                                 detune: oscConfig.detune
                             });
+                            
+                            // Set phase if available
+                            if (oscConfig.phase && synth.oscillator && synth.oscillator.phase) {
+                                synth.oscillator.phase.value = oscConfig.phase;
+                            }
                             break;
                     }
                     
@@ -1726,13 +1844,25 @@
         }
         
         // ==================== VISUALIZATIONS ====================
+        let waveformFrameSkip = 0;
         function drawWaveform() {
             if (!audioStarted) {
                 requestAnimationFrame(drawWaveform);
                 return;
             }
             
+            // Update every 2nd frame (30fps)
+            waveformFrameSkip++;
+            if (waveformFrameSkip % 2 !== 0) {
+                requestAnimationFrame(drawWaveform);
+                return;
+            }
+            
             const canvas = document.getElementById('waveformCanvas');
+            if (!canvas || canvas.style.display === 'none') {
+                requestAnimationFrame(drawWaveform);
+                return;
+            }
             const ctx = canvas.getContext('2d');
             const width = canvas.width;
             const height = canvas.height;
@@ -1787,8 +1917,16 @@
             requestAnimationFrame(drawWaveform);
         }
         
+        let spectrumFrameSkip = 0;
         function drawSpectrum() {
             if (!audioStarted) {
+                requestAnimationFrame(drawSpectrum);
+                return;
+            }
+            
+            // Update every 2nd frame (30fps)
+            spectrumFrameSkip++;
+            if (spectrumFrameSkip % 2 !== 0) {
                 requestAnimationFrame(drawSpectrum);
                 return;
             }
@@ -1828,6 +1966,111 @@
             }
             
             requestAnimationFrame(drawSpectrum);
+        }
+        
+        // Spectrogram visualization
+        let spectrogramData = [];
+        const SPECTROGRAM_HISTORY = 100;
+        let spectrogramFrameSkip = 0;
+        
+        function drawSpectrogram() {
+            if (!audioStarted) {
+                requestAnimationFrame(drawSpectrogram);
+                return;
+            }
+            
+            // Update every 3rd frame (20fps instead of 60fps)
+            spectrogramFrameSkip++;
+            if (spectrogramFrameSkip % 3 !== 0) {
+                requestAnimationFrame(drawSpectrogram);
+                return;
+            }
+            
+            const canvas = document.getElementById('spectrogramCanvas');
+            if (!canvas || canvas.style.display === 'none') {
+                requestAnimationFrame(drawSpectrogram);
+                return;
+            }
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            const spectrum = analyzer.getValue();
+            spectrogramData.push([...spectrum]);
+            
+            // Keep only recent history
+            if (spectrogramData.length > SPECTROGRAM_HISTORY) {
+                spectrogramData.shift();
+            }
+            
+            // Shift existing image left instead of redrawing everything
+            const sliceWidth = width / SPECTROGRAM_HISTORY;
+            ctx.drawImage(canvas, -sliceWidth, 0);
+            
+            // Draw only the new column
+            const binHeight = height / spectrum.length;
+            const x = spectrogramData.length - 1;
+            
+            spectrum.forEach((value, y) => {
+                const percent = Math.max(0, (value + 140) / 140);
+                const hue = 270 - (percent * 80);
+                ctx.fillStyle = `hsla(${hue}, 100%, ${percent * 50}%, ${percent})`;
+                ctx.fillRect(x * sliceWidth, height - (y * binHeight) - binHeight, sliceWidth + 1, binHeight + 1);
+            });
+            
+            requestAnimationFrame(drawSpectrogram);
+        }
+        
+        // Harmonics analyzer
+        let harmonicsFrameSkip = 0;
+        function drawHarmonics() {
+            if (!audioStarted) {
+                requestAnimationFrame(drawHarmonics);
+                return;
+            }
+            
+            // Update every 2nd frame (30fps instead of 60fps)
+            harmonicsFrameSkip++;
+            if (harmonicsFrameSkip % 2 !== 0) {
+                requestAnimationFrame(drawHarmonics);
+                return;
+            }
+            
+            const canvas = document.getElementById('harmonicsCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            const spectrum = analyzer.getValue();
+            
+            ctx.fillStyle = '#0a0a14';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw first 32 harmonics (skip grid to improve performance)
+            const numHarmonics = Math.min(32, spectrum.length);
+            const barWidth = width / numHarmonics;
+            
+            for (let i = 0; i < numHarmonics; i++) {
+                const value = spectrum[i];
+                const percent = Math.max(0, (value + 140) / 140);
+                const barHeight = percent * height;
+                
+                // Simplified color without gradient for performance
+                const hue = 15 + (percent * 15); // Orange to red
+                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                ctx.fillRect(i * barWidth + 1, height - barHeight, barWidth - 2, barHeight);
+                
+                // Label only fundamental and very strong harmonics
+                if ((i === 0 || percent > 0.6) && barHeight > 15) {
+                    ctx.fillStyle = '#ff9933';
+                    ctx.font = '9px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText((i + 1).toString(), i * barWidth + barWidth / 2, height - barHeight - 3);
+                }
+            }
+            
+            requestAnimationFrame(drawHarmonics);
         }
         
         function drawEnvelope() {
@@ -2686,9 +2929,22 @@
             initWaveDrawCanvas();
             drawEnvelope();
             
-            // Start animations even before audio is started
+            // Visualization mode toggle
+            let vizMode = 'spectrogram'; // 'spectrogram' or 'waveform'
+            document.getElementById('toggleVizMode').addEventListener('click', () => {
+                vizMode = vizMode === 'spectrogram' ? 'waveform' : 'spectrogram';
+                document.getElementById('spectrogramCanvas').style.display = vizMode === 'spectrogram' ? 'block' : 'none';
+                document.getElementById('waveformCanvas').style.display = vizMode === 'waveform' ? 'block' : 'none';
+                
+                const btn = document.getElementById('toggleVizMode');
+                btn.textContent = vizMode === 'spectrogram' ? '📊 Switch to Waveform' : '📊 Switch to Spectrogram';
+            });
+            
+            // Start all visualizations
             drawWaveform();
             drawSpectrum();
+            drawSpectrogram();
+            drawHarmonics();
         });
     </script>
 </body>

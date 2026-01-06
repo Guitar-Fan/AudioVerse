@@ -287,3 +287,10 @@ I want the custom draw to draw exactly 1 wavelength, that the oscillator will os
 
 Make each FX have a custom GUI for adjusting parameters (use interesting ways to modify parameters, dials, faders, buttons, fake analog screen)
 
+add more customizability and parameters with oscillators, perhaps more dials for each instrument
+more advanced synthesis, visualization types like a spectrogram and frequency/harmonics chart, etc...
+I noticed that if I load a tone.js instrument into the oscillator, the waveform doesn't show. It might be because they fundamentally work different than basic oscillators, you might have to seperate them.
+
+make plugins know
+
+options are good but it is too laggy
