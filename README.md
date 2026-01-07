@@ -1,127 +1,156 @@
-# 🌌 AudioVerse Universe – A Solar System for Sound
+# AudioVerse
 
-Welcome to AudioVerse Universe, where every orbit sparks a new idea. This collection of browser-based DAWs, editors, and synths wraps powerful WebAssembly audio tools in a playful solar system you can explore at your own pace.
+A collection of browser-based audio tools for music production, sound design, and experimentation. No installation required—just open and create.
 
-## ✨ Tour the Universe
+## Core DAW Workflow
 
-Launch `WebAudioDAWTools.html` to enter the cosmos:
-- 🌟 Glide through an interactive solar system of audio playgrounds
-- ☀️ Drop by the AudioVerse DAW sun for full production power
-- 🪐 Visit orbiting planets, each crafted for a specialty workflow
-- 🌠 Enjoy the ambient starfield and soft-glow interface
-- 🎭 Stay immersed thanks to smooth animations and responsive input
+These three tools form a complete production environment (use them together or separately):
 
-## 🎵 Spotlight: Rust WASM Audio Synthesis Studio
+### 1. AudioVerse DAW
+**Location:** `AudioVerse/AudioVerse.html`
 
-`/wasm-tests/rust-audio-synth/rust-wasm-audio-synth-studio.html`
+The main production hub. Multi-track recording, mixing console, MIDI sequencing, and effects processing all in one place.
 
-Our flagship polyphonic synth built with Rust + WebAssembly:
-- Modular plugin-style architecture
-- Multi-voice polyphony with expressive ADSR envelopes
-- Low/High/Band-pass filters with tunable resonance
-- Real-time controls, live visual feedback, and sleek presets
-- Modern interface with spectrum + waveform views
+**Features:**
+- Multi-track audio recording and editing
+- MIDI piano roll with step sequencing
+- Built-in effects rack (EQ, compression, reverb, delay)
+- Real-time spectrum analysis and metering
+- Project save/load system
+- Audio export
 
-## ☀️ AudioVerse DAW – The Central Sun
+**Use case:** Your central workspace for arranging, mixing, and producing complete tracks.
 
-`AudioVerse/AudioVerse.html`
+### 2. MIDI DAW With Ideas
+**Location:** `tools/MIDI_Daw_With_Ideas.html`
 
-Everything orbits this hub:
-- 🎛️ Record, edit, and mix multiple tracks in the browser
-- 🎵 Compose with a full MIDI piano roll
-- 🔌 Build chains with the internal FX rack
-- 📊 Monitor with live spectrum + metering
-- 🎚️ Manage detailed mixer settings per track
-- 💾 Save, load, and export projects without leaving the page
+MIDI sequencing with intelligent pitch-shifting and sample playback.
 
-## 🪐 Orbiting Audio Planets
+**Features:**
+- Piano roll interface
+- MIDI file import/export
+- Auto pitch-shifted keyboard mapping
+- Built-in sample library
+- Quick melody sketching
 
-### 🎹 MIDI Planet (`MIDI_Daw_With_Ideas.html`)
-Sketch melodies, upload MIDI, or sample on the fly with auto pitch-shifted keyboard mapping.
+**Use case:** Compose melodies and harmonies, then export MIDI to AudioVerse DAW for full production.
 
-### 🎚️ Audio Editor Planet (`ParameterAudioEditor.html`)
-Visual editing with EQ curves, envelopes, pitch tools, and plenty of real-time control.
+### 3. CraftySound
+**Location:** `tools/CraftySound.html`
 
-### 🎵 Synth World (`Wavetable_Synth.html`)
-Roll your own wavetables, sculpt timbres, and export custom patches.
+Sound design and synthesis playground (warning: may contain weird noises).
 
-### 📊 EQ Station (`EQ.html`)
-Dial in multi-band EQ moves with smooth visuals and export-ready settings.
+**Features:**
+- Advanced synthesis engine
+- Modular audio routing
+- Effect chaining
+- Preset management
 
-### 🌊 Wave Drawer (`DrawAudio.html`)
-Freehand your next waveform and audition it instantly.
-
-### 🎛️ ReaVerse (`reaper-web/ui/ReaVerse.html`)
-A REAPER-inspired web DAW for deep track management and editing.
-
-## 🌌 Distant Cosmic Bodies
-
-### 🔊 Reverb Lab (`AlgorithmicReverb.html`)
-Design atmospheric spaces with algorithmic reverbs.
-
-### 🎭 Reverb Collection (`reverb-collection.html`)
-Browse a curated suite of spatial effects and ambient tools.
-
-## 🧭 Navigation Guide
-
-1. Launch `WebAudioDAWTools.html` to enter the universe.
-2. Click any orbiting planet to jump into its dedicated tool.
-3. Tap the sun to open AudioVerse DAW when you need the full studio.
-4. Each tool opens in a new tab so you can mix and match.
-
-### Universe Highlights
-- 🌟 300+ twinkling stars over a rich cosmic backdrop
-- 🪐 Planets with their own speeds, distances, and glow states
-- ✨ Hover to pause orbits and amplify the neon aura
-- 📱 Responsive layouts from phones to widescreen rigs
-- ⌨️ Keyboard-friendly navigation (Tab + Enter)
-
-## 🧪 WebAssembly Reverb Engines
-
-- **C++ Reverb Engine** (`wasm-tests/cpp-reverb/`): High-performance FX built from native code.
-- **Hibiki Reverb** (`wasm-tests/hibiki-reverb/`): Spacious reverb with WebAssembly acceleration.
-- **Progressive Reverb** (`wasm-tests/prog-reverb/`): Customizable modern ambience.
-- **Rust Audio Synth** (`wasm-tests/rust-audio-synth/`): A full Rust-based synthesis lab.
-
-## 🚀 Quick Start
-
-### Enter the Universe
-1. Open `WebAudioDAWTools.html` in any modern browser.
-2. Or start a local server for best results:
-   ```bash
-   python3 -m http.server 8000
-   # Visit: http://localhost:8000/WebAudioDAWTools.html
-   ```
-3. Explore the planets, or head straight to the sun for the main DAW.
-4. Create, tweak, and export without any installs.
-
-### Advanced Paths
-- Rust WASM Synth Studio: `/wasm-tests/rust-audio-synth/rust-wasm-audio-synth-studio.html`
-- Any tool can run standalone—open its HTML file directly.
-
-## 🎯 Browser Compatibility
-
-Runs locally on Chromebooks and modern browsers using only HTML, CSS, JavaScript, and WebAssembly—no backend required.
-
-## 🎨 Technical Highlights
-
-- 100% web-native technology stack
-- Zero install and offline-friendly
-- Cross-platform across desktop + mobile
-- Responsive layouts with optimized animations
-- Performance-conscious audio + graphics pipelines
-
-## 🌟 What’s New in the Universe Edition
-
-- 🌌 Fresh space-themed interface with cinematic polish
-- 🪐 Orbiting planets as quick shortcuts to every tool
-- ✨ Enhanced glow, depth, and smooth transitions
-- 🎭 User-friendly interactions on hover, tap, or keyboard
-- 📱 Better layouts for tablets and phones
-- 🔗 Seamless linking between every planet and the central sun
+**Use case:** Create custom sounds and patches, export audio to use in other tools or your main DAW.
 
 ---
 
-AudioVerse Universe – Where creativity keeps orbiting ✨  
-Updated September 30, 2025 • Universe Release
+## Experimental Tools
 
+The rest of these are for fun, learning, and seeing what's possible in a browser. No particular order—just pick what sounds interesting.
+
+### Parameter Audio Editor
+**Location:** `tools/ParameterAudioEditor.html`
+
+Precision waveform editing with visual parameter control. Slice, fade, normalize, and apply effects with sample-accurate control.
+
+### Wavetable Synth
+**Location:** `tools/Wavetable_Synth.html`
+
+Build custom wavetables from scratch. Morph between waveforms, design unique timbres, export patches.
+
+### EQ
+**Location:** `tools/EQ.html`
+
+Multi-band parametric EQ with live frequency spectrum visualization. Fine-tune your frequency response.
+
+### DrawAudio
+**Location:** `tools/DrawAudio.html`
+
+Draw waveforms with your mouse. Literally. Instant playback. Surprisingly useful for creating custom oscillator shapes.
+
+### ReaVerse
+**Location:** `reaper-web/ui/ReaVerse.html`
+
+A REAPER-inspired web DAW experiment. Professional routing, JSFX script support, advanced mixing capabilities.
+
+### Tone.js Instruments
+**Location:** `tools/TonejsInst.html`
+
+Collection of synthesizers powered by Tone.js: FM, AM, additive synthesis, samplers, and polysynths.
+
+### ToneJS Deep Exploration
+**Location:** `tools/ToneJS_Deep_Exploration.html`
+
+Comprehensive showcase of Tone.js capabilities. Complex synthesis techniques, audio analysis, transport control.
+
+### ToneJS Instrument Exhibit
+**Location:** `tools/ToneJS_Instrument_Exhibit.html`
+
+Interactive gallery of Tone.js instruments with presets and real-time controls.
+
+### Convolution Reverb
+**Location:** `tools/ConvolutionReverb.html`
+
+Upload your own impulse responses. Simulate any acoustic space from your bedroom to a cathedral.
+
+### Reverb Collection
+**Location:** `tools/reverb-collection.html`
+
+Curated algorithmic reverbs: plate, spring, hall, room. Adjust decay, damping, and diffusion.
+
+### Algorithmic Reverb
+**Location:** `tools/AlgorithmicReverb.html`
+
+Design custom reverb algorithms. For when you want to get nerdy with digital signal processing.
+
+---
+
+## WebAssembly Audio Engines
+
+Performance-critical audio processing compiled to WebAssembly:
+
+- **Rust Audio Synth** (`wasm-tests/rust-audio-synth/`): Polyphonic synthesizer with ADSR envelopes, multi-mode filters, real-time controls
+- **C++ Reverb Engine** (`wasm-tests/cpp-reverb/`): High-performance reverb effects
+- **Hibiki Reverb** (`wasm-tests/hibiki-reverb/`): Spacious reverb with WebAssembly acceleration
+- **Progressive Reverb** (`wasm-tests/prog-reverb/`): Customizable modern ambience
+
+---
+
+## Quick Start
+
+### Option 1: Open Directly
+Just open any `.html` file in a modern browser. Works offline.
+
+### Option 2: Local Server (Recommended)
+```bash
+python3 -m http.server 8000
+# Visit: http://localhost:8000/
+```
+
+### Option 3: Solar System Navigation
+Open `index.html` for an interactive 3D solar system interface (yes, it's unnecessary, but it looks cool).
+
+---
+
+## Technical Notes
+
+- 100% browser-based (HTML, CSS, JavaScript, WebAssembly)
+- No server required
+- Works offline after first load
+- Cross-platform (desktop, tablet, mobile)
+- Tested on Chrome, Firefox, Safari
+
+## Browser Requirements
+
+Modern browser with Web Audio API support. Chromebooks work fine.
+
+---
+
+AudioVerse - Because making music in a browser should be this easy.  
+Updated January 7, 2026

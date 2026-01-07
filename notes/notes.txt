@@ -1,0 +1,11 @@
+I created a exciting new audio synthesis tool called CraftySound. CraftySound lets users craft their own synth preset. CraftySound allows users to add as many oscillators as they want to create a super unique polyphonic sound, which you can export as a Json file and import back into CraftySound for further editing. Using the built in synthesizers functions of Tone.js, each oscillator can have largely different audio properties:
+-Instrument type (Selects the base tone.js function instrument, )
+-Waveform (17+ types of waves you can choose from)
++Choosing different waveforms unlocks a personalized set of controls for that waveform
+-Detune and Volume controls (self-explantory)
+-Phase dial (delays wave in microscopic amounts of time, which causes increases and decreases in amplitude in certain harmonics with other waves) 
+
+update readme with no emojis, more concise, lising every tool with Audioverse as most important or prominent, MidiDawwithideas 2nd importance, and Craftysound 3rd (indicate that these 3 tools can be used in a workflow as a DAW) 
+the rest of tools order doesn't matter and are for fun and experimentaion. 
+Make readme not too salesman like by sticking to purpose of tool and prominent features, use cases. But still have a touch of human and humor.
+Also update index.html's links
