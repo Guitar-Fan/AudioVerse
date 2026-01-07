@@ -2,10 +2,17 @@ I created a exciting new audio synthesis tool called CraftySound. CraftySound le
 -Instrument type (Selects the base tone.js function instrument, )
 -Waveform (17+ types of waves you can choose from)
 +Choosing different waveforms unlocks a personalized set of controls for that waveform
--Detune and Volume controls (self-explantory)
--Phase dial (delays wave in microscopic amounts of time, which causes increases and decreases in amplitude in certain harmonics with other waves) 
++Detune and Volume controls (self-explantory)
++Phase dial (delays wave in microscopic amounts of time, which causes increases and decreases in amplitude in certain harmonics with other waves) 
++Envelope, filters and resonance controls
+-3 live visualizers: waveform, spectogram and harmonic analyzer
+-Virtual Midi keyboard to trigger notes
+-CUSTOM DRAW WAVEFORM (this is my favorite feature, although it doesn't behave consistantly)
+-Tone.js audio FXs, imported the code from ToneJSDeepExploration tool
++Each FX has its own custom set of parameters
 
-update readme with no emojis, more concise, lising every tool with Audioverse as most important or prominent, MidiDawwithideas 2nd importance, and Craftysound 3rd (indicate that these 3 tools can be used in a workflow as a DAW) 
-the rest of tools order doesn't matter and are for fun and experimentaion. 
-Make readme not too salesman like by sticking to purpose of tool and prominent features, use cases. But still have a touch of human and humor.
-Also update index.html's links
+*Context: I've been wanting to create an audio tool to allow user to customize a sound preset at a low level.
+I created other tools like ParameterAudioEditor and Wavetable_Synth to achieve this, but they didn't work like 
+I wanted it to. It was only till I learned to incorporate the audio synthesis capabilities of Tone.js, Meyda.js and Essentia.js, that allowed me to add the feature of custom drawing a waveform.
+
+Video demonstrates me going through most of the features of CraftySound, exporting the json and importing it back.
