@@ -1,0 +1,835 @@
+================================================================================
+C++ WASM AUDIO PROCESSING SETUP PLAN
+================================================================================
+Date: January 9, 2026 (Updated)
+Purpose: Set up development environment for advanced audio/music processing
+         using C++ compiled to WebAssembly
+Status: ✅ INSTALLATION COMPLETE - Ready for development
+Storage Constraint: 1GB codespace - MINIMIZE INSTALLATIONS
+
+TARGET CAPABILITIES:
+- Flexible tempo automation (time stretching with tempo curves)
+- Autotune/pitch correction (real-time vocal processing)
+- Room harmonics and resonances detection (spectral analysis)
+
+INSTALLED:
+- Emscripten 4.0.22 (~1.7GB)
+- KissFFT, aubio, SoundTouch, DSPFilters (~80MB)
+- JUCE Framework 8.0.4 (~102MB)
+Total: ~1.88GB
+
+================================================================================
+1. DEVELOPMENT ENVIRONMENT SETUP (MINIMAL - ~200MB)
+================================================================================
+
+1.1 Emscripten Toolchain (REQUIRED - ~150MB)
+---------------------------------------------
+- Install ONLY Emscripten SDK (emsdk) - includes compiler
+- Configure environment variables (EMSDK, EM_CONFIG)
+- Verify installation with: emcc --version
+- DO NOT install separate clang/LLVM (already in emsdk)
+
+1.2 Build Tools (MINIMAL)
+--------------------------
+- CMake (usually pre-installed in dev containers)
+- Make (pre-installed)
+- NO pkg-config needed (manual library integration)
+- NO Node.js install (use browser for testing)
+
+1.3 Development Tools (USE EXISTING)
+-------------------------------------
+- GCC/G++ (pre-installed in Ubuntu container)
+- Chrome/Firefox DevTools (no install - use browser)
+- NO Valgrind (too large, use browser profiling instead)
+- NO separate debuggers (use browser DevTools)
+
+1.4 AVOID INSTALLING
+--------------------
+✗ Separate Node.js packages (use CDN)
+✗ npm/yarn global packages (bloat)
+✗ Multiple compilers (emsdk is enough)
+✗ GUI tools (use browser-based alternatives)
+✗ Large IDEs (VS Code already available)
+
+================================================================================
+2. C++ AUDIO LIBRARIES (PRIORITIZED BY YOUR USE CASES)
+================================================================================
+
+2.1 ESSENTIAL LOW-LEVEL DSP (~50MB compiled)
+---------------------------------------------
+
+KissFFT (RECOMMENDED - ~5MB source)
+- Use cases for YOU:
+  * Room resonance detection (frequency domain analysis)
+  * Harmonic pattern recognition (peak detection in spectrum)
+  * Real-time spectrogram for resonance visualization
+  * Foundation for phase vocoder (tempo/pitch manipulation)
+- WASM status: Excellent, small footprint
+- License: BSD
+- Why: Smaller than FFTW, sufficient for your needs
+
+SKIP FFTW - Too large (~30MB), GPL license, overkill unless you need extreme performance
+
+libsamplerate (OPTIONAL - ~10MB)
+- Use cases for YOU:
+  * High-quality resampling before pitch shifting
+  * Upsampling for anti-aliasing in autotune
+- WASM status: Good
+- License: BSD
+- Install only if quality issues with simple resampling
+
+SKIP libsndfile - Browser handles file I/O, unnecessary in WASM context
+
+2.2 SYNTHESIS LIBRARIES
+-----------------------
+
+STK (Synthesis Toolkit)
+- Capabilities: Physical modeling, FM synthesis, filters, effects
+- Use cases: Instrument simulation, real-time synthesis
+- WASM status: Good compatibility
+-KIP SYNTHESIS LIBRARIES - Not needed for your use cases (editing/analysis)
+- Use Web Audio API oscillators via CDN if synthesis needed
+- Tone.js already in your workspace (use via CDN: unpkg.com/tone)
+- Save 50-100MB by avoiding STK, Maximilian, PortAudio
+Soundpipe
+- Capabilities: 100+ audio DSP modules (filters, reverbs, delays)
+- Use cases: Plugin-style effects, modular synthesis
+- WASM status: Compiles cleanly to WASM
+- Performance: Optimized for real-time
+- License: MIT
+
+Freeverb
+- Capabilities: Classic reverb algorithm
+- Use cases: Spatial effects
+- WASM status: Simple C++, excellent WASM compatibility
+- License: Public domain (SELECTIVE)
+----------------------------------------
+
+SKIP Soundpipe - Too large (~40MB), covers too much you don't need
+
+Freeverb (OPTIONAL - ~2MB)
+- Use cases for YOU:
+  * Understanding reverb algorithms for room analysis
+  * Testing room response simulation
+- WASM status: Tiny, simple
+- License: Public domain
+- Install only if doing reverb simulation
+
+SKIP MDA plugins - Not focused on your use cases (tempo/pitch/resonance)
+- WASM status: Good WASM support
+- Performance: Real-time optimized
+- License: GPL v3
+
+librosa (C++ port considerations)
+- Note: Primarily Python, but core algorithms can be implemented in C++
+- Capabilities: Spectral features, MFCCs, chroma features
+- Use cases: Advanced music analysis
+ (HIGH PRIORITY FOR YOU)
+-----------------------------------------------------
+
+aubio (HIGHLY RECOMMENDED - ~20MB)
+- Use cases for YOU:
+  * Real-time pitch tracking (autotune foundation)
+  * Beat/tempo detection (tempo automation)
+  * Onset detection (for time-stretching anchor points)
+  * Fundamental frequency tracking (room resonance peaks)
+- WASM status: Excellent
+- Performance: Real-time optimized
+- License: GPL v3
+- Why: Perfect match for your needs (pitch + tempo + analysis)
+
+SKIP Essentia - Too large (150MB+), AGPL license, overkill for your needs
+
+SKIP librosa - Python-focused, implement specific algorithms yourself
+
+SKIP Chromaprint - Audio fingerprinting not relevant to your use casesprocessing, pitch correction
+- WASM status: Algorithm implementation (DIY)
+- License: N/A (algorithm, various implementations)
+
+2.6 MACHINE LEARNING / AI AUDIO
+--------------------------------
+
+Tensorflow Lite (C++ API)
+- Capabilities: Run trained models for audio classification, source separation
+- Use cases: Instrument recognition, genre classification, denoising
+- WASM status: TensorFlow.js availab (CRITICAL FOR YOU)
+--------------------------------------------------------
+
+Rubber Band Library (ESSENTIAL - ~30MB)
+- Use cases for YOU:
+  * Flexible tempo automation with smooth curves
+  * High-quality time stretching for vocals
+  * Independent pitch and tempo control
+  * Real-time or offline processing modes
+  * Formant preservation for au (SKIP FOR NOW)
+-----------------------------------------------
+
+SKIP ALL ML LIBRARIES INITIALLY - Each is 100-200MB+
+
+Use TensorFlow.js via CDN if needed later:
+- <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+- Use cases: Trained autotune models, room IR classification
+- No C++ installation needed, runs in browser
+
+Only consider C++ ML if JavaScript performance insufficient
+- RTNeural (~50MB) if you train custom autotune models
+- ONNX Runtime (~150MB) for existing modelsol over pitch correction curves
+  * Works with aubio pitch detection
+- WASM status: Header-only C++, excellent for WASM
+- License: BSD
+
+HIIR (Highly Improved Impulse Response)
+- Capabilities: Oversampling/downsampling
+- Use cases: Anti-aliasing, high-quality resampling
+- WASM status: Header-only, very WASM-friendly
+- License: WTFPL
+ (HEADER-ONLY = NO BLOAT)
+--------------------------------------------------------
+
+HIIR (RECOMMENDED - ~50KB headers only!)
+- Use cases for YOU:
+  * Oversampling before autotune (reduces aliasing)
+  * Downsampling after pitch processing
+  * High-quality anti-aliasing for room resonance detection
+- WASM status: Header-only C++, zero install size
+- License: WTFPL
+- Why: Tiny, powerful, no compilation needed
+
+SKIP Gamma DSP - Synthesis-focused, not your use case
+
+SKIP Q - Modern features but synthesis-focused, save 20MB
+3.2 Memory Management
+---------------------
+- Initial memory: -s INITIAL_MEMORY=16MB (adjust as needed)
+- Allow memory growth: -s ALLOW_MEMORY_GROWTH=1
+- Maximum memory: -s MAXIMUM_MEMORY=2GB (browser dependent)
+- Use custom allocators for audio buffers
+- Pre-allocate buffers when possible
+ (STORAGE-AWARE)
+================================================================================
+
+3.1 Performance Optimization
+-----------------------------
+- Enable SIMD: -msimd128 flag (autotune, FFT speedup)
+- Enable WASM threads: -pthread flag (parallel resonance analysis)
+- Optimization level: -O3 for production, -Oz for size
+- Pre-allocate audio buffers (avoid runtime allocation)
+- Use AudioWorklet for real-time autotune/tempo
+
+3.2 Memory Management (CRITICAL - 1GB LIMIT)
+---------------------------------------------
+- Initial memory: -s INITIAL_MEMORY=16MB (conservative start)
+- Allow growth: -s ALLOW_MEMORY_GROWTH=1
+- Maximum memory: -s MAXIMUM_MEMORY=512MB (leave room for browser)
+- Use fixed-size ring buffers for real-time processing
+- Avoid memory growth during audio processing (causes glitches)
+
+3.3 JavaScript Integration
+---------------------------
+- Emscripten embind for C++ ↔ JS bindings
+- Export ONLY needed functions (reduce WASM size)
+- Use cwrap for simple pitch/tempo functions
+- AudioWorklet processor for real-time autotune
+
+3.4 Bundle Size Optimization (CRITICAL)
+----------------------------------------
+- Strip debug symbols: -s ASSERTIONS=0 in production
+- Link-time optimization: -flto
+- Dead code elimination: -s ELIMINATE_DUPLICATE_FUNCTIONS=1
+- Compress WASM: Use gzip/brotli (50% size reduction)
+- Target: <5MB total WASM size for fast loading
+│   ├── analysis/               # Music analysis
+│   │   ├── onset_detection.cpp
+│   │   └── pitch_detection.cpp
+│   └── bindings/               # JS bindings
+│  MINIMAL PROJECT STRUCTURE (~100MB TOTAL)
+================================================================================
+
+cpp-audio-tools/
+├── build_wasm.sh               # Single build script
+├── CMakeLists.txt              # Minimal build config
+├── src/                        # C++ source files
+│   ├── pitch/                  # Pitch processing
+│   │   ├── pitch_detector.cpp  # Using aubio
+│   │   ├── pitch_shifter.cpp   # PSOLA or library
+│   │   └── autotune.cpp        # Your custom autotune
+│   ├── tempo/                  # Tempo processing
+│   │   ├── tempo_detector.cpp  # Using aubio
+│   │   ├── time_stretch.cpp    # Rubber Band or SoundTouch
+│   │   └── tempo_automation.cpp # Curve-based tempo control
+│   ├── analysis/               # Resonance analysis
+│   │   ├── fft_analyzer.cpp    # Using KissFFT
+│   │   ├── resonance_finder.cpp # Peak detection
+│   │   └── room_analysis.cpp   # Harmonic pattern matching
+│   └── bindings.cpp            # Emscripten bindings (all exports)
+├── third_party/                # External libraries (symlinks to save space)
+│   ├── kissfft/               # ~5MB
+│   ├── aubio/                 # ~20MB
+│   ├── rubberband/            # ~30MB (or soundtouch ~15MB)
+│   └── hiir/                  # Headers only (~50KB)
+├── build/                      # Build output (gitignored)
+│   └── audio_tools.wasm       # Target: <5MB compressed
+└── web/                        # Web interface (NO npm install!)
+    ├── index.html             # CDN-based interface
+    ├── worker.js              # AudioWorklet processor
+    └── app.js                 # Load WASM, use Tone.js from CDN
+YOUR SPECIFIC CAPABILITIES (FOCUSED LIST)
+================================================================================
+
+5.1 FLEXIBLE TEMPO AUTOMATION ✓✓✓
+----------------------------------
+✓ Tempo curves (linear, exponential, S-curve)
+✓ Time stretching 0.25x - 4x range
+✓ Independent pitch preservation
+✓ Formant preservation during stretch
+✓ Beat-synced tempo changes
+✓ Smooth tempo transitions (no artifacts)
+✓ Real-time preview (with lower quality)
+✓ Offline high-quality processing
+✓ Tempo mapping from beat detection
+✓ Variable tempo throughout track
+
+Implementation: Rubber Band or SoundTouch + aubio tempo detection
+Libraries needed: ~45MB total
+
+5.2 AUTOTUNE / PITCH CORRECTION ✓✓✓
+------------------------------------
+✓ Real-time pitch detection (10ms latency)
+✓ Automatic pitch correction to scale
+✓ Adjustable correction strength (0-100%)
+✓ Retune speed control (natural to robotic)
+✓ Formant preservation (maintain voice character)
+✓ Vibrato detection and preservation
+✓ Custom scale support (major, minor, chromatic, custom)
+✓ Pitch bend smoothing
+✓ Live monitoring mode
+✓ MIDI note targeting
+
+Implementation: aubio pitch detection + PSOLA or Rubber Band
+Libraries needed: ~50MB total
+
+5.3 ROOM HARMONICS & RESONANCE DETECTION ✓✓✓
+----------------------------------------------
+✓ Real-time FFT analysis (up to 8192 points)
+✓ Peak detection in frequency domain
+✓ Harmonic relationship detection
+✓ Room mode identification (axial, tangential, oblique)
+✓ Resonance frequency tracking over time
+✓ Q-factor estimation (resonance sharpness)
+✓ Decay time measurement (RT60 estimation)
+✓ Standing wave pattern detection
+✓ Frequency response curve generation
+✓ Waterfall plot visualization
+✓ Comb filtering detection
+✓ Flutter echo detection
+
+Implementation: KissFFT + custom peak detection + harmonic analysis
+Libraries needed: ~5MB total
+
+5.4 SUPPORTING CAPABILITIES
+----------------------------
+✓ High-quality oversampling (anti-aliasing)
+✓ Onset detection (for anchoring time-stretch)
+✓ Beat tracking (for tempo automation sync)
+✓ Spectral visualization (real-time)
+✓ Audio file I/O (via browser File API)
+✓ Multi-threaded processing (WASM threads)
+
+5.5 PERFORMANCE TARGETS
+------------------------
+- Pitch detection: <10ms latency (aubio YIN algorithm)
+- Autotune processing: 128-256 samples latency (real-time capable)
+- Tempo detection: <100ms analysis window
+- Time stretching: 2-10x real-time (quality dependent)
+- FFT 4096 points: <2ms (SIMD optimized)
+- Room resonance scan: <5 seconds for full analysis
+- Total WASM size: <5MB compressed
+Phase 2: Core DSP Foundation
+-----------------------------
+□ Integrate FFT library (FFTW or KissFFT)
+□ Implement basic filters (biquad, FIR)
+□ Create audio buffer management system
+□ Build oscillator library
+□ Implement basic envelope generators
+
+Phase 3: Library Integration
+-----------------------------
+□ Compile Soundpipe to WASM
+□ Compile aubio to WASM
+□ Test each library's performance
+□ Create unified API wrapper
+□ Write example applications for each
+
+Phase 4: Advanced Features
+---------------------------
+□ Implement time stretching (Rubber Band or custom)
+□ Add pitch shifting algorithms
+□ Integrate ML libraries (TensorFlow Lite/ONNX)
+□ Create spectral processing tools
+□ Build effects chain system
+
+Phase 5: Testing & Optimization
+--------------------------------
+□ Performance profiling
+□ Memory usage optimization
+□ SIMD optimization wher (STREAMLINED)
+================================================================================
+
+Phase 1: Minimal Environment Setup (~1 hour)
+---------------------------------------------
+□ Install Emscripten SDK only (~150MB)
+□ Create single build_wasm.sh script
+□ Test basic WASM compilation (hello world)
+□ Create CDN-based HTML test page (NO npm install)
+□ Verify AudioWorklet loads WASM module
+
+Phase 2: Room Resonance Detection First (~2-3 hours)
+-----------------------------------------------------
+Why first: Smallest scope, tests FFT integration
+□ Integrate KissFFT (~5MB)
+□ Compile to WASM, test FFT performance
+□ Implement peak detection algorithm
+□ Create resonance finder (harmonic pattern matching)
+□ Build web interface with real-time spectrogram
+□ Test with room recordings
+
+Phase 3: Pitch Detection & Autotune (~3-4 hours)
+-------------------------------------------------
+Why next: Core functionality for your needs
+□ Integrate aubio library (~20MB)
+□ Compile pitch detection to WASM
+□ Test latency and accuracy
+□ Implement PSOLA pitch shifter (or integrate library)
+□ Build autotune algorithm (pitch correction + smoothing)
+□ Create web interface with real-time monitoring
+□ Test with vocal recordings
+
+Phase 4: Tempo Automation (~3-4 hours)
+---------------------------------------
+Why last: Most complex, builds on previous work
+□ Integrate Rubber Band OR SoundTouch (~30MB or ~15MB)
+□ Compile time-stretching to WASM
+□ Use aubio tempo detection
+□ Implement tempo curve system (bezier, linear, exponential)
+□ Build automation envelope editor
+□ Create offline processing mode
+□ Test with music tracks
+
+Phase 5: Integration & Polish (~2 hours)
+-----------------------------------------
+□ Combine all tools into single interface
+□ Add preset system
+□ Memory optimization (check total WASM size)
+□ Cross-browser testing (Chrome, Firefox, Safari)
+□ Create usage documentation
+
+TOTAL ESTIMATED TIME: 11-14 hours of focused work
+TOTMINIMAL BUILD SCRIPT
+================================================================================
+
+# build_wasm.sh - Single script for all tools
+
+#!/bin/bash
+set -e
+
+echo "Building C++ Audio Tools to WASM..."
+
+# Compiler flags (optimized for size AND speed)
+EMCC_FLAGS=(
+    -O3                          # Maximum optimization
+    -Oz                          # Size optimization (try both, keep smallest)
+    -flto                        # Link-time optimization
+    -s WASM=1                    # Generate WASM
+    -s ALLOW_MEMORY_GROWTH=1     # Dynamic memory
+    -s INITIAL_MEMORY=16MB       # Conservative start
+    -s MAXIMUM_MEMORY=512MB      # Leave room for browser
+    -s MODULARIZE=1              # Module export
+    -s EXPORT_ES6=1              # ES6 module
+    -msimd128                    # SIMD (FFT speedup)
+    -pthread                     # Threading support
+    -s EXPORTED_FUNCTIONS='["_malloc","_free"]'
+    -s EXPORTED_RUNTIME_METHODS='["cwrap","ccall"]'
+    -s ASSERTIONS=0              # Disable in production
+    -s ELIMINATE_FOR YOUR USE CASES
+================================================================================
+
+Before building apps, test and document:
+
+AUTOTUNE-SPECIFIC:
+1. What's the minimum latency achievable for live autotune? (target: <10ms)
+2. How does aubio YIN vs CREPE compare for pitch detection accuracy?
+3. Can PSOLA match Rubber Band quality for pitch shifting?
+4. What correction strength feels "natural" vs "robotic"?
+5. How to preserve vibrato while correcting pitch?
+
+TEMPO AUTOMATION:
+6. What's the quality difference: Rubber Band vs SoundTouch?
+7. Can we do real-time tempo changes or only offline?
+8. How smooth can tempo curves be (sample-accurate interpolation)?
+9. What's the maximum stretch ratio before artifacts? (test 0.25x - 4x)
+10.FOCUSED TESTING METHODOLOGY
+================================================================================
+
+Create lightweight test pages (single HTML files, CDN-based):
+
+1. Room Resonance Analyzer Test (test_resonance.html)
+   - Load test audio (sweep, room recording, music)
+   - Run FFT at various sizes (2048, 4096, 8192)
+   - Display spectrogram in real-time
+   - Highlight detected peaks/resonances
+   - Measure: Processing time, accuracy, memory
+   - Test files: sine sweep, room clap, music track
+
+2. Autotune Test (test_autotune.html)
+   - Record or load vocal audio
+   - Real-time pitch detection display
+   - Apply correction with adjustable strength
+   - A/B comparison (before/after)
+   - Measure: Latency, accuracy, artifacts
+   - Test files: sustained notes, vibrato, speech
+
+3. Tempo Automation Test (test_tempo.html)
+   - Load music track
+   - Draw tempo curve (bezier/linear/exponential)
+   - Process offline (show progress)
+   - Play result
+   - Measure: Processing speed, quality, artifacts
+   - Test files: drums, vocals, full mix
+
+4. Integration Test (test_all.html)
+   - Combine all tools
+   - Measure total WASM load time
+   - Check total memory usage
+   - Test interaction between tools
+   - Browser compatibility check
+
+NO NEED FOR:
+- Synthesis tests (not your use case)
+- ML tests (using CDN if needed)
+- Effects chain tests (not primary goal)o_tools.js
+
+echo "Build complete! WASM size:"
+ls -lh build/audio_tools.wasm
+gzip -9 -c build/audio_tools.wasm > build/audio_tools.wasm.gz
+echo "Compressed size:"
+ls -ESSENTIAL RESOURCES (FOCUSED)
+================================================================================
+
+Documentation (bookmark these):
+- Emscripten: https://emscripten.org/docs/
+- AudioWorklet: https://developer.mozilla.org/en-US/docs/Web/API/AudioWorklet
+- Web Audio API: https://webaudio.github.io/web-audio-api/
+
+Libraries You'll Actually Use:
+- KissFFT: https://github.com/mborgerding/kissfft
+  (Download, compile to WASM, ~5MB)
+- aubio: https://aubio.org/
+  (Pitch/tempo detection, ~20MB)
+- Rubber Band: https://breakfastquay.com/rubberband/
+  (Time-stretching, ~30MB, GPL)
+- SoundTouch: https://www.surina.net/soundtouch/
+  (Alternative to Rubber Band, ~15MB, LGPL)
+- HIIR: http://ldesoras.free.fr/prod.html
+  (Header-only, anti-aliasing, ~50KB)
+
+Skip These (use CDN instead):
+- Tone.js: https://unpkg.com/tone
+- TensorFlow.js: https://cdn.jsdelivr.net/npm/@tensorflow/tfjs
+- D3RECOMMENDED LIBRARY CHOICES (FINAL)
+================================================================================
+
+MINIMAL INSTALL (Total: ~75MB):
+--------------------------------
+1. KissFFT (~5MB) - Room resonance detection
+   Why: Smallest FFT, sufficient performance
+   Alternative: Write your own simple FFT (~500 lines)
+
+2. aubio (~20MB) - Pitch + tempo detection
+   Why: One library for both pitch and tempo
+   No good alternative for this one
+
+3. SoundTouch (~15MB) - Time stretching
+   Why: Smaller than Rubber Band, LGPL license
+   Alternative: Rubber Band if quality is critical (~30MB, GPL)
+
+4. HIIR (~50KB) - Anti-aliasing
+   Why: Header-only, no installation size
+   Alternative: None needed, built-in browser resampling OK
+
+5. Custom PSOLA (~1MB compiled) - Pitch shifting
+   Why: Full control, minimal size
+   Alternative: Use Rubber Band (~30MB)
+
+TOTAL RECOMMENDED: ~40MB source + 150MB Emscripten = 190MB
+LEAVES: 810MB free in your 1GB codespace
+
+USE VIA CDN (NO INSTALL):
+-------------------------
+- Tone.js for synthesis/effects
+- TensorFlow.js for ML (if needed later)
+- D3.js for visualization
+- Chart.js for graphs
+
+================================================================================
+12. FINAL NEXT STEPS
+================================================================================
+
+1. Install Emscripten SDK (~150MB, 30 minutes)
+2. Clone/download KissFFT + aubio + SoundTouch (~40MB, 10 minutes)
+3. Create build_wasm.sh script (5 minutes)
+4. Test compile each library separately (1 hour)
+5. Build room resonance test first (2-3 hours)
+6. Test performance and document findings
+7. Build autotune test (3-4 hours)
+8. Build tempo automation test (3-4 hours)
+9. Create integrated interface (2 hours)
+
+TOTAL ESTIMATED SETUP: 1-2 days of work
+TOTAL DISK USAGE: ~250MB (75% under budget!)
+
+================================================================================
+CRITICAL NOTES
+================================================================================
+
+STORAGE-SAVING TIPS:
+- Delete .git folders from third-party libraries after download
+- Use symlinks instead of copying files
+- Build with -Oz to minimize WASM output
+- Compress WASM with gzip/brotli
+- Clear build cache regularly
+- Use shallow clones: git clone --depth 1
+
+PERFORMANCE TIPS:
+- Always enable SIMD (-msimd128)
+- Use -O3 for speed, -Oz for size
+- Pre-allocate buffers in WASM
+- Avoid memory growth during audio processing
+- Use AudioWorklet, not ScriptProcessor
+- Profile with Chrome DevTools Performance tab
+
+DEBUGGING TIPS:
+- Build native C++ version first (easier debugging)
+- Use console.log in JS, printf in C++
+- Chrome://inspect for WASM debugging
+- Check WASM memory usage in Task Manager
+- Use assertions in development, disable in production
+
+================================================================================
+END OF PLAN - READY TO IMPLEMENTs://ccrma.stanford.edu/software/stk/
+
+Community:
+- Web Audio Conference papers
+- AudioWorklet examples on GitHub
+- DSP Stack Exchange
+- Emscripten discussions
+
+================================================================================
+11. NEXT STEPS (DO NOT IMPLEMENT YET)
+================================================================================
+
+================================================================================
+12. JUCE FRAMEWORK (PROFESSIONAL AUDIO DEVELOPMENT)
+================================================================================
+
+✅ INSTALLED: JUCE 8.0.4 (~102MB)
+
+Why JUCE:
+- Industry standard used in professional DAWs (Ableton, Steinberg, etc.)
+- Mature ecosystem developed over 20+ years
+- Comprehensive audio processing and plugin architecture
+- Native WASM support (modules/juce_core/native/juce_SystemStats_wasm.cpp)
+
+Key JUCE Modules for WASM Audio:
+---------------------------------
+
+juce_audio_basics (ESSENTIAL)
+- Use cases:
+  * AudioBuffer<float> - Professional buffer management
+  * AudioSampleBuffer - Multi-channel audio
+  * MIDI message handling
+  * Sample rate conversion
+  * Audio data types and utilities
+- Dependencies: juce_core, juce_events
+- WASM status: Fully compatible
+
+juce_dsp (HIGHLY RECOMMENDED)
+- Use cases:
+  * Professional-grade filters (IIR, FIR, StateVariableFilter)
+  * Convolution reverb (impulse response processing)
+  * Oversampling (anti-aliasing for effects)
+  * FFT (built-in, optimized)
+  * DelayLine, Chorus, Phaser, Compressor
+  * WaveShaper (distortion, saturation)
+  * LookupTable (fast math functions)
+- Dependencies: juce_audio_basics, juce_audio_formats
+- WASM status: Core features work (no SIMD in WASM yet)
+- Performance: Highly optimized, used in professional plugins
+
+juce_audio_formats (FILE I/O)
+- Use cases:
+  * WAV, AIFF reader/writer
+  * FLAC, Ogg Vorbis support
+  * MP3 reading (platform-dependent)
+  * AudioFormatManager (multi-format handling)
+- Dependencies: juce_audio_basics
+- WASM status: Works with browser File API integration
+- Note: File I/O needs web adaptation layer
+
+juce_audio_processors (PLUGIN ARCHITECTURE)
+- Use cases:
+  * AudioProcessor base class (effect/instrument architecture)
+  * Plugin parameter management
+  * Preset handling
+  * Audio processing graph
+  * VST3/AU/AAX structure (conceptual, not for web)
+- Dependencies: juce_audio_basics, juce_gui_basics
+- WASM status: Core architecture usable, GUI needs adaptation
+
+juce_core (UTILITIES)
+- Use cases:
+  * String handling (optimized)
+  * File I/O (needs browser adaptation)
+  * Memory management (MemoryBlock, HeapBlock)
+  * Threading (Thread, ThreadPool)
+  * Time utilities
+  * Math functions
+- Dependencies: None (foundation module)
+- WASM status: Fully compatible (except platform-specific features)
+
+JUCE vs Lightweight Libraries:
+-------------------------------
+
+Advantages of JUCE:
++ Professional-grade code quality
++ Comprehensive documentation and community
++ Used in real DAW products (proven in production)
++ Integrated ecosystem (audio + MIDI + parameters + presets)
++ AudioBuffer abstraction (cleaner than raw float arrays)
++ Built-in effects and processing blocks
++ Plugin architecture (modular design patterns)
+
+Disadvantages for WASM:
+- Larger binary size (~100MB source, varies in compiled size)
+- Some features need platform adaptation (GUI, file I/O)
+- Requires C++17 (not an issue with modern Emscripten)
+- More complex build process than single-file libraries
+- AGPLv3 license (commercial license available)
+
+When to Use JUCE:
+- Building complex audio applications with multiple components
+- Need professional plugin-style architecture
+- Want battle-tested DSP algorithms
+- Planning to port to native desktop later
+- Comfortable with larger bundle size for better code structure
+
+When to Use Lightweight Libraries Instead:
+- Minimal bundle size is critical (<1MB)
+- Simple, focused tools (one feature only)
+- Learning DSP from scratch (simpler code to read)
+- Very specific algorithm not in JUCE
+
+JUCE + Other Libraries Strategy:
+---------------------------------
+You can mix JUCE with other libraries:
+- Use JUCE AudioBuffer with aubio pitch detection
+- Use JUCE DSP filters + SoundTouch time-stretching
+- Use JUCE audio graph + KissFFT for custom spectral processing
+- Wrap lightweight libraries in JUCE AudioProcessor interface
+
+Example JUCE Workflow for Your Use Cases:
+------------------------------------------
+
+1. Autotune:
+   juce::AudioBuffer -> aubio pitch detection -> 
+   JUCE DSP filters for formant -> your pitch correction algorithm
+
+2. Tempo Automation:
+   juce::AudioBuffer -> aubio tempo detection ->
+   SoundTouch time-stretching -> JUCE processor chain
+
+3. Room Resonance:
+   juce::AudioBuffer -> juce::dsp::FFT ->
+   custom peak detection -> juce::AudioParameterFloat for display
+
+JUCE Build Notes for WASM:
+---------------------------
+- Don't try to build full JUCE with GUI (needs X11/Windows/Mac)
+- Include only needed modules directly in your project
+- Use #define JUCE_MODULE_AVAILABLE_juce_audio_basics 1
+- Link specific modules as needed
+- Expect 2-5MB added to WASM bundle per module
+- Use -DJUCE_GLOBAL_MODULE_SETTINGS_INCLUDED to customize
+
+JUCE Resources:
+- API Docs: https://docs.juce.com/
+- Forum: https://forum.juce.com/
+- GitHub: https://github.com/juce-framework/JUCE
+- Tutorials: https://juce.com/learn/tutorials
+
+================================================================================
+13. UPDATED IMPLEMENTATION ROADMAP
+================================================================================
+
+Phase 1: Room Resonance Detection (SIMPLE START)
+-------------------------------------------------
+Option A - Lightweight: KissFFT + custom peak detection
+Option B - Professional: JUCE DSP FFT + juce::AudioBuffer
+
+Recommendation: Try both, compare bundle size vs code clarity
+
+Phase 2: Pitch Detection & Autotune (CORE FEATURE)
+--------------------------------------------------
+Recommended: aubio (pitch) + JUCE (buffers + filters) + custom correction
+- aubio_pitch_do() for detection
+- juce::AudioBuffer for clean data management
+- juce::dsp::IIR::Filter for formant preservation
+- Your algorithm for pitch correction curves
+
+Phase 3: Tempo Automation (COMPLEX FEATURE)
+-------------------------------------------
+Recommended: aubio (tempo) + SoundTouch (stretching) + JUCE (graph)
+- aubio_tempo_do() for beat tracking
+- SoundTouch for actual time-stretching
+- juce::AudioProcessorGraph for processing pipeline
+- Your automation curve engine
+
+Total Bundle Size Estimate:
+- KissFFT: ~50KB compiled
+- aubio: ~200KB compiled
+- SoundTouch: ~150KB compiled
+- JUCE modules (audio_basics + dsp): ~800KB compiled
+- Your code: ~100KB
+TOTAL: ~1.3MB WASM (before compression, ~600KB gzipped)
+
+================================================================================
+14. NEXT STEPS (EXPLORATION PHASE)
+================================================================================
+
+DO NOT BUILD YET - Just explore:
+
+1. Test JUCE DSP examples:
+   - Compile simple juce::dsp::FFT test to WASM
+   - Measure bundle size and performance
+   - Compare to KissFFT implementation
+
+2. Test aubio integration:
+   - Wrap aubio_pitch in C++ class
+   - Feed it juce::AudioBuffer data
+   - Measure latency and accuracy
+
+3. Test SoundTouch:
+   - Simple time-stretch test (2x speed)
+   - Measure quality and artifacts
+   - Try with different settings
+
+4. Benchmark everything:
+   - FFT 4096 points: ____ ms (Chrome), ____ ms (Firefox)
+   - Pitch detection: ____ ms latency
+   - Time stretching: ____ x realtime
+   - Memory usage: ____ MB
+
+5. Document findings in new file (when ready to test)
+
+================================================================================
+INSTALLATION COMPLETE - READY FOR EXPLORATION
+================================================================================

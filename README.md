@@ -154,3 +154,4 @@ Modern browser with Web Audio API support. Chromebooks work fine.
 
 AudioVerse - Because making music in a browser should be this easy.  
 Updated January 7, 2026
+

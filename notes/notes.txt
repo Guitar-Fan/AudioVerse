@@ -15,4 +15,37 @@ I created a exciting new audio synthesis tool called CraftySound. CraftySound le
 I created other tools like ParameterAudioEditor and Wavetable_Synth to achieve this, but they didn't work like 
 I wanted it to. It was only till I learned to incorporate the audio synthesis capabilities of Tone.js, Meyda.js and Essentia.js, that allowed me to add the feature of custom drawing a waveform.
 
-Video demonstrates me going through most of the features of CraftySound, exporting the json and importing it back.
+Video demonstrates me going through most
+ of the features of CraftySound, exporting the json and importing it back.
+
+Create an txt file making a plan to set up this codespace for C++ wasm to make potential C++ web applications
+with super advanced, powerful, low level editing, analysis, synthesis of audio and music.
+Make sure to not create the application(s) yet, as I haven't decided what exactly I want the apps to do.
+I need to know what the C++ wasm libraries are capable of.
+
+Also note that I don't want to install unnecessary stuff, like js libraries that can totally be called through cdn or unpkg,
+unnecessary C++ tools. I only have 1 gb of storage for this codespace.
+
+make an voice autotune FXs filthy understanding
+
+continue the installation of libraries and tools, make sure to use the best known functional method to install each library. 
+ground with google search.
+
+create one c++ wasm application using juce and install C++ wasm modules that 
+Spectral Analysis:
+Fast Fourier Transform (FFT): The juce::dsp::FFT class allows for efficient computation of forward and inverse FFTs, which is fundamental for converting time-domain audio signals into the frequency domain for detailed spectral examination [1].
+Magnitude and Phase Analysis: Once the FFT is computed, the magnitude and phase information of individual frequency bins can be extracted and analyzed in real-time [1].
+Filtering:
+IIR and FIR Filters: The framework includes classes for implementing various Infinite Impulse Response (IIR) and Finite Impulse Response (FIR) filters, such as Butterworth, Chebyshev, and Bessel filters, allowing for precise frequency band isolation or removal of noise for subsequent analysis [1].
+State Variable Filters: juce::dsp::StateVariableFilter provides versatile filter types (low-pass, high-pass, band-pass, notch, etc.) with resonance control for detailed spectral shaping and analysis [1].
+Time-Domain Analysis:
+Envelope Following: Tools for tracking the amplitude envelope of a signal, useful for dynamic range analysis and feature extraction [1].
+Peak and RMS Level Detection: Specific classes help measure peak and Root Mean Square (RMS) levels in real-time, critical for loudness analysis and dynamics processing [1].
+Advanced DSP Functionality:
+Convolution: The juce::dsp::Convolution class can be used for impulse response analysis and the application of frequency-domain effects [1].
+Oversampling: The juce::dsp::Oversampling class allows for increasing the sample rate to perform analysis with reduced aliasing artifacts, leading to more accurate results, especially at higher frequencies [1].
+Pervasive DSP utilities: The module includes various other utilities and building blocks that can be combined to create more complex analysis tools, such as custom pitch detection algorithms or sophisticated feature extraction methods [1]. 
+
+Now instead of audio analysis, make it low level polyphonic audio editing studio. Use JUCE framework to make application look like a projessional plugin. Edit and add the new features in C++ Audio Studio.
+
+help me with this

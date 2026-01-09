@@ -1,5 +1,3 @@
-# Ignore all .txt files
-*.txt
 # Except README.md and reaper_linux_x86_64/readme-linux.txt
 !README.md
 !reaper_linux_x86_64/readme-linux.txt

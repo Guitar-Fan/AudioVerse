@@ -1,0 +1,3 @@
+/workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles/audio-studio.dir
+/workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles/edit_cache.dir
+/workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles/rebuild_cache.dir
