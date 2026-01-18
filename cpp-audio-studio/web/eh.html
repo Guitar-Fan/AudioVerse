@@ -165,11 +165,11 @@
         <h1>🎵 C++ Audio Analysis Studio</h1>
         <p class="subtitle">High-performance WASM-powered audio analysis • Built with C++ & Emscripten</p>
         
-        <div id="status" class="status loading">Loading C++ engine...</div>
+        <div id="status" class="status loading" aria-live="polite" aria-atomic="true">Loading C++ engine...</div>
         
         <div class="controls">
             <div class="file-input-wrapper">
-                <input type="file" id="audioFile" accept="audio/*" disabled>
+                <input type="file" id="audioFile" accept="audio/*" disabled aria-label="Select audio file to analyze">
             </div>
         </div>
         

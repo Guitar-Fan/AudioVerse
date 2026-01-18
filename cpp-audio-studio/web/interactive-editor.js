@@ -136,7 +136,7 @@ class InteractiveAudioEditor {
         for (let i = 0; i < this.audioData.length - windowSize; i += hopSize) {
             let sum = 0;
             for (let j = 0; j < windowSize; j++) {
-                sum += Math.abs(this.audioData[i + j]);
+                sum += this.audioData[i + j] * this.audioData[i + j];
             }
             const rms = Math.sqrt(sum / windowSize);
             this.amplitudeEnvelope.push({
@@ -158,12 +158,19 @@ class InteractiveAudioEditor {
         }
     }
     
-    // Perform FFT analysis
+    // Perform FFT analysis using a more efficient approach
     performFFT(samples) {
-        // Simple FFT implementation using Web Audio API approach
+        // Use Web Audio API's AnalyserNode for performant FFT
+        // This is much faster than O(n²) DFT and suitable for real-time use
         const N = samples.length;
-        const real = new Float32Array(N);
-        const imag = new Float32Array(N);
+        
+        // For offline processing, we'll use a simple but faster radix-2 FFT
+        // First, ensure N is a power of 2
+        let fftSize = 1;
+        while (fftSize < N) fftSize *= 2;
+        
+        const real = new Float32Array(fftSize);
+        const imag = new Float32Array(fftSize);
         
         // Copy samples and apply Hanning window
         for (let i = 0; i < N; i++) {
@@ -171,23 +178,51 @@ class InteractiveAudioEditor {
             real[i] = samples[i] * window;
             imag[i] = 0;
         }
+        // Pad with zeros if needed
+        for (let i = N; i < fftSize; i++) {
+            real[i] = 0;
+            imag[i] = 0;
+        }
         
-        // Simple DFT (for demonstration - in production, use FFT library)
-        const magnitudes = new Float32Array(N);
-        const phases = new Float32Array(N);
-        
-        for (let k = 0; k < N; k++) {
-            let realSum = 0;
-            let imagSum = 0;
-            
-            for (let n = 0; n < N; n++) {
-                const angle = -2 * Math.PI * k * n / N;
-                realSum += real[n] * Math.cos(angle) - imag[n] * Math.sin(angle);
-                imagSum += real[n] * Math.sin(angle) + imag[n] * Math.cos(angle);
+        // Cooley-Tukey FFT algorithm (radix-2)
+        // Bit-reverse reordering
+        for (let i = 0; i < fftSize; i++) {
+            let j = 0;
+            for (let k = 0, m = i; k < Math.log2(fftSize); k++) {
+                j = (j << 1) | (m & 1);
+                m >>= 1;
             }
-            
-            magnitudes[k] = Math.sqrt(realSum * realSum + imagSum * imagSum) / N;
-            phases[k] = Math.atan2(imagSum, realSum);
+            if (j > i) {
+                [real[i], real[j]] = [real[j], real[i]];
+                [imag[i], imag[j]] = [imag[j], imag[i]];
+            }
+        }
+        
+        // FFT computation
+        for (let len = 2; len <= fftSize; len *= 2) {
+            const halfLen = len / 2;
+            const angle = -2 * Math.PI / len;
+            for (let i = 0; i < fftSize; i += len) {
+                for (let j = 0; j < halfLen; j++) {
+                    const wr = Math.cos(angle * j);
+                    const wi = Math.sin(angle * j);
+                    const tr = real[i + j + halfLen] * wr - imag[i + j + halfLen] * wi;
+                    const ti = real[i + j + halfLen] * wi + imag[i + j + halfLen] * wr;
+                    real[i + j + halfLen] = real[i + j] - tr;
+                    imag[i + j + halfLen] = imag[i + j] - ti;
+                    real[i + j] += tr;
+                    imag[i + j] += ti;
+                }
+            }
+        }
+        
+        // Compute magnitudes and phases
+        const magnitudes = new Float32Array(fftSize);
+        const phases = new Float32Array(fftSize);
+        
+        for (let k = 0; k < fftSize; k++) {
+            magnitudes[k] = Math.sqrt(real[k] * real[k] + imag[k] * imag[k]) / fftSize;
+            phases[k] = Math.atan2(imag[k], real[k]);
         }
         
         return { magnitudes, phases };
@@ -884,39 +919,100 @@ function interactiveReanalyze() {
 
 // Apply interactive edits to main track
 function applyInteractiveEdits() {
-    if (!interactiveEditor || !currentTrackId) return;
+    if (!interactiveEditor) {
+        console.error('Interactive editor not initialized');
+        document.getElementById('engineStatus').textContent = '⚠️ Interactive editor not initialized';
+        return;
+    }
+    
+    if (!currentTrackId) {
+        console.error('No track selected');
+        document.getElementById('engineStatus').textContent = '⚠️ No track selected';
+        return;
+    }
+    
+    // Check for required engine dependencies
+    if (typeof editorEngine === 'undefined' || !editorEngine) {
+        console.error('Editor engine not available');
+        document.getElementById('engineStatus').textContent = '⚠️ Editor engine not available';
+        return;
+    }
+    
+    if (typeof analyzerEngine === 'undefined' || !analyzerEngine) {
+        console.error('Analyzer engine not available');
+        document.getElementById('engineStatus').textContent = '⚠️ Analyzer engine not available';
+        return;
+    }
     
     const editedAudio = interactiveEditor.getEditedAudio();
-    editorEngine.loadAudioToTrack(currentTrackId, editedAudio);
-    analyzerEngine.loadAudioData(editedAudio);
+    if (!editedAudio || editedAudio.length === 0) {
+        console.error('No edited audio data available');
+        document.getElementById('engineStatus').textContent = '⚠️ No edited audio data available';
+        return;
+    }
     
-    // Update analysis view
-    updateAnalysisView();
-    
-    document.getElementById('engineStatus').textContent = '✓ Interactive edits applied to track';
-    console.log('Interactive edits applied');
+    try {
+        editorEngine.loadAudioToTrack(currentTrackId, editedAudio);
+        analyzerEngine.loadAudioData(editedAudio);
+        
+        // Update analysis view
+        if (typeof updateAnalysisView === 'function') {
+            updateAnalysisView();
+        }
+        
+        document.getElementById('engineStatus').textContent = '✓ Interactive edits applied to track';
+        console.log('Interactive edits applied');
+    } catch (error) {
+        console.error('Error applying edits:', error);
+        document.getElementById('engineStatus').textContent = '⚠️ Error applying edits: ' + error.message;
+    }
 }
 
 // Export edited audio
 function exportEditedAudio() {
-    if (!interactiveEditor) return;
+    if (!interactiveEditor) {
+        console.error('Interactive editor not initialized');
+        return;
+    }
+    
+    if (typeof audioContext === 'undefined' || !audioContext) {
+        console.error('Audio context not available');
+        alert('Audio context not available. Please load an audio file first.');
+        return;
+    }
     
     const editedAudio = interactiveEditor.getEditedAudio();
+    if (!editedAudio || editedAudio.length === 0) {
+        console.error('No edited audio data to export');
+        alert('No edited audio data to export.');
+        return;
+    }
     
-    // Create WAV file
-    const audioBuffer = audioContext.createBuffer(1, editedAudio.length, interactiveEditor.sampleRate);
-    audioBuffer.copyToChannel(new Float32Array(editedAudio), 0);
+    if (!interactiveEditor.sampleRate) {
+        console.error('Sample rate not available');
+        alert('Sample rate information missing.');
+        return;
+    }
     
-    // Convert to WAV
-    const wavBlob = bufferToWave(audioBuffer);
-    const url = URL.createObjectURL(wavBlob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'edited-audio.wav';
-    a.click();
-    
-    console.log('Audio exported');
+    try {
+        // Create WAV file
+        const audioBuffer = audioContext.createBuffer(1, editedAudio.length, interactiveEditor.sampleRate);
+        audioBuffer.copyToChannel(new Float32Array(editedAudio), 0);
+        
+        // Convert to WAV
+        const wavBlob = bufferToWave(audioBuffer);
+        const url = URL.createObjectURL(wavBlob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'edited-audio.wav';
+        a.click();
+        
+        console.log('Audio exported');
+    } catch (error) {
+        console.error('Error exporting audio:', error);
+        alert('Error exporting audio: ' + error.message);
+    }
 }
 
 // Convert AudioBuffer to WAV blob

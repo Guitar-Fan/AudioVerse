@@ -3,6 +3,24 @@
 #include <sstream>
 #include <iomanip>
 
+// Helper function to escape JavaScript strings
+static std::string escapeJS(const std::string& str) {
+    std::string result;
+    result.reserve(str.length());
+    for (char c : str) {
+        switch (c) {
+            case '\\': result += "\\\\"; break;
+            case '\'': result += "\\'"; break;
+            case '\"': result += "\\\""; break;
+            case '\n': result += "\\n"; break;
+            case '\r': result += "\\r"; break;
+            case '\t': result += "\\t"; break;
+            default: result += c;
+        }
+    }
+    return result;
+}
+
 std::string PluginUI::Color::toCSSRGBA() const {
     std::ostringstream oss;
     oss << "rgba(" 
@@ -48,8 +66,8 @@ void PluginUI::drawButtonAt(float x, float y, float w, float h, const std::strin
     drawButton(Rect(x, y, w, h), label, active);
 }
 
-void PluginUI::drawVUMeterAt(float x, float y, float w, float h, float peakL, float peakR, float rmsL, float rmsR) {
-    drawVUMeter(Rect(x, y, w, h), peakL, peakR, rmsL, rmsR);
+void PluginUI::drawVUMeterAt(float x, float y, float w, float h, float peakL, float peakR) {
+    drawVUMeter(Rect(x, y, w, h), peakL, peakR, 0.0f, 0.0f);
 }
 
 void PluginUI::drawWaveformAt(float x, float y, float w, float h, emscripten::val waveformJS) {
@@ -145,7 +163,7 @@ void PluginUI::drawPanel(const Rect& bounds, const std::string& title) {
         cmd << "ctx.fillStyle='" << Text().toCSSRGBA() << "';"
             << "ctx.font='bold 14px Arial';"
             << "ctx.textAlign='center';"
-            << "ctx.fillText('" << title << "'," 
+            << "ctx.fillText('" << escapeJS(title) << "'," 
             << (bounds.x + bounds.w / 2) << "," << (bounds.y + 20) << ");";
     }
     

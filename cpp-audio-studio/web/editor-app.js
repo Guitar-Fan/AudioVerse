@@ -136,9 +136,19 @@ function toggleSolo(trackId) {
 
 // Tab Switching
 function switchTab(tabName) {
+    // Remove active class from all tabs
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-    event.target.classList.add('active');
     
+    // Find and activate the tab matching tabName
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(tab => {
+        const tabText = tab.textContent.toLowerCase();
+        if (tabText.includes(tabName.toLowerCase())) {
+            tab.classList.add('active');
+        }
+    });
+    
+    // Show appropriate content
     if (tabName === 'analysis') showAnalysisView();
     else if (tabName === 'interactive') showInteractiveView();
     else if (tabName === 'editor') showEditorView();

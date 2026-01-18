@@ -44,7 +44,7 @@ public:
     void drawKnobAt(float x, float y, float w, float h, float value, const std::string& label);
     void drawFaderAt(float x, float y, float w, float h, float value, const std::string& label);
     void drawButtonAt(float x, float y, float w, float h, const std::string& label, bool active);
-    void drawVUMeterAt(float x, float y, float w, float h, float peakL, float peakR, float rmsL, float rmsR);
+    void drawVUMeterAt(float x, float y, float w, float h, float peakL, float peakR);
     void drawWaveformAt(float x, float y, float w, float h, emscripten::val waveformJS);
     void drawSpectrumAt(float x, float y, float w, float h, emscripten::val spectrumJS);
     void drawPanelAt(float x, float y, float w, float h, const std::string& title);

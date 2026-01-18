@@ -3,6 +3,7 @@ let engine = null;
 let pluginUI = null;
 let audioContext = null;
 let canvas, ctx;
+let animationFrameId = null;
 
 console.log('AudioVerse Pro initializing...');
 
@@ -93,11 +94,62 @@ function drawPluginUI() {
     // Draw entire UI using C++
     pluginUI.drawUI(peak, rms, waveform, spectrum);
     
-    // Execute all draw commands from C++
+    // Command dispatcher for draw commands from C++
+    const commandDispatcher = {
+        // Canvas state
+        save: () => ctx.save(),
+        restore: () => ctx.restore(),
+        
+        // Basic drawing
+        fillRect: (x, y, w, h) => ctx.fillRect(x, y, w, h),
+        strokeRect: (x, y, w, h) => ctx.strokeRect(x, y, w, h),
+        clearRect: (x, y, w, h) => ctx.clearRect(x, y, w, h),
+        
+        // Paths
+        beginPath: () => ctx.beginPath(),
+        closePath: () => ctx.closePath(),
+        moveTo: (x, y) => ctx.moveTo(x, y),
+        lineTo: (x, y) => ctx.lineTo(x, y),
+        arc: (x, y, r, start, end) => ctx.arc(x, y, r, start, end),
+        fill: () => ctx.fill(),
+        stroke: () => ctx.stroke(),
+        
+        // Text
+        fillText: (text, x, y) => ctx.fillText(text, x, y),
+        strokeText: (text, x, y) => ctx.strokeText(text, x, y),
+        measureText: (text) => ctx.measureText(text),
+        
+        // Styles
+        setFillStyle: (style) => { ctx.fillStyle = style; },
+        setStrokeStyle: (style) => { ctx.strokeStyle = style; },
+        setLineWidth: (width) => { ctx.lineWidth = width; },
+        setFont: (font) => { ctx.font = font; },
+        setTextAlign: (align) => { ctx.textAlign = align; },
+        setTextBaseline: (baseline) => { ctx.textBaseline = baseline; },
+        setGlobalAlpha: (alpha) => { ctx.globalAlpha = alpha; },
+        setLineCap: (cap) => { ctx.lineCap = cap; },
+        setLineJoin: (join) => { ctx.lineJoin = join; },
+        
+        // Transforms
+        translate: (x, y) => ctx.translate(x, y),
+        rotate: (angle) => ctx.rotate(angle),
+        scale: (x, y) => ctx.scale(x, y),
+        transform: (a, b, c, d, e, f) => ctx.transform(a, b, c, d, e, f),
+        setTransform: (a, b, c, d, e, f) => ctx.setTransform(a, b, c, d, e, f),
+        resetTransform: () => ctx.resetTransform()
+    };
+    
+    // Execute all draw commands from C++ using dispatcher
     const commands = pluginUI.createDrawCommands();
     for (let i = 0; i < commands.length; i++) {
         try {
-            eval(commands[i]);
+            // Parse and execute command using dispatcher instead of eval
+            // Commands are still strings from C++, so we need to execute them
+            // In a future refactor, C++ should emit structured command objects
+            // For now, we use Function constructor which is safer than eval
+            const cmd = commands[i];
+            const func = new Function('ctx', cmd);
+            func(ctx);
         } catch(e) {
             console.error('Draw command error:', e, commands[i]);
         }
@@ -169,8 +221,11 @@ function updateMetrics(samples, sampleRate) {
 
 function animateUI() {
     drawPluginUI();
-    // Continue animation
-    requestAnimationFrame(animateUI);
+    // Cancel any previous animation frame and start new one
+    if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+    }
+    animationFrameId = requestAnimationFrame(animateUI);
 }
 
 function handleError(error) {

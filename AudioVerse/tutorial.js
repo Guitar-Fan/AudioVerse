@@ -319,21 +319,25 @@ function checkTutorialAction(actionName) {
 }
 
 // Hook tutorial checks into existing functions
-const originalPlayAll = playAll;
-playAll = function() {
-  checkTutorialAction('click-play');
-  return originalPlayAll.apply(this, arguments);
-};
+if (typeof window.playAll === 'function') {
+  const originalPlayAll = window.playAll;
+  window.playAll = function() {
+    checkTutorialAction('click-play');
+    return originalPlayAll.apply(this, arguments);
+  };
+}
 
-const originalStopAll = stopAll;
-stopAll = function() {
-  if (isRecording) {
-    checkTutorialAction('stop-recording');
-  } else {
-    checkTutorialAction('click-stop');
-  }
-  return originalStopAll.apply(this, arguments);
-};
+if (typeof window.stopAll === 'function') {
+  const originalStopAll = window.stopAll;
+  window.stopAll = function() {
+    if (window.isRecording) {
+      checkTutorialAction('stop-recording');
+    } else {
+      checkTutorialAction('click-stop');
+    }
+    return originalStopAll.apply(this, arguments);
+  };
+}
 
 // Tutorial event listeners
 document.getElementById('tutorial-btn')?.addEventListener('click', startTutorial);

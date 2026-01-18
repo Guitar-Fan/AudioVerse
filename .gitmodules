@@ -1,0 +1,21 @@
+[submodule "emsdk"]
+	path = emsdk
+	url = https://github.com/emscripten-core/emsdk.git
+[submodule "third_party/aubio"]
+	path = third_party/aubio
+	url = https://github.com/aubio/aubio.git
+[submodule "third_party/hiir"]
+	path = third_party/hiir
+	url = https://github.com/vinniefalco/DSPFilters.git
+[submodule "third_party/iPlug2"]
+	path = third_party/iPlug2
+	url = https://github.com/iPlug2/iPlug2.git
+[submodule "third_party/JUCE"]
+	path = third_party/JUCE
+	url = https://github.com/juce-framework/JUCE.git
+[submodule "third_party/kissfft"]
+	path = third_party/kissfft
+	url = https://github.com/mborgerding/kissfft.git
+[submodule "third_party/soundtouch"]
+	path = third_party/soundtouch
+	url = https://codeberg.org/soundtouch/soundtouch.git
