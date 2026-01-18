@@ -140,6 +140,7 @@ function switchTab(tabName) {
     event.target.classList.add('active');
     
     if (tabName === 'analysis') showAnalysisView();
+    else if (tabName === 'interactive') showInteractiveView();
     else if (tabName === 'editor') showEditorView();
     else if (tabName === 'effects') showEffectsView();
 }

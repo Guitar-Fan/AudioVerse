@@ -81,12 +81,12 @@ clean: CMakeFiles/audio-studio.dir/clean
 CMakeFiles/audio-studio.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/audio-studio.dir/build.make CMakeFiles/audio-studio.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/audio-studio.dir/build.make CMakeFiles/audio-studio.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles --progress-num=1,2,3,4 "Built target audio-studio"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles --progress-num=1,2,3,4,5 "Built target audio-studio"
 .PHONY : CMakeFiles/audio-studio.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/audio-studio.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles 4
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles 5
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/audio-studio.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles 0
 .PHONY : CMakeFiles/audio-studio.dir/rule

@@ -654,4 +654,5 @@ CMakeFiles/audio-studio.dir/src/bindings.cpp.o: \
   /workspaces/AudioVerse/emsdk/upstream/emscripten/cache/sysroot/include/c++/v1/__fwd/stack.h \
   /workspaces/AudioVerse/emsdk/upstream/emscripten/cache/sysroot/include/c++/v1/print \
   /workspaces/AudioVerse/emsdk/upstream/emscripten/cache/sysroot/include/unistd.h \
-  /workspaces/AudioVerse/cpp-audio-studio/include/AudioEditor.h
+  /workspaces/AudioVerse/cpp-audio-studio/include/AudioEditor.h \
+  /workspaces/AudioVerse/cpp-audio-studio/include/PluginUI.h

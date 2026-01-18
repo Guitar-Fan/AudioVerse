@@ -1332,7 +1332,23 @@
     </div>
   </div>
 
+  <!-- Tutorial System -->
+  <button id="tutorial-btn" class="tutorial-launch-btn">🎸 Meet Riff</button>
+  <div id="tutorial-overlay" class="tutorial-overlay">
+    <div id="tutorial-character" class="tutorial-character">🎸</div>
+    <div id="tutorial-dialogue" class="tutorial-dialogue">
+      <div id="tutorial-text" class="tutorial-text"></div>
+      <div id="tutorial-controls" class="tutorial-controls">
+        <button id="tutorial-next" class="tutorial-btn-small">Next</button>
+        <button id="tutorial-skip" class="tutorial-btn-small skip">Skip Tutorial</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
+  
+  <!-- Load tutorial system (DAW.js already loaded earlier) -->
+  <script src="tutorial.js"></script>
 </body>
 </html>

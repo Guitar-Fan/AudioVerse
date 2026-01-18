@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++ Audio Analysis Studio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3e 100%);
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #00d4ff;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+        
+        .controls {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        
+        .file-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        input[type="file"] {
+            padding: 10px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 2px solid #00d4ff;
+            border-radius: 5px;
+            color: #e0e0e0;
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        input[type="file"]::-webkit-file-upload-button {
+            background: #00d4ff;
+            color: #1e1e2e;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .metric {
+            background: rgba(0, 212, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #00d4ff;
+        }
+        
+        .metric-label {
+            font-size: 0.85em;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+        
+        .visualizations {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 20px;
+        }
+        
+        .viz-panel {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        
+        .viz-title {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            display: block;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        .status.loading {
+            background: rgba(255, 165, 0, 0.2);
+            color: #ffa500;
+            border: 1px solid #ffa500;
+        }
+        
+        .status.ready {
+            background: rgba(0, 255, 0, 0.2);
+            color: #00ff00;
+            border: 1px solid #00ff00;
+        }
+        
+        .status.error {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff0000;
+            border: 1px solid #ff0000;
+        }
+        
+        @media (max-width: 768px) {
+            .visualizations {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 C++ Audio Analysis Studio</h1>
+        <p class="subtitle">High-performance WASM-powered audio analysis • Built with C++ & Emscripten</p>
+        
+        <div id="status" class="status loading">Loading C++ engine...</div>
+        
+        <div class="controls">
+            <div class="file-input-wrapper">
+                <input type="file" id="audioFile" accept="audio/*" disabled>
+            </div>
+        </div>
+        
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-label">Peak Level</div>
+                <div class="metric-value" id="peakLevel">-∞ dB</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">RMS Level</div>
+                <div class="metric-value" id="rmsLevel">-∞ dB</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Dominant Frequency</div>
+                <div class="metric-value" id="dominantFreq">-- Hz</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Spectral Centroid</div>
+                <div class="metric-value" id="spectralCentroid">-- Hz</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Spectral Rolloff</div>
+                <div class="metric-value" id="spectralRolloff">-- Hz</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Sample Rate</div>
+                <div class="metric-value" id="sampleRate">-- Hz</div>
+            </div>
+        </div>
+        
+        <div class="visualizations">
+            <div class="viz-panel">
+                <div class="viz-title">Waveform Analysis</div>
+                <canvas id="waveformCanvas"></canvas>
+            </div>
+            
+            <div class="viz-panel">
+                <div class="viz-title">Frequency Spectrum (FFT)</div>
+                <canvas id="spectrumCanvas"></canvas>
+            </div>
+            
+            <div class="viz-panel">
+                <div class="viz-title">Phase Spectrum</div>
+                <canvas id="phaseCanvas"></canvas>
+            </div>
+            
+            <div class="viz-panel">
+                <div class="viz-title">Spectrogram (Time-Frequency)</div>
+                <canvas id="spectrogramCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <script src="audio-studio.js"></script>
+    <script src="app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>eruda.init();</script>
+</body>
+</html>
