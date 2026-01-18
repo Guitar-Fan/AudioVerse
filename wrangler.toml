@@ -1,39 +1,4 @@
 name = "audioverse"
 compatibility_date = "2024-01-01"
 
-[site]
-bucket = "."
-
-# Exclude large directories and submodules from deployment
-[[rules]]
-type = "Text"
-globs = ["**/*.html", "**/*.js", "**/*.css", "**/*.wasm", "**/*.json", "**/*.md", "**/*.txt"]
-fallthrough = false
-
-[[rules]]
-type = "Data"
-globs = ["**/*"]
-fallthrough = true
-
-# Build configuration
-[build]
-command = ""
-cwd = ""
-watch_dirs = []
-
-# Exclude patterns
-[build.upload]
-exclude = [
-  "emsdk/**",
-  "third_party/**", 
-  "node_modules/**",
-  ".git/**",
-  "*.sh",
-  "build/**",
-  "cpp-audio-studio/build/**",
-  "Open-musician/node_modules/**",
-  "Tone.js-dev/node_modules/**",
-  "reaper_linux_x86_64/**",
-  "reaper-web/build/**",
-  "wasm-tests/**"
-]
+pages_build_output_dir = "."

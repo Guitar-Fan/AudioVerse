@@ -1,0 +1,21 @@
+# Cloudflare Pages ignore file
+# Exclude submodules and large directories
+
+emsdk/
+third_party/
+node_modules/
+.git/
+build/
+cpp-audio-studio/build/
+Open-musician/node_modules/
+Tone.js-dev/node_modules/
+reaper_linux_x86_64/
+reaper-web/build/
+wasm-tests/
+
+# Build scripts
+*.sh
+
+# Development files
+.vscode/
+.devcontainer/
