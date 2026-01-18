@@ -1,0 +1,2003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tone.js Modular Studio - Desktop DAW</title>
+  
+  <!-- CDN Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/tone@latest/build/Tone.js"></script>
+  <script src="https://unpkg.com/d3@7.8.5/dist/d3.min.js"></script>
+  <script src="https://unpkg.com/lodash@4.17.21/lodash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+  
+  <style>
+    :root {
+      --bg-dark: #1a1d29;
+      --bg-panel: #252836;
+      --bg-card: #2d3142;
+      --bg-canvas: #1e2030;
+      --accent-cyan: #00d9ff;
+      --accent-purple: #a78bfa;
+      --accent-pink: #f472b6;
+      --accent-orange: #fb923c;
+      --accent-green: #34d399;
+      --text: #f0f0f5;
+      --text-muted: #a0a0b0;
+      --border: #3a3f52;
+      --shadow: rgba(0, 0, 0, 0.5);
+      --node-input: #4ade80;
+      --node-output: #f87171;
+      --wire-color: #60a5fa;
+    }
+
+    * { 
+      margin: 0; 
+      padding: 0; 
+      box-sizing: border-box; 
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Main Layout */
+    .daw-container {
+      display: grid;
+      grid-template-rows: 50px 1fr 200px;
+      grid-template-columns: 280px 1fr;
+      height: 100vh;
+      gap: 0;
+    }
+
+    /* Top Bar */
+    .top-bar {
+      grid-column: 1 / -1;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 20px;
+      box-shadow: 0 2px 10px var(--shadow);
+      z-index: 1000;
+    }
+
+    .logo {
+      font-weight: 700;
+      font-size: 18px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      white-space: nowrap;
+    }
+
+    .transport-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .transport-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-size: 18px;
+    }
+
+    .transport-btn:hover {
+      background: var(--accent-cyan);
+      color: #000;
+      border-color: var(--accent-cyan);
+    }
+
+    .transport-btn.active {
+      background: var(--accent-green);
+      border-color: var(--accent-green);
+      color: #000;
+    }
+
+    .stats {
+      margin-left: auto;
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .stat-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-section h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .plugin-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      cursor: grab;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .plugin-item:hover {
+      background: var(--bg-canvas);
+      border-color: var(--accent-cyan);
+      transform: translateX(4px);
+    }
+
+    .plugin-item:active {
+      cursor: grabbing;
+    }
+
+    .plugin-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .plugin-icon.instrument {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+    }
+
+    .plugin-icon.effect {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
+    }
+
+    .plugin-icon.io {
+      background: linear-gradient(135deg, var(--accent-orange), var(--accent-pink));
+    }
+
+    .plugin-name {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    /* Canvas Area */
+    .canvas-area {
+      background: var(--bg-canvas);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #canvas {
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+
+    #canvas.panning {
+      cursor: grabbing;
+    }
+
+    /* Node Styles */
+    .node {
+      position: absolute;
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      min-width: 180px;
+      box-shadow: 0 4px 20px var(--shadow);
+      cursor: move;
+      transition: box-shadow 0.2s;
+    }
+
+    .node:hover {
+      box-shadow: 0 6px 30px rgba(0, 217, 255, 0.3);
+    }
+
+    .node.selected {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 6px 30px rgba(0, 217, 255, 0.5);
+    }
+
+    .node-header {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+      padding: 10px 12px;
+      border-radius: 10px 10px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: move;
+    }
+
+    .node.instrument .node-header {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+    }
+
+    .node.effect .node-header {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
+    }
+
+    .node.io .node-header {
+      background: linear-gradient(135deg, var(--accent-orange), var(--accent-pink));
+    }
+
+    .node-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #000;
+    }
+
+    .node-close {
+      background: rgba(255, 255, 255, 0.3);
+      border: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-size: 14px;
+    }
+
+    .node-close:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .node-body {
+      padding: 12px;
+    }
+
+    .node-ports {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .port-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .port {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      cursor: crosshair;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .port.input {
+      background: var(--node-input);
+    }
+
+    .port.output {
+      background: var(--node-output);
+    }
+
+    .port:hover {
+      transform: scale(1.3);
+      box-shadow: 0 0 10px currentColor;
+    }
+
+    .port-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* Wire/Connection Styles */
+    #wires-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wire {
+      fill: none;
+      stroke: var(--wire-color);
+      stroke-width: 3;
+      stroke-linecap: round;
+      opacity: 0.8;
+      filter: drop-shadow(0 0 4px var(--wire-color));
+    }
+
+    .wire.temp {
+      stroke-dasharray: 5, 5;
+      opacity: 0.6;
+    }
+
+    /* Plugin Window */
+    .plugin-window {
+      position: absolute;
+      background: var(--bg-panel);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      min-width: 320px;
+      max-width: 500px;
+      box-shadow: 0 10px 50px var(--shadow);
+      z-index: 500;
+      display: none;
+    }
+
+    .plugin-window.visible {
+      display: block;
+    }
+
+    .plugin-window-header {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      padding: 12px 16px;
+      border-radius: 10px 10px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: move;
+    }
+
+    .plugin-window-title {
+      font-weight: 700;
+      color: #000;
+    }
+
+    .plugin-window-close {
+      background: rgba(255, 255, 255, 0.3);
+      border: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-size: 16px;
+    }
+
+    .plugin-window-close:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .plugin-window-body {
+      padding: 20px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .param-group {
+      margin-bottom: 20px;
+    }
+
+    .param-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .param-value {
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    .param-control {
+      width: 100%;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--bg-card);
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      cursor: pointer;
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    select {
+      width: 100%;
+      background: var(--bg-card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Keyboard Section */
+    .keyboard-section {
+      grid-column: 1 / -1;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    .keyboard {
+      display: flex;
+      gap: 2px;
+      justify-content: center;
+      min-width: 700px;
+    }
+
+    .key {
+      width: 48px;
+      height: 140px;
+      background: linear-gradient(180deg, #f0f0f0, #d0d0d0);
+      border: 2px solid #333;
+      border-radius: 0 0 8px 8px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.1s;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 8px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #666;
+    }
+
+    .key:hover {
+      background: linear-gradient(180deg, #fff, #e0e0e0);
+      transform: translateY(-2px);
+    }
+
+    .key:active, .key.playing {
+      background: linear-gradient(180deg, var(--accent-cyan), var(--accent-purple));
+      transform: translateY(2px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      color: #000;
+    }
+
+    .key.black {
+      width: 32px;
+      height: 90px;
+      background: linear-gradient(180deg, #2a2a2a, #1a1a1a);
+      margin: 0 -17px;
+      z-index: 2;
+      border-radius: 0 0 6px 6px;
+      color: #999;
+    }
+
+    .key.black:hover {
+      background: linear-gradient(180deg, #3a3a3a, #2a2a2a);
+    }
+
+    .key.black:active, .key.black.playing {
+      background: linear-gradient(180deg, var(--accent-purple), var(--accent-pink));
+      color: #fff;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-dark);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--bg-card);
+      border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--border);
+    }
+  </style>
+</head>
+<body>
+  
+  <div class="daw-container">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="logo">🎹 Tone.js Modular Studio</div>
+      
+      <div class="transport-controls">
+        <button class="transport-btn" id="play-btn" title="Play">▶</button>
+        <button class="transport-btn" id="stop-btn" title="Stop">■</button>
+        <button class="transport-btn" id="panic-btn" title="Panic - Stop All">🛑</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat-item">
+          <div class="stat-value" id="node-count">0</div>
+          <div>Nodes</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="connection-count">0</div>
+          <div>Connections</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="voice-count">0</div>
+          <div>Voices</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar - Plugin Bank -->
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <h3>🎹 Instruments</h3>
+        <div id="instruments-list"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>✨ Effects</h3>
+        <div id="effects-list"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>�️ Signal Processors</h3>
+        <div id="processors-list"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>🌊 Modulators</h3>
+        <div id="modulators-list"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>📊 Analyzers</h3>
+        <div id="analyzers-list"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>🎵 Sources</h3>
+        <div id="sources-list"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>🎚️ Utilities</h3>
+        <div id="utilities-list"></div>
+        <div class="plugin-item" data-type="io" data-name="MIDI Input">
+          <div class="plugin-icon io">⌨️</div>
+          <div class="plugin-name">MIDI Input</div>
+        </div>
+        <div class="plugin-item" data-type="io" data-name="Audio Output">
+          <div class="plugin-icon io">🔊</div>
+          <div class="plugin-name">Audio Output</div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>⏱️ Sequencer</h3>
+        <div class="plugin-item" data-type="sequencer" data-name="Step Sequencer">
+          <div class="plugin-icon sequencer" style="background: linear-gradient(135deg, #facc15, #fb923c)">🎹</div>
+          <div class="plugin-name">Step Sequencer</div>
+        </div>
+        <div class="plugin-item" data-type="sequencer" data-name="Pattern">
+          <div class="plugin-icon sequencer" style="background: linear-gradient(135deg, #facc15, #fb923c)">🎼</div>
+          <div class="plugin-name">Pattern</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas Area -->
+    <div class="canvas-area">
+      <svg id="wires-svg"></svg>
+      <div id="canvas"></div>
+    </div>
+
+    <!-- Keyboard Section -->
+    <div class="keyboard-section">
+      <div class="keyboard" id="keyboard"></div>
+    </div>
+  </div>
+
+  <!-- Plugin Window Template -->
+  <div class="plugin-window" id="plugin-window">
+    <div class="plugin-window-header">
+      <div class="plugin-window-title" id="plugin-window-title">Plugin Settings</div>
+      <button class="plugin-window-close" id="plugin-window-close">×</button>
+    </div>
+    <div class="plugin-window-body" id="plugin-window-body"></div>
+  </div>
+
+  <script>
+    // Audio Context Start
+    document.addEventListener('click', async () => {
+      if (Tone.context.state !== 'running') {
+        await Tone.start();
+        console.log('Audio context started');
+      }
+    }, { once: true });
+
+    // Plugin Definitions
+    const INSTRUMENTS = [
+      'Synth', 'AMSynth', 'FMSynth', 'MonoSynth', 'DuoSynth',
+      'MembraneSynth', 'MetalSynth', 'NoiseSynth', 'PluckSynth', 'PolySynth'
+    ];
+
+    const EFFECTS = [
+      'AutoFilter', 'AutoPanner', 'AutoWah', 'BitCrusher', 'Chebyshev',
+      'Chorus', 'Distortion', 'FeedbackDelay', 'Freeverb', 'FrequencyShifter',
+      'JCReverb', 'Phaser', 'PingPongDelay', 'PitchShift', 'Reverb',
+      'StereoWidener', 'Tremolo', 'Vibrato'
+    ];
+
+    const SIGNAL_PROCESSORS = [
+      'Filter', 'EQ3', 'Compressor', 'Limiter', 'Gate',
+      'MultibandCompressor', 'MidSideCompressor', 'Convolver'
+    ];
+
+    const MODULATORS = [
+      'LFO', 'Envelope', 'FrequencyEnvelope', 'AmplitudeEnvelope'
+    ];
+
+    const ANALYZERS = [
+      'Waveform', 'FFT', 'Meter', 'Follower'
+    ];
+
+    const SOURCES = [
+      'Oscillator', 'Noise', 'Player', 'GrainPlayer'
+    ];
+
+    const UTILITIES = [
+      'Gain', 'Panner', 'Volume', 'Channel', 'Solo',
+      'Split', 'Merge', 'Mono', 'CrossFade'
+    ];
+
+    // State Management
+    const state = {
+      nodes: [],
+      connections: [],
+      selectedNode: null,
+      draggingConnection: null,
+      canvasOffset: { x: 0, y: 0 },
+      isPanning: false,
+      panStart: { x: 0, y: 0 },
+      nodeIdCounter: 0,
+      activeVoices: new Set()
+    };
+
+    // Initialize
+    function init() {
+      populatePluginLists();
+      setupCanvas();
+      setupKeyboard();
+      setupDragAndDrop();
+      setupTransportControls();
+      createDefaultNodes();
+      render();
+    }
+
+    // Populate Plugin Lists
+    function populatePluginLists() {
+      const instrumentsList = document.getElementById('instruments-list');
+      const effectsList = document.getElementById('effects-list');
+      const processorsList = document.getElementById('processors-list');
+      const modulatorsList = document.getElementById('modulators-list');
+      const analyzersList = document.getElementById('analyzers-list');
+      const sourcesList = document.getElementById('sources-list');
+      const utilitiesList = document.getElementById('utilities-list');
+
+      INSTRUMENTS.forEach(name => {
+        const item = createPluginListItem(name, 'instrument', '🎹');
+        instrumentsList.appendChild(item);
+      });
+
+      EFFECTS.forEach(name => {
+        const item = createPluginListItem(name, 'effect', '✨');
+        effectsList.appendChild(item);
+      });
+
+      SIGNAL_PROCESSORS.forEach(name => {
+        const item = createPluginListItem(name, 'processor', '🎛️');
+        processorsList.appendChild(item);
+      });
+
+      MODULATORS.forEach(name => {
+        const item = createPluginListItem(name, 'modulator', '🌊');
+        modulatorsList.appendChild(item);
+      });
+
+      ANALYZERS.forEach(name => {
+        const item = createPluginListItem(name, 'analyzer', '📊');
+        analyzersList.appendChild(item);
+      });
+
+      SOURCES.forEach(name => {
+        const item = createPluginListItem(name, 'source', '🎵');
+        sourcesList.appendChild(item);
+      });
+
+      UTILITIES.forEach(name => {
+        const item = createPluginListItem(name, 'utility', '🔧');
+        utilitiesList.appendChild(item);
+      });
+    }
+
+    function createPluginListItem(name, type, icon) {
+      const div = document.createElement('div');
+      div.className = 'plugin-item';
+      div.dataset.type = type;
+      div.dataset.name = name;
+      div.innerHTML = `
+        <div class="plugin-icon ${type}">${icon}</div>
+        <div class="plugin-name">${name}</div>
+      `;
+      return div;
+    }
+
+    // Setup Drag and Drop
+    function setupDragAndDrop() {
+      const pluginItems = document.querySelectorAll('.plugin-item');
+      
+      pluginItems.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('plugin', JSON.stringify({
+            type: item.dataset.type,
+            name: item.dataset.name
+          }));
+        });
+        item.setAttribute('draggable', 'true');
+      });
+
+      const canvas = document.getElementById('canvas');
+      canvas.addEventListener('dragover', (e) => e.preventDefault());
+      canvas.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const data = JSON.parse(e.dataTransfer.getData('plugin'));
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left - state.canvasOffset.x;
+        const y = e.clientY - rect.top - state.canvasOffset.y;
+        createNode(data.type, data.name, x, y);
+      });
+    }
+
+    // Create Node
+    function createNode(type, name, x, y) {
+      const id = `node-${state.nodeIdCounter++}`;
+      
+      // Create Tone.js instance
+      let audioNode = null;
+      let isSource = false;
+      try {
+        if (type === 'instrument') {
+          if (name === 'PolySynth') {
+            audioNode = new Tone.PolySynth(Tone.Synth);
+          } else {
+            audioNode = new Tone[name]();
+          }
+        } else if (type === 'effect' || type === 'processor') {
+          audioNode = new Tone[name]();
+        } else if (type === 'modulator') {
+          if (name === 'LFO') {
+            audioNode = new Tone.LFO(4, 0, 1);
+            audioNode.start();
+          } else if (name === 'Envelope' || name === 'FrequencyEnvelope' || name === 'AmplitudeEnvelope') {
+            audioNode = new Tone[name]();
+          }
+        } else if (type === 'analyzer') {
+          if (name === 'Waveform') {
+            audioNode = new Tone.Waveform(1024);
+          } else if (name === 'FFT') {
+            audioNode = new Tone.FFT(1024);
+          } else if (name === 'Meter') {
+            audioNode = new Tone.Meter();
+          } else if (name === 'Follower') {
+            audioNode = new Tone.Follower();
+          }
+        } else if (type === 'source') {
+          if (name === 'Oscillator') {
+            audioNode = new Tone.Oscillator(440, 'sine');
+            isSource = true;
+          } else if (name === 'Noise') {
+            audioNode = new Tone.Noise('white');
+            isSource = true;
+          } else if (name === 'Player') {
+            audioNode = new Tone.Player();
+            isSource = true;
+          } else if (name === 'GrainPlayer') {
+            audioNode = new Tone.GrainPlayer();
+            isSource = true;
+          }
+        } else if (type === 'utility') {
+          if (name === 'Gain') {
+            audioNode = new Tone.Gain(1);
+          } else if (name === 'Volume') {
+            audioNode = new Tone.Volume(0);
+          } else if (name === 'Panner') {
+            audioNode = new Tone.Panner(0);
+          } else if (name === 'Channel') {
+            audioNode = new Tone.Channel();
+          } else if (name === 'Solo') {
+            audioNode = new Tone.Solo();
+          } else if (name === 'Split' || name === 'Merge' || name === 'Mono' || name === 'CrossFade') {
+            audioNode = new Tone[name]();
+          }
+        } else if (type === 'sequencer') {
+          // Sequencers are handled differently
+          audioNode = { type: 'sequencer', name };
+        }
+      } catch (e) {
+        console.error(`Error creating ${name}:`, e);
+      }
+
+      const node = {
+        id,
+        type,
+        name,
+        x,
+        y,
+        audioNode,
+        isSource,
+        inputs: type !== 'io' || name === 'Audio Output' ? (type === 'modulator' ? ['in', 'trigger'] : ['in']) : [],
+        outputs: type !== 'io' || name === 'MIDI Input' ? (type === 'analyzer' ? ['signal'] : ['out']) : [],
+        visualizerData: type === 'analyzer' ? [] : null,
+        sequencerPattern: type === 'sequencer' ? Array(16).fill(false) : null
+      };
+
+      state.nodes.push(node);
+      updateStats();
+      render();
+      return node;
+    }
+
+    // Create Default Nodes
+    function createDefaultNodes() {
+      const midiInput = createNode('io', 'MIDI Input', 100, 200);
+      const synth = createNode('instrument', 'Synth', 350, 200);
+      const output = createNode('io', 'Audio Output', 600, 200);
+      
+      // Auto-connect
+      createConnection(midiInput.id, 'out', synth.id, 'in');
+      createConnection(synth.id, 'out', output.id, 'in');
+    }
+
+    // Create Connection
+    function createConnection(fromNodeId, fromPort, toNodeId, toPort) {
+      const fromNode = state.nodes.find(n => n.id === fromNodeId);
+      const toNode = state.nodes.find(n => n.id === toNodeId);
+
+      if (!fromNode || !toNode) return;
+
+      // Audio routing
+      if (fromNode.audioNode && toNode.audioNode) {
+        try {
+          fromNode.audioNode.connect(toNode.audioNode);
+        } catch (e) {
+          console.error('Connection error:', e);
+        }
+      } else if (fromNode.audioNode && toNode.name === 'Audio Output') {
+        fromNode.audioNode.toDestination();
+      }
+
+      state.connections.push({
+        from: fromNodeId,
+        fromPort,
+        to: toNodeId,
+        toPort
+      });
+
+      updateStats();
+      render();
+    }
+
+    // Render Canvas
+    function render() {
+      const canvas = document.getElementById('canvas');
+      
+      // Clear existing nodes
+      canvas.innerHTML = '';
+
+      // Render nodes
+      state.nodes.forEach(node => {
+        const nodeEl = createNodeElement(node);
+        canvas.appendChild(nodeEl);
+      });
+
+      // Render connections
+      renderConnections();
+      updateStats();
+    }
+
+    // Create Node Element
+    function createNodeElement(node) {
+      const div = document.createElement('div');
+      div.className = `node ${node.type}`;
+      div.id = node.id;
+      div.style.left = `${node.x + state.canvasOffset.x}px`;
+      div.style.top = `${node.y + state.canvasOffset.y}px`;
+
+      div.innerHTML = `
+        <div class="node-header">
+          <div class="node-title">${node.name}</div>
+          ${node.type !== 'io' ? '<button class="node-close">×</button>' : ''}
+        </div>
+        <div class="node-body">
+          <div class="node-ports">
+            <div class="port-container">
+              ${node.inputs.map(port => `
+                <div class="port input" data-node="${node.id}" data-port="${port}"></div>
+                <div class="port-label">In</div>
+              `).join('')}
+            </div>
+            <div class="port-container">
+              ${node.outputs.map(port => `
+                <div class="port output" data-node="${node.id}" data-port="${port}"></div>
+                <div class="port-label">Out</div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Make draggable
+      makeDraggable(div, node);
+
+      // Double-click to open plugin window
+      div.addEventListener('dblclick', (e) => {
+        if (!e.target.classList.contains('node-close')) {
+          openPluginWindow(node);
+        }
+      });
+
+      // Close button
+      const closeBtn = div.querySelector('.node-close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteNode(node.id);
+        });
+      }
+
+      // Port interactions
+      const ports = div.querySelectorAll('.port');
+      ports.forEach(port => {
+        port.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          startConnection(port);
+        });
+      });
+
+      return div;
+    }
+
+    // Make Node Draggable
+    function makeDraggable(element, node) {
+      let isDragging = false;
+      let startX, startY;
+
+      const header = element.querySelector('.node-header');
+      
+      header.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('node-close')) return;
+        isDragging = true;
+        startX = e.clientX - node.x;
+        startY = e.clientY - node.y;
+        element.classList.add('selected');
+        state.selectedNode = node;
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        node.x = e.clientX - startX;
+        node.y = e.clientY - startY;
+        element.style.left = `${node.x + state.canvasOffset.x}px`;
+        element.style.top = `${node.y + state.canvasOffset.y}px`;
+        renderConnections();
+      });
+
+      document.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+    }
+
+    // Delete Node
+    function deleteNode(nodeId) {
+      const node = state.nodes.find(n => n.id === nodeId);
+      if (node && node.audioNode) {
+        try {
+          // Check if dispose method exists (not all custom objects have it)
+          if (typeof node.audioNode.dispose === 'function') {
+            node.audioNode.dispose();
+          } else if (node.audioNode.disconnect && typeof node.audioNode.disconnect === 'function') {
+            // At minimum, disconnect the node
+            node.audioNode.disconnect();
+          }
+        } catch (e) {
+          console.error('Error disposing audio node:', e);
+        }
+      }
+
+      state.nodes = state.nodes.filter(n => n.id !== nodeId);
+      state.connections = state.connections.filter(c => 
+        c.from !== nodeId && c.to !== nodeId
+      );
+
+      render();
+    }
+
+    // Start Connection
+    function startConnection(portEl) {
+      const nodeId = portEl.dataset.node;
+      const port = portEl.dataset.port;
+      const isOutput = portEl.classList.contains('output');
+
+      if (!isOutput) return; // Only start from outputs
+
+      state.draggingConnection = { from: nodeId, fromPort: port };
+
+      document.addEventListener('mousemove', dragConnection);
+      document.addEventListener('mouseup', endConnection);
+    }
+
+    function dragConnection(e) {
+      if (!state.draggingConnection) return;
+      renderConnections(e);
+    }
+
+    function endConnection(e) {
+      if (!state.draggingConnection) return;
+
+      const target = document.elementFromPoint(e.clientX, e.clientY);
+      if (target && target.classList.contains('port') && target.classList.contains('input')) {
+        const toNodeId = target.dataset.node;
+        const toPort = target.dataset.port;
+        createConnection(
+          state.draggingConnection.from,
+          state.draggingConnection.fromPort,
+          toNodeId,
+          toPort
+        );
+      }
+
+      state.draggingConnection = null;
+      document.removeEventListener('mousemove', dragConnection);
+      document.removeEventListener('mouseup', endConnection);
+      render();
+    }
+
+    // Render Connections
+    function renderConnections(mouseEvent = null) {
+      const svg = d3.select('#wires-svg');
+      svg.selectAll('*').remove();
+
+      // Render existing connections
+      state.connections.forEach(conn => {
+        const fromNode = state.nodes.find(n => n.id === conn.from);
+        const toNode = state.nodes.find(n => n.id === conn.to);
+        if (!fromNode || !toNode) return;
+
+        const fromEl = document.querySelector(`#${conn.from} .port.output`);
+        const toEl = document.querySelector(`#${conn.to} .port.input`);
+        if (!fromEl || !toEl) return;
+
+        const fromRect = fromEl.getBoundingClientRect();
+        const toRect = toEl.getBoundingClientRect();
+        const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+
+        const x1 = fromRect.left + fromRect.width / 2 - canvasRect.left;
+        const y1 = fromRect.top + fromRect.height / 2 - canvasRect.top;
+        const x2 = toRect.left + toRect.width / 2 - canvasRect.left;
+        const y2 = toRect.top + toRect.height / 2 - canvasRect.top;
+
+        drawWire(svg, x1, y1, x2, y2, false);
+      });
+
+      // Render dragging connection
+      if (state.draggingConnection && mouseEvent) {
+        const fromNode = state.nodes.find(n => n.id === state.draggingConnection.from);
+        if (fromNode) {
+          const fromEl = document.querySelector(`#${state.draggingConnection.from} .port.output`);
+          if (fromEl) {
+            const fromRect = fromEl.getBoundingClientRect();
+            const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+            const x1 = fromRect.left + fromRect.width / 2 - canvasRect.left;
+            const y1 = fromRect.top + fromRect.height / 2 - canvasRect.top;
+            const x2 = mouseEvent.clientX - canvasRect.left;
+            const y2 = mouseEvent.clientY - canvasRect.top;
+            drawWire(svg, x1, y1, x2, y2, true);
+          }
+        }
+      }
+    }
+
+    // Draw Wire (Bezier Curve)
+    function drawWire(svg, x1, y1, x2, y2, isTemp) {
+      const dx = Math.abs(x2 - x1);
+      const controlPointOffset = Math.min(dx * 0.5, 200);
+
+      const path = d3.path();
+      path.moveTo(x1, y1);
+      path.bezierCurveTo(
+        x1 + controlPointOffset, y1,
+        x2 - controlPointOffset, y2,
+        x2, y2
+      );
+
+      svg.append('path')
+        .attr('class', isTemp ? 'wire temp' : 'wire')
+        .attr('d', path.toString());
+    }
+
+    // Canvas Panning
+    function setupCanvas() {
+      const canvas = document.getElementById('canvas');
+      
+      canvas.addEventListener('mousedown', (e) => {
+        if (e.target === canvas) {
+          state.isPanning = true;
+          state.panStart = { x: e.clientX, y: e.clientY };
+          canvas.classList.add('panning');
+        }
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (state.isPanning) {
+          const dx = e.clientX - state.panStart.x;
+          const dy = e.clientY - state.panStart.y;
+          state.canvasOffset.x += dx;
+          state.canvasOffset.y += dy;
+          state.panStart = { x: e.clientX, y: e.clientY };
+          render();
+        }
+      });
+
+      document.addEventListener('mouseup', () => {
+        state.isPanning = false;
+        canvas.classList.remove('panning');
+      });
+    }
+
+    // Open Plugin Window
+    function openPluginWindow(node) {
+      if (!node.audioNode) return;
+
+      const window = document.getElementById('plugin-window');
+      const title = document.getElementById('plugin-window-title');
+      const body = document.getElementById('plugin-window-body');
+
+      title.textContent = `${node.name} Settings`;
+      body.innerHTML = '';
+
+      // Get parameters
+      const params = getNodeParameters(node);
+      
+      // Add visualizer for analyzer nodes
+      if (node.type === 'analyzer') {
+        const canvas = document.createElement('canvas');
+        canvas.width = 280;
+        canvas.height = 150;
+        canvas.style.background = 'var(--bg-dark)';
+        canvas.style.borderRadius = '8px';
+        canvas.style.marginBottom = '16px';
+        body.appendChild(canvas);
+        startAnalyzerVisualization(node, canvas);
+      }
+      
+      // Add sequencer grid for sequencer nodes
+      if (node.type === 'sequencer') {
+        const sequencerGrid = createSequencerGrid(node);
+        body.appendChild(sequencerGrid);
+      }
+      
+      // Add source controls
+      if (node.isSource) {
+        const sourceControls = createSourceControls(node);
+        body.insertBefore(sourceControls, body.firstChild);
+      }
+      
+      // Show message if no parameters
+      if (params.length === 0) {
+        const noParams = document.createElement('div');
+        noParams.style.color = 'var(--text-dim)';
+        noParams.style.fontSize = '13px';
+        noParams.style.padding = '20px';
+        noParams.style.textAlign = 'center';
+        noParams.textContent = 'No adjustable parameters available';
+        body.appendChild(noParams);
+      }
+      
+      params.forEach(param => {
+        const group = document.createElement('div');
+        group.className = 'param-group';
+        
+        const label = document.createElement('div');
+        label.className = 'param-label';
+        label.innerHTML = `
+          <span>${param.name}</span>
+          <span class="param-value" id="param-value-${param.key}">${param.value}</span>
+        `;
+        
+        const control = document.createElement('input');
+        control.type = param.type || 'range';
+        control.className = 'param-control';
+        control.min = param.min || 0;
+        control.max = param.max || 1;
+        control.step = param.step || 0.01;
+        control.value = param.value;
+        
+        control.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          if (param.setValue) {
+            param.setValue(val);
+          }
+          document.getElementById(`param-value-${param.key}`).textContent = val.toFixed(2);
+        });
+        
+        group.appendChild(label);
+        group.appendChild(control);
+        body.appendChild(group);
+      });
+
+      window.classList.add('visible');
+      
+      // Position window
+      window.style.left = '50%';
+      window.style.top = '50%';
+      window.style.transform = 'translate(-50%, -50%)';
+      
+      makeWindowDraggable(window);
+    }
+
+    // Create Sequencer Grid
+    function createSequencerGrid(node) {
+      const container = document.createElement('div');
+      container.style.marginBottom = '20px';
+      
+      const title = document.createElement('h4');
+      title.textContent = '16-Step Pattern';
+      title.style.marginBottom = '12px';
+      title.style.fontSize = '13px';
+      container.appendChild(title);
+      
+      const grid = document.createElement('div');
+      grid.style.display = 'grid';
+      grid.style.gridTemplateColumns = 'repeat(16, 1fr)';
+      grid.style.gap = '4px';
+      
+      for (let i = 0; i < 16; i++) {
+        const step = document.createElement('div');
+        step.style.width = '15px';
+        step.style.height = '30px';
+        step.style.background = node.sequencerPattern[i] ? 'var(--accent-cyan)' : 'var(--bg-card)';
+        step.style.border = '1px solid var(--border)';
+        step.style.borderRadius = '4px';
+        step.style.cursor = 'pointer';
+        step.style.transition = 'all 0.2s';
+        
+        step.addEventListener('click', () => {
+          node.sequencerPattern[i] = !node.sequencerPattern[i];
+          step.style.background = node.sequencerPattern[i] ? 'var(--accent-cyan)' : 'var(--bg-card)';
+        });
+        
+        grid.appendChild(step);
+      }
+      
+      container.appendChild(grid);
+      return container;
+    }
+
+    // Create Source Controls
+    function createSourceControls(node) {
+      const container = document.createElement('div');
+      container.style.marginBottom = '20px';
+      
+      const startBtn = document.createElement('button');
+      startBtn.textContent = 'Start';
+      startBtn.style.background = 'var(--accent-green)';
+      startBtn.style.color = '#000';
+      startBtn.style.border = 'none';
+      startBtn.style.padding = '8px 16px';
+      startBtn.style.borderRadius = '8px';
+      startBtn.style.cursor = 'pointer';
+      startBtn.style.marginRight = '8px';
+      
+      const stopBtn = document.createElement('button');
+      stopBtn.textContent = 'Stop';
+      stopBtn.style.background = 'var(--accent-pink)';
+      stopBtn.style.color = '#000';
+      stopBtn.style.border = 'none';
+      stopBtn.style.padding = '8px 16px';
+      stopBtn.style.borderRadius = '8px';
+      stopBtn.style.cursor = 'pointer';
+      
+      startBtn.addEventListener('click', () => {
+        if (node.audioNode && node.audioNode.start) {
+          try {
+            node.audioNode.start();
+          } catch (e) {
+            console.log('Source already started or error:', e);
+          }
+        }
+      });
+      
+      stopBtn.addEventListener('click', () => {
+        if (node.audioNode && node.audioNode.stop) {
+          try {
+            node.audioNode.stop();
+          } catch (e) {
+            console.log('Source already stopped or error:', e);
+          }
+        }
+      });
+      
+      container.appendChild(startBtn);
+      container.appendChild(stopBtn);
+      return container;
+    }
+
+    // Start Analyzer Visualization
+    function startAnalyzerVisualization(node, canvas) {
+      const ctx = canvas.getContext('2d');
+      
+      function draw() {
+        if (!document.getElementById('plugin-window').classList.contains('visible')) {
+          return;
+        }
+        
+        requestAnimationFrame(draw);
+        
+        ctx.fillStyle = 'var(--bg-dark)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        if (!node.audioNode) return;
+        
+        if (node.name === 'Waveform') {
+          const values = node.audioNode.getValue();
+          ctx.strokeStyle = '#00d9ff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          
+          const sliceWidth = canvas.width / values.length;
+          let x = 0;
+          
+          for (let i = 0; i < values.length; i++) {
+            const v = (values[i] + 1) / 2;
+            const y = v * canvas.height;
+            
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+            x += sliceWidth;
+          }
+          
+          ctx.stroke();
+        } else if (node.name === 'FFT') {
+          const values = node.audioNode.getValue();
+          const barWidth = canvas.width / values.length;
+          
+          for (let i = 0; i < values.length; i++) {
+            const value = values[i];
+            const percent = (value + 140) / 140;
+            const height = percent * canvas.height;
+            
+            const hue = (i / values.length) * 280;
+            ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;  
+            ctx.fillRect(i * barWidth, canvas.height - height, barWidth - 1, height);
+          }
+        } else if (node.name === 'Meter') {
+          const level = node.audioNode.getValue();
+          const normalizedLevel = (level + 60) / 60;
+          const height = normalizedLevel * canvas.height;
+          
+          ctx.fillStyle = '#00d9ff';
+          ctx.fillRect(20, canvas.height - height, 50, height);
+          
+          ctx.fillStyle = '#f0f0f5';
+          ctx.font = '14px monospace';
+          ctx.fillText(`${level.toFixed(1)} dB`, 90, canvas.height / 2);
+        }
+      }
+      
+      draw();
+    }
+
+    // Get Node Parameters
+    function getNodeParameters(node) {
+      const params = [];
+      const audioNode = node.audioNode;
+
+      if (!audioNode || audioNode.type === 'sequencer') return params;
+
+      // Common parameters
+      if (audioNode.volume) {
+        params.push({
+          key: 'volume',
+          name: 'Volume',
+          value: audioNode.volume.value,
+          min: -40,
+          max: 10,
+          step: 0.1,
+          setValue: (val) => audioNode.volume.value = val
+        });
+      }
+
+      // Instrument-specific
+      if (node.type === 'instrument') {
+        if (audioNode.envelope) {
+          ['attack', 'decay', 'sustain', 'release'].forEach(param => {
+            if (audioNode.envelope[param] !== undefined) {
+              params.push({
+                key: `env-${param}`,
+                name: `Envelope ${param.charAt(0).toUpperCase() + param.slice(1)}`,
+                value: audioNode.envelope[param],
+                min: 0,
+                max: param === 'sustain' ? 1 : 2,
+                step: 0.01,
+                setValue: (val) => audioNode.envelope[param] = val
+              });
+            }
+          });
+        }
+
+        if (audioNode.oscillator && audioNode.oscillator.detune) {
+          params.push({
+            key: 'detune',
+            name: 'Detune',
+            value: audioNode.oscillator.detune.value,
+            min: -100,
+            max: 100,
+            step: 1,
+            setValue: (val) => audioNode.oscillator.detune.value = val
+          });
+        }
+      }
+
+      // Effect-specific
+      if (node.type === 'effect') {
+        if (audioNode.wet) {
+          params.push({
+            key: 'wet',
+            name: 'Wet/Dry Mix',
+            value: audioNode.wet.value,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            setValue: (val) => audioNode.wet.value = val
+          });
+        }
+
+        if (audioNode.delayTime) {
+          params.push({
+            key: 'delayTime',
+            name: 'Delay Time',
+            value: audioNode.delayTime.value,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            setValue: (val) => audioNode.delayTime.value = val
+          });
+        }
+
+        if (audioNode.feedback) {
+          params.push({
+            key: 'feedback',
+            name: 'Feedback',
+            value: audioNode.feedback.value,
+            min: 0,
+            max: 0.99,
+            step: 0.01,
+            setValue: (val) => audioNode.feedback.value = val
+          });
+        }
+
+        if (audioNode.frequency) {
+          params.push({
+            key: 'frequency',
+            name: 'Frequency',
+            value: audioNode.frequency.value,
+            min: 20,
+            max: 10000,
+            step: 10,
+            setValue: (val) => audioNode.frequency.value = val
+          });
+        }
+
+        if (audioNode.depth) {
+          params.push({
+            key: 'depth',
+            name: 'Depth',
+            value: audioNode.depth.value,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            setValue: (val) => audioNode.depth.value = val
+          });
+        }
+      }
+
+      // Processor-specific (Compressor, Filter, EQ, etc.)
+      if (node.type === 'processor') {
+        if (audioNode.threshold) {
+          params.push({
+            key: 'threshold',
+            name: 'Threshold',
+            value: audioNode.threshold.value,
+            min: -100,
+            max: 0,
+            step: 0.1,
+            setValue: (val) => audioNode.threshold.value = val
+          });
+        }
+
+        if (audioNode.ratio) {
+          params.push({
+            key: 'ratio',
+            name: 'Ratio',
+            value: audioNode.ratio.value,
+            min: 1,
+            max: 20,
+            step: 0.1,
+            setValue: (val) => audioNode.ratio.value = val
+          });
+        }
+
+        if (audioNode.attack) {
+          params.push({
+            key: 'attack',
+            name: 'Attack',
+            value: audioNode.attack.value,
+            min: 0,
+            max: 1,
+            step: 0.001,
+            setValue: (val) => audioNode.attack.value = val
+          });
+        }
+
+        if (audioNode.release) {
+          params.push({
+            key: 'release',
+            name: 'Release',
+            value: audioNode.release.value,
+            min: 0,
+            max: 1,
+            step: 0.001,
+            setValue: (val) => audioNode.release.value = val
+          });
+        }
+
+        if (audioNode.knee) {
+          params.push({
+            key: 'knee',
+            name: 'Knee',
+            value: audioNode.knee.value,
+            min: 0,
+            max: 40,
+            step: 1,
+            setValue: (val) => audioNode.knee.value = val
+          });
+        }
+
+        if (audioNode.Q) {
+          params.push({
+            key: 'Q',
+            name: 'Q Factor',
+            value: audioNode.Q.value,
+            min: 0.001,
+            max: 100,
+            step: 0.1,
+            setValue: (val) => audioNode.Q.value = val
+          });
+        }
+
+        if (audioNode.frequency) {
+          params.push({
+            key: 'frequency',
+            name: 'Frequency',
+            value: audioNode.frequency.value,
+            min: 20,
+            max: 20000,
+            step: 1,
+            setValue: (val) => audioNode.frequency.value = val
+          });
+        }
+      }
+
+      // Modulator-specific (LFO, Envelope)
+      if (node.type === 'modulator') {
+        if (audioNode.frequency) {
+          params.push({
+            key: 'frequency',
+            name: 'Frequency',
+            value: audioNode.frequency.value,
+            min: 0.01,
+            max: 20,
+            step: 0.01,
+            setValue: (val) => audioNode.frequency.value = val
+          });
+        }
+
+        if (audioNode.min !== undefined) {
+          params.push({
+            key: 'min',
+            name: 'Min',
+            value: audioNode.min,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            setValue: (val) => audioNode.min = val
+          });
+        }
+
+        if (audioNode.max !== undefined) {
+          params.push({
+            key: 'max',
+            name: 'Max',
+            value: audioNode.max,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            setValue: (val) => audioNode.max = val
+          });
+        }
+
+        // Add envelope parameters
+        if (audioNode.attack !== undefined) {
+          params.push({
+            key: 'attack',
+            name: 'Attack',
+            value: audioNode.attack,
+            min: 0,
+            max: 2,
+            step: 0.01,
+            setValue: (val) => audioNode.attack = val
+          });
+        }
+
+        if (audioNode.decay !== undefined) {
+          params.push({
+            key: 'decay',
+            name: 'Decay',
+            value: audioNode.decay,
+            min: 0,
+            max: 2,
+            step: 0.01,
+            setValue: (val) => audioNode.decay = val
+          });
+        }
+
+        if (audioNode.sustain !== undefined) {
+          params.push({
+            key: 'sustain',
+            name: 'Sustain',
+            value: audioNode.sustain,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            setValue: (val) => audioNode.sustain = val
+          });
+        }
+
+        if (audioNode.release !== undefined) {
+          params.push({
+            key: 'release',
+            name: 'Release',
+            value: audioNode.release,
+            min: 0,
+            max: 2,
+            step: 0.01,
+            setValue: (val) => audioNode.release = val
+          });
+        }
+      }
+
+      // Source-specific (Oscillator, Noise)
+      if (node.type === 'source') {
+        if (audioNode.frequency) {
+          params.push({
+            key: 'frequency',
+            name: 'Frequency',
+            value: audioNode.frequency.value,
+            min: 20,
+            max: 5000,
+            step: 1,
+            setValue: (val) => audioNode.frequency.value = val
+          });
+        }
+
+        if (audioNode.volume) {
+          params.push({
+            key: 'volume',
+            name: 'Volume',
+            value: audioNode.volume.value,
+            min: -40,
+            max: 10,
+            step: 0.1,
+            setValue: (val) => audioNode.volume.value = val
+          });
+        }
+      }
+
+      // Utility-specific (Gain, Panner, Volume, etc.)
+      if (node.type === 'utility') {
+        if (audioNode.gain) {
+          params.push({
+            key: 'gain',
+            name: 'Gain',
+            value: audioNode.gain.value,
+            min: 0,
+            max: 2,
+            step: 0.01,
+            setValue: (val) => audioNode.gain.value = val
+          });
+        }
+
+        if (audioNode.pan) {
+          params.push({
+            key: 'pan',
+            name: 'Pan',
+            value: audioNode.pan.value,
+            min: -1,
+            max: 1,
+            step: 0.01,
+            setValue: (val) => audioNode.pan.value = val
+          });
+        }
+
+        if (audioNode.volume) {
+          params.push({
+            key: 'volume',
+            name: 'Volume',
+            value: audioNode.volume.value,
+            min: -40,
+            max: 10,
+            step: 0.1,
+            setValue: (val) => audioNode.volume.value = val
+          });
+        }
+
+        if (audioNode.fade) {
+          params.push({
+            key: 'fade',
+            name: 'Crossfade',
+            value: audioNode.fade.value,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            setValue: (val) => audioNode.fade.value = val
+          });
+        }
+      }
+
+      return params;
+    }
+
+    // Make Window Draggable
+    function makeWindowDraggable(window) {
+      const header = window.querySelector('.plugin-window-header');
+      let isDragging = false;
+      let startX, startY, initialX, initialY;
+
+      header.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('plugin-window-close')) return;
+        isDragging = true;
+        const rect = window.getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        initialX = rect.left;
+        initialY = rect.top;
+        window.style.transform = 'none';
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        window.style.left = `${initialX + dx}px`;
+        window.style.top = `${initialY + dy}px`;
+      });
+
+      document.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+    }
+
+    // Close Plugin Window
+    document.getElementById('plugin-window-close').addEventListener('click', () => {
+      document.getElementById('plugin-window').classList.remove('visible');
+    });
+
+    // Setup Keyboard
+    function setupKeyboard() {
+      const keyboard = document.getElementById('keyboard');
+      const octave = 4;
+
+      for (let i = 0; i < 2; i++) {
+        const oct = octave + i;
+        const whiteNotes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+        
+        whiteNotes.forEach((note, idx) => {
+          const fullNote = note + oct;
+          const key = document.createElement('div');
+          key.className = 'key';
+          key.textContent = fullNote;
+          key.dataset.note = fullNote;
+          
+          key.addEventListener('mousedown', () => playNote(fullNote, key));
+          key.addEventListener('mouseup', () => stopNote(fullNote, key));
+          key.addEventListener('mouseleave', () => stopNote(fullNote, key));
+          
+          keyboard.appendChild(key);
+          
+          // Add black key
+          if (note !== 'E' && note !== 'B') {
+            const blackNote = note + '#' + oct;
+            const blackKey = document.createElement('div');
+            blackKey.className = 'key black';
+            blackKey.textContent = blackNote;
+            blackKey.dataset.note = blackNote;
+            
+            blackKey.addEventListener('mousedown', () => playNote(blackNote, blackKey));
+            blackKey.addEventListener('mouseup', () => stopNote(blackNote, blackKey));
+            blackKey.addEventListener('mouseleave', () => stopNote(blackNote, blackKey));
+            
+            keyboard.appendChild(blackKey);
+          }
+        });
+      }
+    }
+
+    // Play Note
+    function playNote(note, keyEl) {
+      keyEl.classList.add('playing');
+      state.activeVoices.add(note);
+
+      // Find MIDI Input node
+      const midiInput = state.nodes.find(n => n.name === 'MIDI Input');
+      if (!midiInput) return;
+
+      // Find connected instrument nodes
+      const connections = state.connections.filter(c => c.from === midiInput.id);
+      connections.forEach(conn => {
+        const instrNode = state.nodes.find(n => n.id === conn.to);
+        if (instrNode && instrNode.audioNode) {
+          try {
+            if (instrNode.audioNode.triggerAttack) {
+              instrNode.audioNode.triggerAttack(note);
+            } else if (instrNode.audioNode.triggerAttackRelease) {
+              instrNode.audioNode.triggerAttackRelease(note, '8n');
+            }
+          } catch (e) {
+            console.error('Error playing note:', e);
+          }
+        }
+      });
+
+      updateStats();
+    }
+
+    // Stop Note
+    function stopNote(note, keyEl) {
+      keyEl.classList.remove('playing');
+      state.activeVoices.delete(note);
+
+      const midiInput = state.nodes.find(n => n.name === 'MIDI Input');
+      if (!midiInput) return;
+
+      const connections = state.connections.filter(c => c.from === midiInput.id);
+      connections.forEach(conn => {
+        const instrNode = state.nodes.find(n => n.id === conn.to);
+        if (instrNode && instrNode.audioNode && instrNode.audioNode.triggerRelease) {
+          try {
+            instrNode.audioNode.triggerRelease(note);
+          } catch (e) {
+            console.error('Error stopping note:', e);
+          }
+        }
+      });
+
+      updateStats();
+    }
+
+    // Transport Controls
+    function setupTransportControls() {
+      document.getElementById('play-btn').addEventListener('click', () => {
+        Tone.Transport.start();
+        document.getElementById('play-btn').classList.add('active');
+      });
+
+      document.getElementById('stop-btn').addEventListener('click', () => {
+        Tone.Transport.stop();
+        document.getElementById('play-btn').classList.remove('active');
+      });
+
+      document.getElementById('panic-btn').addEventListener('click', () => {
+        state.nodes.forEach(node => {
+          if (node.audioNode && node.audioNode.releaseAll) {
+            node.audioNode.releaseAll();
+          }
+        });
+        state.activeVoices.clear();
+        document.querySelectorAll('.key.playing').forEach(k => k.classList.remove('playing'));
+        updateStats();
+      });
+    }
+
+    // Update Stats
+    function updateStats() {
+      document.getElementById('node-count').textContent = state.nodes.length;
+      document.getElementById('connection-count').textContent = state.connections.length;
+      document.getElementById('voice-count').textContent = state.activeVoices.size;
+    }
+
+    // Initialize Application
+    init();
+  </script>
+
+</body>
+</html>

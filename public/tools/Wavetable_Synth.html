@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Wavetable Synthesizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Equivalent to tailwind bg-gray-900 */
+        }
+        /* Custom styles for range inputs to look like knobs/sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #4a5568; /* bg-gray-600 */
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4299e1; /* bg-blue-500 */
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #1a202c; /* bg-gray-900 */
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #4299e1; /* bg-blue-500 */
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #1a202c; /* bg-gray-900 */
+        }
+        .control-label {
+            adize: 0.75rem; /* text-xs */
+            color: #a0aec0;     /* text-gray-400 */
+            text-transform: uppercase;
+            letter-spacing: 0.05em; /* tracking-wider */
+            font-weight: 600;   /* font-semibold */
+        }
+        .control-value {
+            font-size: 0.875rem; /* text-sm */
+            color: #63b3ed;      /* text-blue-300 */
+            font-family: 'Fira Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace; /* font-mono */
+            text-align: center;
+        }
+        .panel {
+            background-color: #2d3748; /* bg-gray-800 */
+            padding: 1rem;             /* p-4 */
+            border-radius: 0.5rem;     /* rounded-lg */
+            border: 1px solid #4a5568; /* border-gray-700 */
+        }
+        .effect-panel {
+            background-color: #374151; /* bg-gray-700 */
+            padding: 0.75rem;          /* p-3 */
+            border-radius: 0.375rem;   /* rounded-md */
+            border: 1px solid #4b5563; /* border-gray-600 */
+        }
+        .lfo-panel {
+            background-color: #1f2937; /* bg-gray-800 darker */
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            border: 1px solid #374151;
+        }
+        .wavetable-morph {
+            background: linear-gradient(90deg, #1f2937 0%, #374151 50%, #4b5563 100%);
+            height: 4px;
+            border-radius: 2px;
+            position: relative;
+            margin: 0.5rem 0;
+        }
+        .morph-indicator {
+            position: absolute;
+            top: -2px;
+            width: 8px;
+            height: 8px;
+            background: #10b981; /* green-500 */
+            border-radius: 50%;
+            transform: translateX(-50%);
+            transition: left 0.1s ease;
+        }
+        .matrix-slot {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 0.25rem;
+            padding: 0.25rem;
+            text-align: center;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .matrix-slot:hover {
+            background-color: #374151;
+            border-color: #4299e1;
+        }
+        .matrix-slot.active {
+            background-color: #1e40af;
+            border-color: #3b82f6;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white p-4 lg:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-4xl font-bold tracking-tighter text-gray-200">SYNTH</h1>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-400">MASTER</span>
+                <div class="w-48">
+                    <input type="range" id="master-volume" min="-40" max="0" value="-6" step="1">
+                </div>
+                 <button id="export-wav" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition-colors">
+                    Export .WAV
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Control Panels -->
+        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
+            <!-- OSC Panel - Enhanced -->
+            <div class="lg:col-span-4 panel">
+                <h2 class="text-lg font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">OSCILLATOR A</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="wavetable-select" class="control-label">Wavetable</label>
+                        <select id="wavetable-select" class="w-full bg-gray-700 text-white p-2 rounded mt-1">
+                            <option value="sine">Basic Sine</option>
+                            <option value="sawtooth">Basic Saw</option>
+                            <option value="square">Basic Square</option>
+                            <option value="pulse">Pulse</option>
+                            <option value="fat-saw">Fat Saw</option>
+                            <option value="organ">Organ</option>
+                            <option value="pluck">Pluck</option>
+                            <option value="bell">Bell</option>
+                        </select>
+                        
+                        <!-- Wavetable Position/Morph -->
+                        <div class="mt-2">
+                            <label for="wt-position" class="control-label">WT Position</label>
+                            <div class="wavetable-morph">
+                                <div id="morph-indicator" class="morph-indicator" style="left: 0%"></div>
+                            </div>
+                            <input type="range" id="wt-position" min="0" max="100" value="0" step="1">
+                            <div id="wt-position-value" class="control-value">0%</div>
+                        </div>
+                        
+                        <canvas id="wavetable-canvas" width="300" height="120" class="bg-black rounded-lg mt-2 w-full"></canvas>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label for="osc-detune" class="control-label">Detune</label>
+                            <input type="range" id="osc-detune" min="-100" max="100" value="0" step="1">
+                            <div id="osc-detune-value" class="control-value">0¢</div>
+                        </div>
+                        <div>
+                            <label for="osc-pan" class="control-label">Pan</label>
+                            <input type="range" id="osc-pan" min="-1" max="1" value="0" step="0.01">
+                            <div id="osc-pan-value" class="control-value">0.00</div>
+                        </div>
+                        <div>
+                            <label for="osc-level" class="control-label">Level</label>
+                            <input type="range" id="osc-level" min="0" max="1" value="0.8" step="0.01">
+                            <div id="osc-level-value" class="control-value">0.80</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Panel - Enhanced -->
+            <div class="lg:col-span-3 panel">
+                <h2 class="text-lg font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">FILTER</h2>
+                <div class="space-y-3">
+                     <div>
+                        <label for="filter-type" class="control-label">Type</label>
+                        <select id="filter-type" class="w-full bg-gray-700 text-white p-2 rounded mt-1">
+                            <option value="lowpass">Lowpass</option>
+                            <option value="highpass">Highpass</option>
+                            <option value="bandpass">Bandpass</option>
+                            <option value="notch">Notch</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label for="filter-cutoff" class="control-label">Cutoff</label>
+                            <input type="range" id="filter-cutoff" min="20" max="20000" value="15000" step="1">
+                            <div id="filter-cutoff-value" class="control-value">15000 Hz</div>
+                        </div>
+                        <div>
+                            <label for="filter-resonance" class="control-label">Resonance</label>
+                            <input type="range" id="filter-resonance" min="0" max="20" value="1" step="0.1">
+                            <div id="filter-resonance-value" class="control-value">1.0</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label for="filter-env-amount" class="control-label">Env Amount</label>
+                            <input type="range" id="filter-env-amount" min="-100" max="100" value="0" step="1">
+                            <div id="filter-env-amount-value" class="control-value">0%</div>
+                        </div>
+                        <div>
+                            <label for="filter-key-track" class="control-label">Key Track</label>
+                            <input type="range" id="filter-key-track" min="0" max="100" value="0" step="1">
+                            <div id="filter-key-track-value" class="control-value">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Envelope Panel -->
+            <div class="lg:col-span-2 panel">
+                <h2 class="text-lg font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">ENV 1</h2>
+                <div class="grid grid-cols-2 gap-x-2 gap-y-3">
+                    <div>
+                        <label for="env-attack" class="control-label">Attack</label>
+                        <input type="range" id="env-attack" min="0.01" max="2" value="0.01" step="0.01">
+                        <div id="env-attack-value" class="control-value">0.01s</div>
+                    </div>
+                    <div>
+                        <label for="env-decay" class="control-label">Decay</label>
+                        <input type="range" id="env-decay" min="0.01" max="2" value="0.1" step="0.01">
+                        <div id="env-decay-value" class="control-value">0.10s</div>
+                    </div>
+                    <div>
+                        <label for="env-sustain" class="control-label">Sustain</label>
+                        <input type="range" id="env-sustain" min="0" max="1" value="0.5" step="0.01">
+                        <div id="env-sustain-value" class="control-value">0.50</div>
+                    </div>
+                    <div>
+                        <label for="env-release" class="control-label">Release</label>
+                        <input type="range" id="env-release" min="0.01" max="4" value="0.5" step="0.01">
+                        <div id="env-release-value" class="control-value">0.50s</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LFO Panel -->
+            <div class="lg:col-span-3 lfo-panel">
+                <h2 class="text-lg font-semibold text-green-300 mb-4 border-b border-gray-600 pb-2">LFO 1</h2>
+                <div class="space-y-3">
+                    <div>
+                        <label for="lfo-wave" class="control-label">Wave</label>
+                        <select id="lfo-wave" class="w-full bg-gray-700 text-white p-2 rounded mt-1">
+                            <option value="sine">Sine</option>
+                            <option value="triangle">Triangle</option>
+                            <option value="sawtooth">Saw</option>
+                            <option value="square">Square</option>
+                            <option value="random">Random</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label for="lfo-rate" class="control-label">Rate</label>
+                            <input type="range" id="lfo-rate" min="0.1" max="20" value="1" step="0.1">
+                            <div id="lfo-rate-value" class="control-value">1.0 Hz</div>
+                        </div>
+                        <div>
+                            <label for="lfo-amount" class="control-label">Amount</label>
+                            <input type="range" id="lfo-amount" min="0" max="100" value="0" step="1">
+                            <div id="lfo-amount-value" class="control-value">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Effects Section -->
+        <section class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Chorus -->
+            <div class="effect-panel">
+                <h3 class="text-md font-semibold text-purple-300 mb-3 border-b border-gray-600 pb-1">CHORUS</h3>
+                <div class="space-y-2">
+                    <div>
+                        <label for="chorus-rate" class="control-label">Rate</label>
+                        <input type="range" id="chorus-rate" min="0.1" max="5" value="0.5" step="0.1">
+                        <div id="chorus-rate-value" class="control-value">0.5 Hz</div>
+                    </div>
+                    <div>
+                        <label for="chorus-depth" class="control-label">Depth</label>
+                        <input type="range" id="chorus-depth" min="0" max="1" value="0" step="0.01">
+                        <div id="chorus-depth-value" class="control-value">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reverb -->
+            <div class="effect-panel">
+                <h3 class="text-md font-semibold text-purple-300 mb-3 border-b border-gray-600 pb-1">REVERB</h3>
+                <div class="space-y-2">
+                    <div>
+                        <label for="reverb-room" class="control-label">Room Size</label>
+                        <input type="range" id="reverb-room" min="0" max="1" value="0" step="0.01">
+                        <div id="reverb-room-value" class="control-value">0%</div>
+                    </div>
+                    <div>
+                        <label for="reverb-wet" class="control-label">Wet</label>
+                        <input type="range" id="reverb-wet" min="0" max="1" value="0" step="0.01">
+                        <div id="reverb-wet-value" class="control-value">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Distortion -->
+            <div class="effect-panel">
+                <h3 class="text-md font-semibold text-purple-300 mb-3 border-b border-gray-600 pb-1">DISTORTION</h3>
+                <div class="space-y-2">
+                    <div>
+                        <label for="dist-amount" class="control-label">Amount</label>
+                        <input type="range" id="dist-amount" min="0" max="10" value="0" step="0.1">
+                        <div id="dist-amount-value" class="control-value">0.0</div>
+                    </div>
+                    <div>
+                        <label for="dist-tone" class="control-label">Tone</label>
+                        <input type="range" id="dist-tone" min="100" max="8000" value="2000" step="100">
+                        <div id="dist-tone-value" class="control-value">2000 Hz</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modulation Matrix -->
+            <div class="effect-panel">
+                <h3 class="text-md font-semibold text-orange-300 mb-3 border-b border-gray-600 pb-1">MOD MATRIX</h3>
+                <div class="grid grid-cols-3 gap-1 text-xs">
+                    <div class="matrix-slot" data-source="lfo1" data-dest="cutoff">LFO→Cutoff</div>
+                    <div class="matrix-slot" data-source="env1" data-dest="wt-pos">ENV→WT</div>
+                    <div class="matrix-slot" data-source="lfo1" data-dest="pan">LFO→Pan</div>
+                    <div class="matrix-slot" data-source="env1" data-dest="volume">ENV→Vol</div>
+                    <div class="matrix-slot" data-source="lfo1" data-dest="detune">LFO→Detune</div>
+                    <div class="matrix-slot" data-source="random" data-dest="cutoff">RND→Cut</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Piano -->
+        <footer id="piano" class="mt-6 w-full flex mx-auto select-none"></footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Global State & Elements ---
+            let synth;
+            let panner;
+            let filter;
+            let chorus, reverb, distortion;
+            let lfo;
+            let filterEnv;
+            let currentWavetables = [];
+            const wavetables = {};
+            const modMatrix = new Map();
+
+            // --- Audio Initialization ---
+            async function initializeAudio() {
+                await Tone.start();
+                console.log('Audio context started');
+
+                // --- Define Custom Wavetables ---
+                // A wavetable is an array of numbers representing a single cycle of a waveform.
+                const pulse = new Float32Array(4096);
+                for (let i = 0; i < 2048; i++) pulse[i] = 1;
+                for (let i = 2048; i < 4096; i++) pulse[i] = -1;
+                wavetables['pulse'] = pulse;
+
+                const fatSaw = await generateFatSaw(7, 0.1);
+                wavetables['fat-saw'] = fatSaw;
+
+                const organ = new Float32Array(4096);
+                [1, 0.5, 0.3, 0.1, 0.1, 0.1].forEach((amp, i) => {
+                    for (let j = 0; j < 4096; j++) {
+                        organ[j] += Math.sin(j / 4096 * 2 * Math.PI * (i + 1)) * amp;
+                    }
+                });
+                wavetables['organ'] = organ;
+
+                // Add new wavetables
+                const pluck = new Float32Array(4096);
+                for (let i = 0; i < 4096; i++) {
+                    pluck[i] = Math.sin(i / 4096 * 2 * Math.PI) * Math.exp(-i / 1000);
+                }
+                wavetables['pluck'] = pluck;
+
+                const bell = new Float32Array(4096);
+                [1, 0.6, 0.4, 0.3, 0.2].forEach((amp, harmonic) => {
+                    for (let i = 0; i < 4096; i++) {
+                        bell[i] += Math.sin(i / 4096 * 2 * Math.PI * (harmonic + 1)) * amp * Math.exp(-i / 2000);
+                    }
+                });
+                wavetables['bell'] = bell;
+
+                // --- Create Effects Chain ---
+                reverb = new Tone.Reverb({ roomSize: 0, wet: 0 }).toDestination();
+                chorus = new Tone.Chorus({ frequency: 0.5, delayTime: 2.5, depth: 0, wet: 0 }).connect(reverb);
+                distortion = new Tone.Distortion({ distortion: 0, wet: 0 }).connect(chorus);
+                panner = new Tone.Panner(0).connect(distortion);
+                filter = new Tone.Filter(15000, 'lowpass').connect(panner);
+
+                // --- Create LFO and Filter Envelope ---
+                lfo = new Tone.LFO({ frequency: 1, type: 'sine' }).start();
+                filterEnv = new Tone.FrequencyEnvelope({
+                    attack: 0.01,
+                    decay: 0.1,
+                    sustain: 0.5,
+                    release: 0.5,
+                    baseFrequency: 200,
+                    octaves: 4
+                });
+
+                // --- Create Synth ---
+                synth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: 'sine' },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.5, release: 0.5 }
+                }).connect(filter);
+                
+                Tone.Destination.volume.value = document.getElementById('master-volume').value;
+
+                setupEventListeners();
+                setupModMatrix();
+                drawWavetable();
+                buildPiano();
+            }
+
+            initializeAudio();
+
+            // --- Enhanced Event Listeners ---
+            function setupEventListeners() {
+                // Master Volume
+                const masterVolume = document.getElementById('master-volume');
+                masterVolume.addEventListener('input', (e) => {
+                    Tone.Destination.volume.value = e.target.value;
+                });
+
+                // Oscillator Controls
+                const wavetableSelect = document.getElementById('wavetable-select');
+                wavetableSelect.addEventListener('change', (e) => {
+                    const selected = e.target.value;
+                    let type, partials;
+
+                    if (wavetables[selected]) {
+                        type = 'custom';
+                        partials = wavetables[selected];
+                    } else {
+                        type = selected;
+                        partials = undefined; // Use Tone.js built-in types
+                    }
+                    // PolySynth requires setting oscillator for all voices
+                    synth.set({ oscillator: { type, partials } });
+                    drawWavetable();
+                });
+                
+                const oscDetune = document.getElementById('osc-detune');
+                const oscDetuneValue = document.getElementById('osc-detune-value');
+                oscDetune.addEventListener('input', (e) => {
+                    const cents = parseInt(e.target.value);
+                    synth.set({ detune: cents });
+                    oscDetuneValue.textContent = `${cents} cents`;
+                });
+
+                const oscPan = document.getElementById('osc-pan');
+                const oscPanValue = document.getElementById('osc-pan-value');
+                oscPan.addEventListener('input', (e) => {
+                    panner.pan.value = parseFloat(e.target.value);
+                    oscPanValue.textContent = parseFloat(e.target.value).toFixed(2);
+                });
+
+                const oscLevel = document.getElementById('osc-level');
+                const oscLevelValue = document.getElementById('osc-level-value');
+                oscLevel.addEventListener('input', (e) => {
+                    const level = parseFloat(e.target.value);
+                    synth.volume.value = Tone.gainToDb(level);
+                    oscLevelValue.textContent = level.toFixed(2);
+                });
+
+                // Wavetable Position
+                const wtPosition = document.getElementById('wt-position');
+                const wtPositionValue = document.getElementById('wt-position-value');
+                const morphIndicator = document.getElementById('morph-indicator');
+                wtPosition.addEventListener('input', (e) => {
+                    const pos = parseInt(e.target.value);
+                    wtPositionValue.textContent = `${pos}%`;
+                    morphIndicator.style.left = `${pos}%`;
+                    // Morph wavetable based on position
+                    morphWavetable(pos / 100);
+                });
+
+                // Filter Controls
+                const filterType = document.getElementById('filter-type');
+                filterType.addEventListener('change', (e) => {
+                    filter.type = e.target.value;
+                });
+
+                const filterCutoff = document.getElementById('filter-cutoff');
+                const filterCutoffValue = document.getElementById('filter-cutoff-value');
+                filterCutoff.addEventListener('input', (e) => {
+                    const freq = parseFloat(e.target.value);
+                    filter.frequency.rampTo(freq, 0.01);
+                    filterCutoffValue.textContent = `${Math.floor(freq)} Hz`;
+                });
+                
+                 // Use exponential scale for cutoff slider
+                filterCutoff.addEventListener('input', (e) => {
+                    const minp = 0;
+                    const maxp = 100;
+                    const minv = Math.log(20);
+                    const maxv = Math.log(20000);
+                    const scale = (maxv - minv) / (maxp - minp);
+                    const freq = Math.exp(minv + scale * (e.target.valueAsNumber - minp));
+                    filter.frequency.rampTo(freq, 0.01);
+                    filterCutoffValue.textContent = `${Math.floor(freq)} Hz`;
+                });
+                filterCutoff.value = 85; // Set initial slider position for a good starting sound
+                filterCutoff.dispatchEvent(new Event('input'));
+
+
+                const filterResonance = document.getElementById('filter-resonance');
+                const filterResonanceValue = document.getElementById('filter-resonance-value');
+                filterResonance.addEventListener('input', (e) => {
+                    filter.Q.value = parseFloat(e.target.value);
+                    filterResonanceValue.textContent = parseFloat(e.target.value).toFixed(1);
+                });
+
+                // Filter Envelope Amount
+                const filterEnvAmount = document.getElementById('filter-env-amount');
+                const filterEnvAmountValue = document.getElementById('filter-env-amount-value');
+                filterEnvAmount.addEventListener('input', (e) => {
+                    const amount = parseInt(e.target.value);
+                    filterEnvAmountValue.textContent = `${amount}%`;
+                    // Connect filter envelope to filter frequency
+                    if (amount > 0) {
+                        filterEnv.connect(filter.frequency);
+                        filterEnv.octaves = (amount / 100) * 4;
+                    } else {
+                        filterEnv.disconnect();
+                    }
+                });
+
+                // Envelope Controls
+                const envAttack = document.getElementById('env-attack');
+                const envAttackValue = document.getElementById('env-attack-value');
+                envAttack.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    synth.set({ envelope: { attack: val } });
+                    envAttackValue.textContent = `${val.toFixed(2)}s`;
+                });
+
+                const envDecay = document.getElementById('env-decay');
+                const envDecayValue = document.getElementById('env-decay-value');
+                envDecay.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    synth.set({ envelope: { decay: val } });
+                    envDecayValue.textContent = `${val.toFixed(2)}s`;
+                });
+
+                const envSustain = document.getElementById('env-sustain');
+                const envSustainValue = document.getElementById('env-sustain-value');
+                envSustain.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    synth.set({ envelope: { sustain: val } });
+                    envSustainValue.textContent = val.toFixed(2);
+                });
+
+                const envRelease = document.getElementById('env-release');
+                const envReleaseValue = document.getElementById('env-release-value');
+                envRelease.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    synth.set({ envelope: { release: val } });
+                    envReleaseValue.textContent = `${val.toFixed(2)}s`;
+                });
+
+                // LFO Controls
+                const lfoWave = document.getElementById('lfo-wave');
+                lfoWave.addEventListener('change', (e) => {
+                    lfo.type = e.target.value;
+                });
+
+                const lfoRate = document.getElementById('lfo-rate');
+                const lfoRateValue = document.getElementById('lfo-rate-value');
+                lfoRate.addEventListener('input', (e) => {
+                    const rate = parseFloat(e.target.value);
+                    lfo.frequency.value = rate;
+                    lfoRateValue.textContent = `${rate.toFixed(1)} Hz`;
+                });
+
+                const lfoAmount = document.getElementById('lfo-amount');
+                const lfoAmountValue = document.getElementById('lfo-amount-value');
+                lfoAmount.addEventListener('input', (e) => {
+                    const amount = parseInt(e.target.value);
+                    lfoAmountValue.textContent = `${amount}%`;
+                    // Connect LFO to parameters based on modulation matrix
+                    if (amount > 0) {
+                        lfo.connect(filter.frequency);
+                    } else {
+                        lfo.disconnect(filter.frequency);
+                    }
+                });
+
+                // Effects
+                setupEffectControls();
+
+                // Export Button
+                document.getElementById('export-wav').addEventListener('click', exportWav);
+            }
+
+            function setupEffectControls() {
+                // Chorus
+                const chorusRate = document.getElementById('chorus-rate');
+                const chorusRateValue = document.getElementById('chorus-rate-value');
+                chorusRate.addEventListener('input', (e) => {
+                    const rate = parseFloat(e.target.value);
+                    chorus.frequency = rate;
+                    chorusRateValue.textContent = `${rate.toFixed(1)} Hz`;
+                });
+
+                const chorusDepth = document.getElementById('chorus-depth');
+                const chorusDepthValue = document.getElementById('chorus-depth-value');
+                chorusDepth.addEventListener('input', (e) => {
+                    const depth = parseFloat(e.target.value);
+                    chorus.wet.value = depth;
+                    chorus.depth = depth;
+                    chorusDepthValue.textContent = `${Math.round(depth * 100)}%`;
+                });
+
+                // Reverb
+                const reverbRoom = document.getElementById('reverb-room');
+                const reverbRoomValue = document.getElementById('reverb-room-value');
+                reverbRoom.addEventListener('input', (e) => {
+                    const room = parseFloat(e.target.value);
+                    reverb.roomSize.value = room;
+                    reverbRoomValue.textContent = `${Math.round(room * 100)}%`;
+                });
+
+                const reverbWet = document.getElementById('reverb-wet');
+                const reverbWetValue = document.getElementById('reverb-wet-value');
+                reverbWet.addEventListener('input', (e) => {
+                    const wet = parseFloat(e.target.value);
+                    reverb.wet.value = wet;
+                    reverbWetValue.textContent = `${Math.round(wet * 100)}%`;
+                });
+
+                // Distortion
+                const distAmount = document.getElementById('dist-amount');
+                const distAmountValue = document.getElementById('dist-amount-value');
+                distAmount.addEventListener('input', (e) => {
+                    const amount = parseFloat(e.target.value);
+                    distortion.distortion = amount;
+                    distortion.wet.value = amount > 0 ? 0.5 : 0;
+                    distAmountValue.textContent = amount.toFixed(1);
+                });
+            }
+
+            function setupModMatrix() {
+                document.querySelectorAll('.matrix-slot').forEach(slot => {
+                    slot.addEventListener('click', () => {
+                        slot.classList.toggle('active');
+                        const source = slot.dataset.source;
+                        const dest = slot.dataset.dest;
+                        
+                        if (slot.classList.contains('active')) {
+                            modMatrix.set(`${source}-${dest}`, true);
+                            connectModulation(source, dest);
+                        } else {
+                            modMatrix.delete(`${source}-${dest}`);
+                            disconnectModulation(source, dest);
+                        }
+                    });
+                });
+            }
+
+            function connectModulation(source, dest) {
+                // Connect LFO or envelope to various parameters
+                if (source === 'lfo1' && dest === 'cutoff') {
+                    lfo.connect(filter.frequency);
+                }
+                // Add more modulation connections as needed
+            }
+
+            function disconnectModulation(source, dest) {
+                if (source === 'lfo1' && dest === 'cutoff') {
+                    lfo.disconnect(filter.frequency);
+                }
+            }
+
+            function morphWavetable(position) {
+                // Simple wavetable morphing between basic shapes
+                const selectedType = document.getElementById('wavetable-select').value;
+                if (wavetables[selectedType]) {
+                    // For custom wavetables, apply position-based morphing
+                    const morphed = new Float32Array(4096);
+                    const original = wavetables[selectedType];
+                    
+                    for (let i = 0; i < 4096; i++) {
+                        // Simple morphing: mix with sine wave based on position
+                        const sine = Math.sin(i / 4096 * 2 * Math.PI);
+                        morphed[i] = original[i] * (1 - position) + sine * position;
+                    }
+                    
+                    synth.set({ oscillator: { type: 'custom', partials: morphed } });
+                    drawWavetable();
+                }
+            }
+
+            // --- Piano Generation and Logic ---
+            function buildPiano() {
+                const pianoContainer = document.getElementById('piano');
+                pianoContainer.innerHTML = '';
+                pianoContainer.style.position = 'relative';
+                pianoContainer.style.height = '8rem';
+
+                const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                const octaves = [3, 4];
+                const whiteNotes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+                const blackNotes = ['C#', 'D#', 'F#', 'G#', 'A#'];
+
+                // White keys
+                const whiteKeys = [];
+                octaves.forEach(octave => {
+                    whiteNotes.forEach(note => {
+                        const noteName = `${note}${octave}`;
+                        const key = document.createElement('div');
+                        key.className = 'piano-key white-key';
+                        key.dataset.note = noteName;
+                        key.textContent = noteName;
+                        key.style.flex = '1 1 0';
+                        key.style.position = 'relative';
+                        whiteKeys.push(key);
+                        pianoContainer.appendChild(key);
+                    });
+                });
+
+                // Black keys
+                octaves.forEach((octave, oIdx) => {
+                    notes.forEach((note, idx) => {
+                        if (blackNotes.includes(note)) {
+                            const noteName = `${note}${octave}`;
+                            const key = document.createElement('div');
+                            key.className = 'piano-key black-key';
+                            key.dataset.note = noteName;
+                            key.textContent = '';
+                            // Position black keys
+                            // Each black key is placed between two white keys
+                            // Calculate left offset as (index of previous white key + 0.7) * width%
+                            let whiteIdx = whiteNotes.findIndex(w => w[0] === note[0]);
+                            if (note[0] === 'F') whiteIdx++; // F# is after F
+                            const totalWhite = whiteNotes.length * octaves.length;
+                            const keyWidth = 100 / totalWhite;
+                            key.style.position = 'absolute';
+                            key.style.left = `calc(${((oIdx * 7 + whiteIdx) + 0.7) * keyWidth}% - 10px)`;
+                            key.style.width = '60%';
+                            key.style.zIndex = 10;
+                            pianoContainer.appendChild(key);
+                        }
+                    });
+                });
+
+                // Event handling
+                const activeKeys = {};
+                function playNote(note, keyElement) {
+                    if (!activeKeys[note]) {
+                        synth.triggerAttack(note);
+                        keyElement.classList.add('active');
+                        activeKeys[note] = true;
+                    }
+                }
+                function releaseNote(note, keyElement) {
+                    if (activeKeys[note]) {
+                        synth.triggerRelease(note);
+                        keyElement.classList.remove('active');
+                        delete activeKeys[note];
+                    }
+                }
+                pianoContainer.querySelectorAll('.piano-key').forEach(key => {
+                    const noteName = key.dataset.note;
+                    key.addEventListener('mousedown', e => {
+                        e.preventDefault();
+                        playNote(noteName, key);
+                    });
+                    key.addEventListener('mouseup', e => {
+                        e.preventDefault();
+                        releaseNote(noteName, key);
+                    });
+                    key.addEventListener('mouseleave', e => {
+                        e.preventDefault();
+                        releaseNote(noteName, key);
+                    });
+                    key.addEventListener('touchstart', e => {
+                        e.preventDefault();
+                        playNote(noteName, key);
+                    }, { passive: false });
+                    key.addEventListener('touchend', e => {
+                        e.preventDefault();
+                        releaseNote(noteName, key);
+                    }, { passive: false });
+                });
+            }
+
+            // --- Wavetable Visualization ---
+            const canvas = document.getElementById('wavetable-canvas');
+            const ctx = canvas.getContext('2d');
+
+            async function drawWavetable() {
+                const waveType = document.getElementById('wavetable-select').value;
+                let waveform;
+
+                if (wavetables[waveType]) {
+                    // Use the custom wavetable, scale to [-1,1]
+                    waveform = wavetables[waveType];
+                } else {
+                    // For built-in types, synthesize a waveform
+                    // Use Tone.Oscillator and get a buffer
+                    const tempOsc = new Tone.Oscillator({ type: waveType }).toDestination();
+                    await tempOsc.start();
+                    waveform = await tempOsc.asArray(1024);
+                    tempOsc.dispose();
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#4299e1';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height / 2);
+
+                for (let i = 0; i < waveform.length; i++) {
+                    const x = (i / waveform.length) * canvas.width;
+                    const y = (waveform[i] * -1 * canvas.height / 2) + (canvas.height / 2);
+                    ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+            
+            // --- Wavetable Generation ---
+            async function generateFatSaw(count, detuneAmount) {
+                const length = 4096;
+                const buffer = new Float32Array(length).fill(0);
+                const fundamental = new Tone.Oscillator('sawtooth').toDestination();
+                const fundamentalWave = await fundamental.asArray(length);
+                fundamental.dispose();
+
+                for(let i = 0; i < length; i++) {
+                    buffer[i] += fundamentalWave[i];
+                }
+                
+                // This is a simplified version. A true "fat" saw would use detuned oscillators.
+                // Here we simulate it by adding phase-shifted versions.
+                for (let i = 1; i < count; i++) {
+                    const phaseOffset = Math.random() * length;
+                     for(let j = 0; j < length; j++) {
+                        buffer[j] += fundamentalWave[(j + Math.floor(phaseOffset)) % length] * 0.5;
+                    }
+                }
+                
+                // Normalize
+                let max = 0;
+                for(let i=0; i<length; i++) {
+                    if(Math.abs(buffer[i]) > max) max = Math.abs(buffer[i]);
+                }
+                if(max > 0) {
+                    for(let i=0; i<length; i++) {
+                        buffer[i] /= max;
+                    }
+                }
+                return buffer;
+            }
+
+
+            // --- Sound Export ---
+            async function exportWav() {
+                alert('Rendering sound... Please wait.');
+                try {
+                    // Render 2 seconds of C4 note to an offline buffer
+                    const buffer = await Tone.Offline(() => {
+                        const offlinePanner = new Tone.Panner(panner.pan.value).toDestination();
+                        const offlineFilter = new Tone.Filter(filter.get()).connect(offlinePanner);
+                        const offlineSynth = new Tone.Synth(synth.get()).connect(offlineFilter);
+                        offlineSynth.triggerAttackRelease('C4', '2s', Tone.now());
+                    }, 2);
+
+                    // Convert the AudioBuffer to a WAV Blob
+                    const wavBlob = bufferToWave(buffer);
+                    
+                    // Trigger download
+                    const url = URL.createObjectURL(wavBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'synth-sound.wav';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.error("Export failed:", error);
+                    alert("Sorry, there was an error exporting the sound.");
+                }
+            }
+
+            // Helper function to convert AudioBuffer to a WAV file (Blob)
+            function bufferToWave(abuffer) {
+                const numOfChan = abuffer.numberOfChannels;
+                const length = abuffer.length * numOfChan * 2 + 44;
+                const buffer = new ArrayBuffer(length);
+                const view = new DataView(buffer);
+                const channels = [];
+                let i;
+                let sample;
+                let offset = 0;
+                let pos = 0;
+
+                // write WAVE header
+                setUint32(0x46464952); // "RIFF"
+                setUint32(length - 8); // file length - 8
+                setUint32(0x45564157); // "WAVE"
+
+                setUint32(0x20746d66); // "fmt " chunk
+                setUint32(16); // length = 16
+                setUint16(1); // PCM (uncompressed)
+                setUint16(numOfChan);
+                setUint32(abuffer.sampleRate);
+                setUint32(abuffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+                setUint16(numOfChan * 2); // block-align
+                setUint16(16); // 16-bit
+
+                setUint32(0x61746164); // "data" - chunk
+                setUint32(length - pos - 4); // chunk length
+
+                // write interleaved data
+                for (i = 0; i < abuffer.numberOfChannels; i++)
+                    channels.push(abuffer.getChannelData(i));
+
+                while (pos < length) {
+                    for (i = 0; i < numOfChan; i++) {
+                        sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
+                        sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0; // scale to 16-bit signed int
+                        view.setInt16(pos, sample, true); // write 16-bit sample
+                        pos += 2;
+                    }
+                    offset++;
+                }
+
+                return new Blob([buffer], { type: "audio/wav" });
+
+                function setUint16(data) {
+                    view.setUint16(pos, data, true);
+                    pos += 2;
+                }
+
+                function setUint32(data) {
+                    view.setUint32(pos, data, true);
+                    pos += 4;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

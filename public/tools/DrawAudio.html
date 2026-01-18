@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Sound Designer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-dragdata@2.2.5/dist/chartjs-plugin-dragdata.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none;
+        }
+        .chart-container {
+            position: relative;
+            height: 150px;
+            width: 100%;
+        }
+        .visualization-container {
+            position: relative;
+            height: 200px;
+            width: 100%;
+        }
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4f46e5;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .slider-thumb::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #4f46e5;
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+        .parameter-value {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.75rem;
+            color: #a5b4fc;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-7xl bg-gray-800 rounded-2xl shadow-2xl p-4 sm:p-6 space-y-6">
+        <!-- Header and Main Controls -->
+        <header class="flex flex-col sm:flex-row justify-between items-center pb-4 border-b border-gray-700">
+            <h1 class="text-2xl sm:text-3xl font-bold text-indigo-400">Visual Sound Designer</h1>
+            <div id="controls" class="flex items-center space-x-3 mt-4 sm:mt-0">
+                <button id="playBtn" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">Play</button>
+                <button id="stopBtn" class="px-6 py-2 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">Stop</button>
+                <button id="saveBtn" class="px-6 py-2 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">Save .WAV</button>
+                <button id="loopBtn" class="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">Loop</button>
+            </div>
+        </header>
+
+        <!-- Enhanced Waveform Display -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-gray-900 p-4 rounded-xl">
+                <h2 class="text-lg font-semibold mb-2 text-center text-gray-400">Time Domain (Waveform)</h2>
+                <canvas id="waveformCanvas" class="w-full h-48 rounded-lg bg-gray-800"></canvas>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl">
+                <h2 class="text-lg font-semibold mb-2 text-center text-gray-400">Frequency Domain (Spectrum)</h2>
+                <canvas id="spectrumCanvas" class="w-full h-48 rounded-lg bg-gray-800"></canvas>
+            </div>
+        </div>
+
+        <!-- Instrument Presets -->
+        <div class="bg-gray-700/50 p-4 rounded-xl">
+            <h3 class="font-bold text-xl mb-4 text-indigo-300">Instrument Presets</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <button id="presetGuitar" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-all">Guitar</button>
+                <button id="presetPiano" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all">Piano</button>
+                <button id="presetViolin" class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-all">Violin</button>
+                <button id="presetFlute" class="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-all">Flute</button>
+                <button id="presetBass" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-all">Bass</button>
+                <button id="presetBrass" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg transition-all">Brass</button>
+            </div>
+        </div>
+
+        <!-- Global Controls -->
+        <div class="bg-gray-700/50 p-4 rounded-xl">
+            <h3 class="font-bold text-xl mb-4 text-indigo-300">Global Controls</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label for="masterVolume" class="block text-sm font-medium text-gray-300">Master Volume</label>
+                    <input id="masterVolume" type="range" min="0" max="1" step="0.01" value="0.5" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb">
+                    <span id="masterVolumeValue" class="parameter-value">0.50</span>
+                </div>
+                <div>
+                    <label for="fundamentalFreq" class="block text-sm font-medium text-gray-300">Pitch (Hz)</label>
+                    <input id="fundamentalFreq" type="range" min="80" max="880" step="1" value="220" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb">
+                    <span id="fundamentalFreqValue" class="parameter-value">220 Hz</span>
+                </div>
+                <div>
+                    <label for="soundDuration" class="block text-sm font-medium text-gray-300">Duration (s)</label>
+                    <input id="soundDuration" type="range" min="0.5" max="10" step="0.1" value="4" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb">
+                    <span id="soundDurationValue" class="parameter-value">4.0 s</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Parameter Panels -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            
+            <!-- Multi-Oscillator Panel -->
+            <div class="bg-gray-700/50 p-4 rounded-xl">
+                <h3 class="font-bold text-xl mb-2 text-indigo-300">1. Multi-Oscillator System</h3>
+                <p class="text-sm text-gray-400 mb-3">Configure multiple oscillators for complex timbres.</p>
+                
+                <!-- Oscillator 1 -->
+                <div class="mb-4 p-3 bg-gray-800 rounded-lg">
+                    <h4 class="font-medium text-gray-300 mb-2">Oscillator 1 (Main)</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400">Waveform</label>
+                            <select id="osc1Type" class="w-full p-1 bg-gray-600 border border-gray-500 rounded text-white text-sm">
+                                <option value="custom">Custom Harmonics</option>
+                                <option value="sine">Sine</option>
+                                <option value="sawtooth">Sawtooth</option>
+                                <option value="square">Square</option>
+                                <option value="triangle">Triangle</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400">Level</label>
+                            <input id="osc1Level" type="range" min="0" max="1" step="0.01" value="1" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                            <span id="osc1LevelValue" class="parameter-value text-xs">1.00</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400">Detune (cents)</label>
+                            <input id="osc1Detune" type="range" min="-100" max="100" step="1" value="0" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                            <span id="osc1DetuneValue" class="parameter-value text-xs">0</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400">Octave</label>
+                            <input id="osc1Octave" type="range" min="-2" max="2" step="1" value="0" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                            <span id="osc1OctaveValue" class="parameter-value text-xs">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Oscillator 2 -->
+                <div class="mb-4 p-3 bg-gray-800 rounded-lg">
+                    <h4 class="font-medium text-gray-300 mb-2">Oscillator 2</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400">Waveform</label>
+                            <select id="osc2Type" class="w-full p-1 bg-gray-600 border border-gray-500 rounded text-white text-sm">
+                                <option value="sine">Sine</option>
+                                <option value="sawtooth">Sawtooth</option>
+                                <option value="square">Square</option>
+                                <option value="triangle">Triangle</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400">Level</label>
+                            <input id="osc2Level" type="range" min="0" max="1" step="0.01" value="0" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                            <span id="osc2LevelValue" class="parameter-value text-xs">0.00</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400">Detune (cents)</label>
+                            <input id="osc2Detune" type="range" min="-100" max="100" step="1" value="0" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                            <span id="osc2DetuneValue" class="parameter-value text-xs">0</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400">Octave</label>
+                            <input id="osc2Octave" type="range" min="-2" max="2" step="1" value="0" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                            <span id="osc2OctaveValue" class="parameter-value text-xs">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FM Synthesis -->
+                <div class="p-3 bg-gray-800 rounded-lg">
+                    <h4 class="font-medium text-gray-300 mb-2">FM Synthesis</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400">FM Amount</label>
+                            <input id="fmAmount" type="range" min="0" max="1000" step="10" value="0" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                            <span id="fmAmountValue" class="parameter-value text-xs">0</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400">FM Ratio</label>
+                            <input id="fmRatio" type="range" min="0.1" max="8" step="0.1" value="1" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                            <span id="fmRatioValue" class="parameter-value text-xs">1.0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Harmonics Panel -->
+            <div class="bg-gray-700/50 p-4 rounded-xl">
+                <h3 class="font-bold text-xl mb-2 text-indigo-300">2. Advanced Harmonics</h3>
+                <p class="text-sm text-gray-400 mb-3">Shape harmonic content with advanced controls.</p>
+                <div class="chart-container bg-gray-800 rounded-lg p-2 mb-2">
+                    <canvas id="harmonicsChart"></canvas>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                        <label class="block text-xs text-gray-400">Harmonic Roll-off</label>
+                        <input id="harmonicRolloff" type="range" min="0" max="2" step="0.1" value="0.5" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                        <span id="harmonicRolloffValue" class="parameter-value text-xs">0.5</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400">Even/Odd Balance</label>
+                        <input id="evenOddBalance" type="range" min="0" max="1" step="0.01" value="0.5" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                        <span id="evenOddBalanceValue" class="parameter-value text-xs">0.50</span>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="harmonicsPreset1" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-xs rounded">Sine</button>
+                    <button id="harmonicsPreset2" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-xs rounded">Saw</button>
+                    <button id="harmonicsPreset3" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-xs rounded">Square</button>
+                    <button id="harmonicsPreset4" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-xs rounded">Triangle</button>
+                </div>
+            </div>
+
+            <!-- Physical Modeling Panel -->
+            <div class="bg-gray-700/50 p-4 rounded-xl">
+                <h3 class="font-bold text-xl mb-2 text-indigo-300">3. Physical Modeling</h3>
+                <p class="text-sm text-gray-400 mb-3">Simulate physical properties of real instruments.</p>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-400">String Tension / Key Weight</label>
+                        <input id="stringTension" type="range" min="0" max="1" step="0.01" value="0.5" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                        <span id="stringTensionValue" class="parameter-value text-xs">0.50</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400">Body Resonance</label>
+                        <input id="bodyResonance" type="range" min="0" max="1" step="0.01" value="0.3" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                        <span id="bodyResonanceValue" class="parameter-value text-xs">0.30</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400">Damping</label>
+                        <input id="damping" type="range" min="0" max="1" step="0.01" value="0.1" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                        <span id="dampingValue" class="parameter-value text-xs">0.10</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400">Brightness</label>
+                        <input id="brightness" type="range" min="0" max="1" step="0.01" value="0.5" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                        <span id="brightnessValue" class="parameter-value text-xs">0.50</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Multi-Stage Envelope Panel -->
+            <div class="bg-gray-700/50 p-4 rounded-xl">
+                <h3 class="font-bold text-xl mb-2 text-indigo-300">4. Multi-Stage Envelope</h3>
+                <p class="text-sm text-gray-400 mb-3">Advanced envelope with multiple stages for realistic instrument behavior.</p>
+                <div class="chart-container bg-gray-800 rounded-lg p-2 mb-2">
+                    <canvas id="adsrChart"></canvas>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs mb-2">
+                    <div>A: <span id="attackValue" class="parameter-value">0.40s</span></div>
+                    <div>D: <span id="decayValue" class="parameter-value">0.40s</span></div>
+                    <div>S: <span id="sustainValue" class="parameter-value">0.50</span></div>
+                    <div>R: <span id="releaseValue" class="parameter-value">1.20s</span></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs text-gray-400">Attack Curve</label>
+                        <input id="attackCurve" type="range" min="-2" max="2" step="0.1" value="0" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                        <span id="attackCurveValue" class="parameter-value text-xs">0.0</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400">Release Curve</label>
+                        <input id="releaseCurve" type="range" min="-2" max="2" step="0.1" value="0" class="w-full h-1 bg-gray-600 rounded-lg slider-thumb">
+                        <span id="releaseCurveValue" class="parameter-value text-xs">0.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Panel -->
+            <div class="bg-gray-700/50 p-4 rounded-xl">
+                <h3 class="font-bold text-xl mb-2 text-indigo-300">5. Filter</h3>
+                <p class="text-sm text-gray-400 mb-3">Shape the frequency content with a filter.</p>
+                <div class="space-y-4">
+                    <div>
+                        <label for="filterType" class="block text-sm font-medium text-gray-300">Type</label>
+                        <select id="filterType" class="w-full p-2 bg-gray-600 border border-gray-500 rounded text-white">
+                            <option value="none">None</option>
+                            <option value="lowpass">Low Pass</option>
+                            <option value="highpass">High Pass</option>
+                            <option value="bandpass">Band Pass</option>
+                            <option value="notch">Notch</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filterFrequency" class="block text-sm font-medium text-gray-300">Cutoff Frequency</label>
+                        <input id="filterFrequency" type="range" min="100" max="8000" step="10" value="1000" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb">
+                        <span id="filterFrequencyValue" class="parameter-value">1000 Hz</span>
+                    </div>
+                    <div>
+                        <label for="filterResonance" class="block text-sm font-medium text-gray-300">Resonance (Q)</label>
+                        <input id="filterResonance" type="range" min="0.1" max="20" step="0.1" value="1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb">
+                        <span id="filterResonanceValue" class="parameter-value">1.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Spatialization Panel -->
+            <div class="bg-gray-700/50 p-4 rounded-xl">
+                <h3 class="font-bold text-xl mb-2 text-indigo-300">6. Spatialization & Effects</h3>
+                <p class="text-sm text-gray-400 mb-3">Position the sound in space and add effects.</p>
+                <div class="space-y-4">
+                    <div>
+                        <label for="panning" class="block text-sm font-medium text-gray-300">Panning (L/R)</label>
+                        <input id="panning" type="range" min="-1" max="1" step="0.01" value="0" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb">
+                        <span id="panningValue" class="parameter-value">Center</span>
+                    </div>
+                    <div>
+                        <label for="reverb" class="block text-sm font-medium text-gray-300">Reverb (Room Size)</label>
+                        <input id="reverb" type="range" min="0" max="1" step="0.01" value="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb">
+                        <span id="reverbValue" class="parameter-value">0.10</span>
+                    </div>
+                    <div>
+                        <label for="delay" class="block text-sm font-medium text-gray-300">Delay</label>
+                        <input id="delay" type="range" min="0" max="1" step="0.01" value="0" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb">
+                        <span id="delayValue" class="parameter-value">0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global State & Setup ---
+        let audioContext;
+        let mainGain;
+        let oscillators = [];
+        let fmOscillator;
+        let fmGain;
+        let filter;
+        let delayNode;
+        let delayGain;
+        let panner;
+        let convolver;
+        let analyser;
+        let waveformBuffer;
+        let spectrumBuffer;
+        let animationFrameId;
+        let isLooping = false;
+        let loopTimeoutId;
+
+        // Instrument Presets Configuration
+        const instrumentPresets = {
+            guitar: {
+                osc1: { type: 'custom', level: 1, detune: 0, octave: 0 },
+                osc2: { type: 'sawtooth', level: 0.3, detune: -7, octave: 0 },
+                fm: { amount: 50, ratio: 2.1 },
+                harmonics: [1, 0.7, 0.4, 0.3, 0.2, 0.15, 0.1, 0.08, 0.06, 0.05, 0.03, 0.02, 0.01, 0.01, 0.005, 0.005],
+                adsr: { attack: 0.02, decay: 0.3, sustain: 0.6, release: 2.0 },
+                physical: { tension: 0.7, resonance: 0.4, damping: 0.3, brightness: 0.6 },
+                filter: { type: 'lowpass', frequency: 2500, resonance: 1.2 }
+            },
+            piano: {
+                osc1: { type: 'custom', level: 1, detune: 0, octave: 0 },
+                osc2: { type: 'sine', level: 0.2, detune: 2, octave: 1 },
+                fm: { amount: 20, ratio: 1.5 },
+                harmonics: [1, 0.6, 0.3, 0.15, 0.08, 0.04, 0.02, 0.01, 0.005, 0.002, 0, 0, 0, 0, 0, 0],
+                adsr: { attack: 0.01, decay: 0.8, sustain: 0.3, release: 1.5 },
+                physical: { tension: 0.9, resonance: 0.2, damping: 0.4, brightness: 0.7 },
+                filter: { type: 'lowpass', frequency: 4000, resonance: 0.8 }
+            },
+            violin: {
+                osc1: { type: 'sawtooth', level: 1, detune: 0, octave: 0 },
+                osc2: { type: 'sawtooth', level: 0.4, detune: 7, octave: 0 },
+                fm: { amount: 30, ratio: 3.2 },
+                harmonics: [1, 0.8, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.12, 0.1, 0.08, 0.06, 0.05, 0.04, 0.03],
+                adsr: { attack: 0.15, decay: 0.2, sustain: 0.8, release: 0.8 },
+                physical: { tension: 0.8, resonance: 0.6, damping: 0.1, brightness: 0.8 },
+                filter: { type: 'lowpass', frequency: 3500, resonance: 2.5 }
+            },
+            flute: {
+                osc1: { type: 'sine', level: 1, detune: 0, octave: 0 },
+                osc2: { type: 'sine', level: 0.1, detune: 0, octave: 1 },
+                fm: { amount: 10, ratio: 1.0 },
+                harmonics: [1, 0.3, 0.1, 0.05, 0.02, 0.01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                adsr: { attack: 0.1, decay: 0.1, sustain: 0.9, release: 0.3 },
+                physical: { tension: 0.3, resonance: 0.1, damping: 0.05, brightness: 0.9 },
+                filter: { type: 'lowpass', frequency: 6000, resonance: 0.5 }
+            },
+            bass: {
+                osc1: { type: 'sawtooth', level: 1, detune: 0, octave: -1 },
+                osc2: { type: 'square', level: 0.6, detune: 0, octave: -1 },
+                fm: { amount: 80, ratio: 0.5 },
+                harmonics: [1, 0.9, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0, 0, 0, 0, 0, 0],
+                adsr: { attack: 0.05, decay: 0.4, sustain: 0.7, release: 1.0 },
+                physical: { tension: 0.9, resonance: 0.3, damping: 0.5, brightness: 0.3 },
+                filter: { type: 'lowpass', frequency: 800, resonance: 1.5 }
+            },
+            brass: {
+                osc1: { type: 'sawtooth', level: 1, detune: 0, octave: 0 },
+                osc2: { type: 'square', level: 0.7, detune: 5, octave: 0 },
+                fm: { amount: 60, ratio: 2.5 },
+                harmonics: [1, 0.8, 0.7, 0.6, 0.5, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.12, 0.1, 0.08, 0.06, 0.05],
+                adsr: { attack: 0.08, decay: 0.3, sustain: 0.8, release: 0.6 },
+                physical: { tension: 0.7, resonance: 0.5, damping: 0.2, brightness: 0.7 },
+                filter: { type: 'lowpass', frequency: 5000, resonance: 1.8 }
+            }
+        };
+
+        const harmonicsChartCtx = document.getElementById('harmonicsChart').getContext('2d');
+        const adsrChartCtx = document.getElementById('adsrChart').getContext('2d');
+        const waveformCanvas = document.getElementById('waveformCanvas');
+        const waveformCanvasCtx = waveformCanvas.getContext('2d');
+        const spectrumCanvas = document.getElementById('spectrumCanvas');
+        const spectrumCanvasCtx = spectrumCanvas.getContext('2d');
+
+        let fundamentalFrequency = 220; // A3 note
+        let soundDuration = 4; // seconds
+
+        // New variables for advanced synthesis
+        let oscillatorGains = [];
+
+        // --- Enhanced Chart Configurations ---
+        
+        // Harmonics Chart
+        const harmonicsData = {
+            labels: Array.from({ length: 16 }, (_, i) => `${i + 1}`),
+            datasets: [{
+                label: 'Amplitude',
+                data: [1, 0.5, 0.3, 0.2, 0.1, 0.05, ...Array(10).fill(0)],
+                backgroundColor: (ctx) => {
+                    const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 150);
+                    gradient.addColorStop(0, 'rgba(79, 70, 229, 0.8)');
+                    gradient.addColorStop(1, 'rgba(79, 70, 229, 0.2)');
+                    return gradient;
+                },
+                borderColor: '#a5b4fc',
+                borderWidth: 2,
+                pointRadius: 6,
+                pointBackgroundColor: '#a5b4fc',
+                tension: 0.4,
+            }]
+        };
+        const harmonicsChart = new Chart(harmonicsChartCtx, {
+            type: 'bar',
+            data: harmonicsData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false },
+                    dragData: {
+                        round: 3,
+                        showTooltip: false,
+                        onDragEnd: (e, datasetIndex, index, value) => {
+                            harmonicsData.datasets[datasetIndex].data[index] = Math.max(0, Math.min(1, value));
+                            harmonicsChart.update('none');
+                            updateSoundInRealTime();
+                        }
+                    }
+                },
+                scales: {
+                    y: { 
+                        min: 0, 
+                        max: 1, 
+                        ticks: { color: '#9ca3af', font: { size: 10 } }, 
+                        grid: { color: '#374151' } 
+                    },
+                    x: { 
+                        ticks: { color: '#9ca3af', font: { size: 10 } }, 
+                        grid: { color: '#374151' } 
+                    }
+                }
+            }
+        });
+
+        // ADSR Chart
+        const adsrData = {
+            labels: ['Start', 'Attack', 'Decay', 'Sustain', 'Release', 'End'],
+            datasets: [{
+                label: 'Amplitude',
+                data: [
+                    {x: 0, y: 0},
+                    {x: 0.1, y: 1},   // Attack
+                    {x: 0.2, y: 0.5},  // Decay
+                    {x: 0.7, y: 0.5},  // Sustain
+                    {x: 1, y: 0},     // Release
+                    {x: 1, y: 0}
+                ],
+                borderColor: '#a5b4fc',
+                borderWidth: 3,
+                pointRadius: 8,
+                pointBackgroundColor: '#a5b4fc',
+                pointBorderColor: '#4f46e5',
+                pointBorderWidth: 2,
+                fill: true,
+                backgroundColor: (ctx) => {
+                    const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 150);
+                    gradient.addColorStop(0, 'rgba(79, 70, 229, 0.6)');
+                    gradient.addColorStop(1, 'rgba(79, 70, 229, 0.1)');
+                    return gradient;
+                },
+                tension: 0.1,
+                showLine: true
+            }]
+        };
+        const adsrChart = new Chart(adsrChartCtx, {
+            type: 'line',
+            data: adsrData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false },
+                    dragData: {
+                        round: 3,
+                        showTooltip: false,
+                        onDrag: (e, datasetIndex, index, value) => {
+                            // Enforce ADSR logic
+                            const points = adsrData.datasets[0].data;
+                            if (index === 1) { // Attack point
+                                points[1].x = Math.max(0.01, Math.min(points[2].x - 0.01, value.x));
+                            } else if (index === 2) { // Decay point
+                                points[2].x = Math.max(points[1].x + 0.01, Math.min(points[3].x - 0.01, value.x));
+                                points[3].y = value.y; // Sustain level follows decay
+                            } else if (index === 3) { // Sustain point
+                                points[3].x = Math.max(points[2].x + 0.01, Math.min(points[4].x - 0.01, value.x));
+                                points[2].y = value.y; // Decay level follows sustain
+                            } else if (index === 4) { // Release point
+                                points[4].x = Math.max(points[3].x + 0.01, Math.min(1, value.x));
+                            }
+                            adsrChart.update('none');
+                            updateADSRValues();
+                            updateSoundInRealTime();
+                        }
+                    }
+                },
+                scales: {
+                    y: { 
+                        min: 0, 
+                        max: 1.1, 
+                        ticks: { color: '#9ca3af', font: { size: 10 } }, 
+                        grid: { color: '#374151' } 
+                    },
+                    x: { 
+                        type: 'linear', 
+                        min: 0, 
+                        max: 1, 
+                        ticks: { color: '#9ca3af', font: { size: 10 } }, 
+                        grid: { color: '#374151' } 
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: (context) => (context.dataIndex > 0 && context.dataIndex < 5) ? 8 : 0
+                    }
+                }
+            }
+        });
+
+        // --- Audio Initialization ---
+        function initAudio() {
+            if (audioContext) return;
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                waveformBuffer = new Uint8Array(analyser.frequencyBinCount);
+                spectrumBuffer = new Uint8Array(analyser.frequencyBinCount);
+                
+                mainGain = audioContext.createGain();
+                filter = audioContext.createBiquadFilter();
+                delayNode = audioContext.createDelay(1.0);
+                delayGain = audioContext.createGain();
+                panner = audioContext.createStereoPanner();
+                convolver = audioContext.createConvolver();
+                
+                // Audio routing: oscillator -> filter -> mainGain -> delay -> panner -> convolver -> analyser -> destination
+                filter.connect(mainGain);
+                mainGain.connect(delayNode);
+                mainGain.connect(panner);
+                delayNode.connect(delayGain);
+                delayGain.connect(panner);
+                panner.connect(convolver);
+                convolver.connect(analyser);
+                analyser.connect(audioContext.destination);
+
+                // Initialize oscillator gains
+                for (let i = 0; i < 2; i++) {
+                    oscillatorGains[i] = audioContext.createGain();
+                    oscillatorGains[i].connect(filter);
+                }
+
+                // Initialize FM synthesis
+                fmGain = audioContext.createGain();
+
+                drawVisualization(); // Start visualization
+            } catch (e) {
+                console.error('Web Audio API initialization failed:', e);
+                alert('Web Audio API is not supported in this browser: ' + e.message);
+            }
+        }
+
+        // --- Enhanced Sound Creation ---
+        function playSound() {
+            if (!audioContext) initAudio();
+            if (audioContext.state === 'suspended') audioContext.resume();
+            
+            stopSound(); // Stop any existing sound first
+
+            const now = audioContext.currentTime;
+
+            // Create FM oscillator
+            const fmAmount = parseFloat(document.getElementById('fmAmount').value);
+            const fmRatio = parseFloat(document.getElementById('fmRatio').value);
+            
+            if (fmAmount > 0) {
+                fmOscillator = audioContext.createOscillator();
+                fmOscillator.frequency.setValueAtTime(fundamentalFrequency * fmRatio, now);
+                fmGain.gain.setValueAtTime(fmAmount, now);
+                fmOscillator.connect(fmGain);
+                fmOscillator.start(now);
+                fmOscillator.stop(now + soundDuration);
+            }
+
+            // Create multiple oscillators
+            oscillators = [];
+            for (let i = 0; i < 2; i++) {
+                const oscType = document.getElementById(`osc${i+1}Type`).value;
+                const oscLevel = parseFloat(document.getElementById(`osc${i+1}Level`).value);
+                const oscDetune = parseFloat(document.getElementById(`osc${i+1}Detune`).value);
+                const oscOctave = parseFloat(document.getElementById(`osc${i+1}Octave`).value);
+
+                if (oscLevel > 0) {
+                    const osc = audioContext.createOscillator();
+                    
+                    if (oscType === 'custom' && i === 0) {
+                        // Use custom harmonics for oscillator 1
+                        const harmonicValues = getProcessedHarmonics();
+                        const real = new Float32Array(harmonicValues.length + 1);
+                        const imag = new Float32Array(harmonicValues.length + 1);
+                        for (let j = 0; j < harmonicValues.length; j++) {
+                            real[j+1] = harmonicValues[j];
+                        }
+                        const customWave = audioContext.createPeriodicWave(real, imag);
+                        osc.setPeriodicWave(customWave);
+                    } else {
+                        osc.type = oscType;
+                    }
+
+                    // Calculate frequency with detune and octave
+                    const freq = fundamentalFrequency * Math.pow(2, oscOctave) * Math.pow(2, oscDetune / 1200);
+                    osc.frequency.setValueAtTime(freq, now);
+
+                    // Connect FM if available
+                    if (fmOscillator && fmAmount > 0) {
+                        fmGain.connect(osc.frequency);
+                    }
+
+                    // Set oscillator level
+                    oscillatorGains[i].gain.setValueAtTime(oscLevel, now);
+                    
+                    osc.connect(oscillatorGains[i]);
+                    osc.start(now);
+                    osc.stop(now + soundDuration);
+                    oscillators.push(osc);
+                }
+            }
+
+            // Apply physical modeling effects
+            applyPhysicalModeling();
+
+            // Apply envelope
+            applyAdvancedEnvelope(now);
+
+            // Apply all other effects
+            updateFilter();
+            updateDelay();
+            updateSpatialization();
+
+            // Loop if enabled
+            if (isLooping) {
+                loopTimeoutId = setTimeout(() => {
+                    if (isLooping) playSound();
+                }, soundDuration * 1000);
+            }
+        }
+
+        function getProcessedHarmonics() {
+            const baseHarmonics = harmonicsChart.data.datasets[0].data;
+            const rolloff = parseFloat(document.getElementById('harmonicRolloff').value);
+            const evenOddBalance = parseFloat(document.getElementById('evenOddBalance').value);
+            
+            return baseHarmonics.map((value, index) => {
+                // Apply rolloff
+                let processed = value * Math.pow((index + 1), -rolloff);
+                
+                // Apply even/odd harmonic balance
+                if (index % 2 === 0) { // Even harmonics (1st, 3rd, 5th...)
+                    processed *= evenOddBalance;
+                } else { // Odd harmonics (2nd, 4th, 6th...)
+                    processed *= (1 - evenOddBalance);
+                }
+                
+                return processed;
+            });
+        }
+
+        function applyPhysicalModeling() {
+            const tension = parseFloat(document.getElementById('stringTension').value);
+            const resonance = parseFloat(document.getElementById('bodyResonance').value);
+            const damping = parseFloat(document.getElementById('damping').value);
+            const brightness = parseFloat(document.getElementById('brightness').value);
+
+            // Adjust filter based on physical modeling parameters
+            if (filter) {
+                const baseFreq = parseFloat(document.getElementById('filterFrequency').value);
+                const modifiedFreq = baseFreq * (0.5 + brightness * 1.5);
+                filter.frequency.setValueAtTime(modifiedFreq, audioContext.currentTime);
+                
+                const baseQ = parseFloat(document.getElementById('filterResonance').value);
+                const modifiedQ = baseQ * (1 + resonance * 2);
+                filter.Q.setValueAtTime(modifiedQ, audioContext.currentTime);
+            }
+
+            // Apply tension effect to main gain (affects perceived loudness and attack)
+            const tensionGain = 0.5 + tension * 0.5;
+            if (mainGain) {
+                const currentGain = mainGain.gain.value;
+                mainGain.gain.setValueAtTime(currentGain * tensionGain, audioContext.currentTime);
+            }
+        }
+
+        function applyAdvancedEnvelope(startTime) {
+            const adsrPoints = adsrChart.data.datasets[0].data;
+            const attackTime = adsrPoints[1].x * soundDuration;
+            const decayTime = (adsrPoints[2].x - adsrPoints[1].x) * soundDuration;
+            const sustainLevel = adsrPoints[2].y;
+            const sustainTime = (adsrPoints[3].x - adsrPoints[2].x) * soundDuration;
+            const releaseTime = (adsrPoints[4].x - adsrPoints[3].x) * soundDuration;
+
+            const attackCurve = parseFloat(document.getElementById('attackCurve').value);
+            const releaseCurve = parseFloat(document.getElementById('releaseCurve').value);
+            const masterVolume = parseFloat(document.getElementById('masterVolume').value);
+
+            mainGain.gain.cancelScheduledValues(startTime);
+            mainGain.gain.setValueAtTime(0, startTime);
+
+            // Advanced attack with curve
+            if (attackCurve > 0) {
+                mainGain.gain.exponentialRampToValueAtTime(masterVolume * 0.001, startTime + attackTime * 0.1);
+                mainGain.gain.exponentialRampToValueAtTime(masterVolume, startTime + attackTime);
+            } else if (attackCurve < 0) {
+                mainGain.gain.linearRampToValueAtTime(masterVolume * 0.9, startTime + attackTime * 0.9);
+                mainGain.gain.linearRampToValueAtTime(masterVolume, startTime + attackTime);
+            } else {
+                mainGain.gain.linearRampToValueAtTime(masterVolume, startTime + attackTime);
+            }
+
+            // Decay and sustain
+            mainGain.gain.linearRampToValueAtTime(sustainLevel * masterVolume, startTime + attackTime + decayTime);
+            if (sustainTime > 0) {
+                mainGain.gain.setValueAtTime(sustainLevel * masterVolume, startTime + attackTime + decayTime + sustainTime);
+            }
+
+            // Advanced release with curve
+            const releaseStart = startTime + attackTime + decayTime + sustainTime;
+            if (releaseCurve > 0) {
+                mainGain.gain.exponentialRampToValueAtTime(sustainLevel * masterVolume * 0.1, releaseStart + releaseTime * 0.8);
+                mainGain.gain.exponentialRampToValueAtTime(0.001, releaseStart + releaseTime);
+            } else if (releaseCurve < 0) {
+                mainGain.gain.setValueAtTime(sustainLevel * masterVolume, releaseStart + releaseTime * 0.2);
+                mainGain.gain.linearRampToValueAtTime(0, releaseStart + releaseTime);
+            } else {
+                mainGain.gain.linearRampToValueAtTime(0, releaseStart + releaseTime);
+            }
+        }
+
+        function loadInstrumentPreset(instrumentName) {
+            // Initialize audio context if not already done
+            if (!audioContext) initAudio();
+            
+            const preset = instrumentPresets[instrumentName];
+            if (!preset) return;
+
+            // Load oscillator settings
+            document.getElementById('osc1Type').value = preset.osc1.type;
+            document.getElementById('osc1Level').value = preset.osc1.level;
+            document.getElementById('osc1Detune').value = preset.osc1.detune;
+            document.getElementById('osc1Octave').value = preset.osc1.octave;
+
+            document.getElementById('osc2Type').value = preset.osc2.type;
+            document.getElementById('osc2Level').value = preset.osc2.level;
+            document.getElementById('osc2Detune').value = preset.osc2.detune;
+            document.getElementById('osc2Octave').value = preset.osc2.octave;
+
+            // Load FM settings
+            document.getElementById('fmAmount').value = preset.fm.amount;
+            document.getElementById('fmRatio').value = preset.fm.ratio;
+
+            // Load harmonics
+            harmonicsChart.data.datasets[0].data = [...preset.harmonics];
+            harmonicsChart.update();
+
+            // Load ADSR
+            const adsrPoints = adsrChart.data.datasets[0].data;
+            adsrPoints[1].x = preset.adsr.attack / soundDuration;
+            adsrPoints[2].x = adsrPoints[1].x + (preset.adsr.decay / soundDuration);
+            adsrPoints[2].y = preset.adsr.sustain;
+            adsrPoints[3].y = preset.adsr.sustain;
+            adsrPoints[3].x = 1 - (preset.adsr.release / soundDuration);
+            adsrPoints[4].x = 1;
+            adsrChart.update();
+
+            // Load physical modeling
+            document.getElementById('stringTension').value = preset.physical.tension;
+            document.getElementById('bodyResonance').value = preset.physical.resonance;
+            document.getElementById('damping').value = preset.physical.damping;
+            document.getElementById('brightness').value = preset.physical.brightness;
+
+            // Load filter
+            document.getElementById('filterType').value = preset.filter.type;
+            document.getElementById('filterFrequency').value = preset.filter.frequency;
+            document.getElementById('filterResonance').value = preset.filter.resonance;
+
+            updateAllParameterValues();
+        }
+
+        function stopSound() {
+            if (oscillators.length > 0) {
+                oscillators.forEach(osc => {
+                    try {
+                        osc.stop();
+                        osc.disconnect();
+                    } catch(e) {}
+                });
+                oscillators = [];
+            }
+
+            if (fmOscillator) {
+                try {
+                    fmOscillator.stop();
+                    fmOscillator.disconnect();
+                } catch(e) {}
+                fmOscillator = null;
+            }
+
+            if(mainGain && audioContext) {
+                mainGain.gain.cancelScheduledValues(audioContext.currentTime);
+                mainGain.gain.setValueAtTime(0, audioContext.currentTime);
+            }
+
+            if (loopTimeoutId) {
+                clearTimeout(loopTimeoutId);
+                loopTimeoutId = null;
+            }
+        }
+
+        function updateSoundInRealTime() {
+            if (oscillators.length === 0) return;
+
+            // Update oscillator 1 with custom harmonics if applicable
+            if (oscillators[0] && document.getElementById('osc1Type').value === 'custom') {
+                const harmonicValues = getProcessedHarmonics();
+                const real = new Float32Array(harmonicValues.length + 1);
+                const imag = new Float32Array(harmonicValues.length + 1);
+                for (let i = 0; i < harmonicValues.length; i++) {
+                    real[i+1] = harmonicValues[i];
+                }
+                const customWave = audioContext.createPeriodicWave(real, imag);
+                oscillators[0].setPeriodicWave(customWave);
+            }
+
+            // Update all other parameters
+            updateFilter();
+            updateDelay();
+            updateSpatialization();
+            applyPhysicalModeling();
+        }
+
+        function updateFilter() {
+            if (!filter || !audioContext) return;
+            const filterType = document.getElementById('filterType').value;
+            if (filterType === 'none') {
+                filter.type = 'allpass';
+                filter.frequency.setValueAtTime(22050, audioContext.currentTime);
+            } else {
+                filter.type = filterType;
+                const frequency = parseFloat(document.getElementById('filterFrequency').value);
+                const resonance = parseFloat(document.getElementById('filterResonance').value);
+                filter.frequency.setValueAtTime(frequency, audioContext.currentTime);
+                filter.Q.setValueAtTime(resonance, audioContext.currentTime);
+            }
+        }
+
+        function updateDelay() {
+            if (!delayNode || !audioContext) return;
+            const delayAmount = parseFloat(document.getElementById('delay').value);
+            delayNode.delayTime.setValueAtTime(delayAmount * 0.5, audioContext.currentTime);
+            delayGain.gain.setValueAtTime(delayAmount * 0.3, audioContext.currentTime);
+        }
+
+        function updateSpatialization() {
+            if (!panner || !audioContext) return;
+            const panningValue = parseFloat(document.getElementById('panning').value);
+            panner.pan.setValueAtTime(panningValue, audioContext.currentTime);
+
+            const reverbValue = parseFloat(document.getElementById('reverb').value);
+            updateReverb(reverbValue);
+        }
+
+        function updateReverb(value) {
+            if (!audioContext || !convolver) return;
+            if (value === 0) {
+                convolver.buffer = null;
+                return;
+            }
+            const sampleRate = audioContext.sampleRate;
+            const length = sampleRate * 2;
+            const impulse = audioContext.createBuffer(2, length, sampleRate);
+            const impulseL = impulse.getChannelData(0);
+            const impulseR = impulse.getChannelData(1);
+
+            for (let i = 0; i < length; i++) {
+                const n = length - i;
+                impulseL[i] = (Math.random() * 2 - 1) * Math.pow(n / length, 2 * value);
+                impulseR[i] = (Math.random() * 2 - 1) * Math.pow(n / length, 2 * value);
+            }
+            convolver.buffer = impulse;
+        }
+
+        // --- Enhanced Visualization ---
+        function drawVisualization() {
+            animationFrameId = requestAnimationFrame(drawVisualization);
+            if (!analyser) return;
+
+            // Draw waveform
+            analyser.getByteTimeDomainData(waveformBuffer);
+            waveformCanvasCtx.fillStyle = '#1f2937';
+            waveformCanvasCtx.fillRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+            waveformCanvasCtx.lineWidth = 2;
+            waveformCanvasCtx.strokeStyle = '#818cf8';
+            waveformCanvasCtx.beginPath();
+            const sliceWidth = waveformCanvas.width * 1.0 / analyser.frequencyBinCount;
+            let x = 0;
+            for (let i = 0; i < analyser.frequencyBinCount; i++) {
+                const v = waveformBuffer[i] / 128.0;
+                const y = v * waveformCanvas.height / 2;
+                if (i === 0) {
+                    waveformCanvasCtx.moveTo(x, y);
+                } else {
+                    waveformCanvasCtx.lineTo(x, y);
+                }
+                x += sliceWidth;
+            }
+            waveformCanvasCtx.lineTo(waveformCanvas.width, waveformCanvas.height / 2);
+            waveformCanvasCtx.stroke();
+
+            // Draw spectrum
+            analyser.getByteFrequencyData(spectrumBuffer);
+            spectrumCanvasCtx.fillStyle = '#1f2937';
+            spectrumCanvasCtx.fillRect(0, 0, spectrumCanvas.width, spectrumCanvas.height);
+            
+            const barWidth = spectrumCanvas.width / analyser.frequencyBinCount * 2;
+            let barX = 0;
+            
+            for (let i = 0; i < analyser.frequencyBinCount; i++) {
+                const barHeight = (spectrumBuffer[i] / 255) * spectrumCanvas.height;
+                
+                const hue = (i / analyser.frequencyBinCount) * 360;
+                spectrumCanvasCtx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+                spectrumCanvasCtx.fillRect(barX, spectrumCanvas.height - barHeight, barWidth, barHeight);
+                
+                barX += barWidth + 1;
+            }
+        }
+
+        // --- Parameter Value Updates ---
+        function updateADSRValues() {
+            const points = adsrData.datasets[0].data;
+            document.getElementById('attackValue').textContent = (points[1].x * soundDuration).toFixed(2) + 's';
+            document.getElementById('decayValue').textContent = ((points[2].x - points[1].x) * soundDuration).toFixed(2) + 's';
+            document.getElementById('sustainValue').textContent = points[2].y.toFixed(2);
+            document.getElementById('releaseValue').textContent = ((points[4].x - points[3].x) * soundDuration).toFixed(2) + 's';
+        }
+
+        function updateAllParameterValues() {
+            document.getElementById('masterVolumeValue').textContent = parseFloat(document.getElementById('masterVolume').value).toFixed(2);
+            document.getElementById('fundamentalFreqValue').textContent = document.getElementById('fundamentalFreq').value + ' Hz';
+            document.getElementById('soundDurationValue').textContent = parseFloat(document.getElementById('soundDuration').value).toFixed(1) + ' s';
+            
+            const panValue = parseFloat(document.getElementById('panning').value);
+            document.getElementById('panningValue').textContent = panValue === 0 ? 'Center' : 
+                panValue < 0 ? `L ${Math.abs(panValue).toFixed(2)}` : `R ${panValue.toFixed(2)}`;
+            
+            document.getElementById('reverbValue').textContent = parseFloat(document.getElementById('reverb').value).toFixed(2);
+            document.getElementById('delayValue').textContent = parseFloat(document.getElementById('delay').value).toFixed(2);
+            document.getElementById('filterFrequencyValue').textContent = document.getElementById('filterFrequency').value + ' Hz';
+            document.getElementById('filterResonanceValue').textContent = parseFloat(document.getElementById('filterResonance').value).toFixed(1);
+            
+            document.getElementById('osc1LevelValue').textContent = parseFloat(document.getElementById('osc1Level').value).toFixed(2);
+            document.getElementById('osc1DetuneValue').textContent = document.getElementById('osc1Detune').value;
+            document.getElementById('osc1OctaveValue').textContent = document.getElementById('osc1Octave').value;
+            
+            document.getElementById('osc2LevelValue').textContent = parseFloat(document.getElementById('osc2Level').value).toFixed(2);
+            document.getElementById('osc2DetuneValue').textContent = document.getElementById('osc2Detune').value;
+            document.getElementById('osc2OctaveValue').textContent = document.getElementById('osc2Octave').value;
+
+            document.getElementById('fmAmountValue').textContent = document.getElementById('fmAmount').value;
+            document.getElementById('fmRatioValue').textContent = parseFloat(document.getElementById('fmRatio').value).toFixed(1);
+
+            document.getElementById('harmonicRolloffValue').textContent = parseFloat(document.getElementById('harmonicRolloff').value).toFixed(1);
+            document.getElementById('evenOddBalanceValue').textContent = parseFloat(document.getElementById('evenOddBalance').value).toFixed(2);
+
+            document.getElementById('stringTensionValue').textContent = parseFloat(document.getElementById('stringTension').value).toFixed(2);
+            document.getElementById('bodyResonanceValue').textContent = parseFloat(document.getElementById('bodyResonance').value).toFixed(2);
+            document.getElementById('dampingValue').textContent = parseFloat(document.getElementById('damping').value).toFixed(2);
+            document.getElementById('brightnessValue').textContent = parseFloat(document.getElementById('brightness').value).toFixed(2);
+
+            document.getElementById('attackCurveValue').textContent = parseFloat(document.getElementById('attackCurve').value).toFixed(1);
+            document.getElementById('releaseCurveValue').textContent = parseFloat(document.getElementById('releaseCurve').value).toFixed(1);
+        }
+
+        // --- Enhanced Save to WAV function ---
+        async function saveToWav() {
+            if (!audioContext) {
+                alert("Please initialize audio first by playing a sound or using a preset.");
+                return;
+            }
+            
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.textContent = 'Rendering...';
+            saveBtn.disabled = true;
+
+            try {
+                const offlineCtx = new OfflineAudioContext(2, audioContext.sampleRate * soundDuration, audioContext.sampleRate);
+                
+                // Create offline audio nodes
+                const offlineGain = offlineCtx.createGain();
+                const offlineFilter = offlineCtx.createBiquadFilter();
+                const offlinePanner = offlineCtx.createStereoPanner();
+                
+                // Apply current settings to offline context
+                const masterVolume = parseFloat(document.getElementById('masterVolume').value);
+                offlineGain.gain.setValueAtTime(masterVolume, 0);
+                
+                // Create offline oscillator with current harmonics
+                const harmonicValues = getProcessedHarmonics();
+                const real = new Float32Array(harmonicValues.length + 1);
+                const imag = new Float32Array(harmonicValues.length + 1);
+                for (let i = 0; i < harmonicValues.length; i++) {
+                    real[i+1] = harmonicValues[i];
+                }
+                const customWave = offlineCtx.createPeriodicWave(real, imag);
+                
+                const offlineOsc = offlineCtx.createOscillator();
+                offlineOsc.setPeriodicWave(customWave);
+                offlineOsc.frequency.setValueAtTime(fundamentalFrequency, 0);
+                
+                // Connect offline audio graph
+                offlineOsc.connect(offlineFilter);
+                offlineFilter.connect(offlineGain);
+                offlineGain.connect(offlinePanner);
+                offlinePanner.connect(offlineCtx.destination);
+                
+                // Apply envelope to offline context
+                const adsrPoints = adsrChart.data.datasets[0].data;
+                const attackTime = adsrPoints[1].x * soundDuration;
+                const decayTime = (adsrPoints[2].x - adsrPoints[1].x) * soundDuration;
+                const sustainLevel = adsrPoints[2].y;
+                const sustainTime = (adsrPoints[3].x - adsrPoints[2].x) * soundDuration;
+                const releaseTime = (adsrPoints[4].x - adsrPoints[3].x) * soundDuration;
+
+                offlineGain.gain.setValueAtTime(0, 0);
+                offlineGain.gain.linearRampToValueAtTime(masterVolume, attackTime);
+                offlineGain.gain.linearRampToValueAtTime(sustainLevel * masterVolume, attackTime + decayTime);
+                offlineGain.gain.setValueAtTime(sustainLevel * masterVolume, attackTime + decayTime + sustainTime);
+                offlineGain.gain.linearRampToValueAtTime(0, soundDuration);
+                
+                offlineOsc.start(0);
+                offlineOsc.stop(soundDuration);
+                
+                const renderedBuffer = await offlineCtx.startRendering();
+                const wav = bufferToWave(renderedBuffer);
+                const blob = new Blob([wav], { type: 'audio/wav' });
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'sound-sample.wav';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (e) {
+                console.error('Error saving WAV:', e);
+                alert('Error saving WAV file: ' + e.message);
+            }
+            
+            saveBtn.textContent = 'Save .WAV';
+            saveBtn.disabled = false;
+        }
+
+        function bufferToWave(abuffer) {
+            var numOfChan = abuffer.numberOfChannels,
+                length = abuffer.length * numOfChan * 2 + 44,
+                buffer = new ArrayBuffer(length),
+                view = new DataView(buffer),
+                channels = [], i, sample,
+                offset = 0,
+                pos = 0;
+
+            // write WAVE header
+            setUint32(0x46464952);                         // "RIFF"
+            setUint32(length - 8);                         // file length - 8
+            setUint32(0x45564157);                         // "WAVE"
+
+            setUint32(0x20746d66);                         // "fmt " chunk
+            setUint32(16);                                 // length = 16
+            setUint16(1);                                  // PCM (uncompressed)
+            setUint16(numOfChan);
+            setUint32(abuffer.sampleRate);
+            setUint32(abuffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+            setUint16(numOfChan * 2);                      // block-align
+            setUint16(16);                                 // 16-bit (hardcoded in this demo)
+
+            setUint32(0x61746164);                         // "data" - chunk
+            setUint32(length - pos - 4);                   // chunk length
+
+            // write interleaved data
+            for(i = 0; i < abuffer.numberOfChannels; i++)
+                channels.push(abuffer.getChannelData(i));
+
+            while(pos < length) {
+                for(i = 0; i < numOfChan; i++) {             // interleave channels
+                    sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
+                    sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0; // scale to 16-bit signed int
+                    view.setInt16(pos, sample, true);          // write 16-bit sample
+                    pos += 2;
+                }
+                offset++                                     // next source sample
+            }
+
+            // create Uint8Array view for WAVE file
+            return new Uint8Array(buffer);
+
+            function setUint16(data) {
+                view.setUint16(pos, data, true);
+                pos += 2;
+            }
+
+            function setUint32(data) {
+                view.setUint32(pos, data, true);
+                pos += 4;
+            }
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('playBtn').addEventListener('click', playSound);
+        document.getElementById('stopBtn').addEventListener('click', stopSound);
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            if (!audioContext) {
+                alert("Please play a sound first to initialize the audio engine.");
+                return;
+            }
+            saveToWav();
+        });
+
+        document.getElementById('loopBtn').addEventListener('click', () => {
+            isLooping = !isLooping;
+            const btn = document.getElementById('loopBtn');
+            btn.classList.toggle('bg-purple-600', !isLooping);
+            btn.classList.toggle('bg-purple-400', isLooping);
+            btn.textContent = isLooping ? 'Loop On' : 'Loop';
+        });
+
+        // Real-time parameter updates
+        ['masterVolume', 'fundamentalFreq', 'soundDuration', 'panning', 'reverb', 'delay', 
+         'filterFrequency', 'filterResonance'].forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                if (id === 'fundamentalFreq') {
+                    fundamentalFrequency = parseFloat(e.target.value);
+                    if (oscillators.length > 0) {
+                        oscillators.forEach((osc, index) => {
+                            const oscOctave = parseFloat(document.getElementById(`osc${index+1}Octave`).value);
+                            const oscDetune = parseFloat(document.getElementById(`osc${index+1}Detune`).value);
+                            const freq = fundamentalFrequency * Math.pow(2, oscOctave) * Math.pow(2, oscDetune / 1200);
+                            osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+                        });
+                    }
+                } else if (id === 'soundDuration') {
+                    soundDuration = parseFloat(e.target.value);
+                }
+                updateAllParameterValues();
+                updateSoundInRealTime();
+            });
+        });
+
+        document.getElementById('filterType').addEventListener('change', () => {
+            updateSoundInRealTime();
+        });
+
+        // Harmonics presets
+        document.getElementById('harmonicsPreset1').addEventListener('click', () => setHarmonicsPreset('sine'));
+        document.getElementById('harmonicsPreset2').addEventListener('click', () => setHarmonicsPreset('sawtooth'));
+        document.getElementById('harmonicsPreset3').addEventListener('click', () => setHarmonicsPreset('square'));
+        document.getElementById('harmonicsPreset4').addEventListener('click', () => setHarmonicsPreset('triangle'));
+        
+        // Instrument preset buttons
+        Object.keys(instrumentPresets).forEach(preset => {
+            document.getElementById(`preset${preset.charAt(0).toUpperCase() + preset.slice(1)}`).addEventListener('click', () => {
+                loadInstrumentPreset(preset);
+            });
+        });
+
+        // Multi-oscillator and physical modeling controls
+        ['osc1Level', 'osc1Detune', 'osc1Octave', 'osc2Level', 'osc2Detune', 'osc2Octave',
+         'fmAmount', 'fmRatio', 'harmonicRolloff', 'evenOddBalance',
+         'stringTension', 'bodyResonance', 'damping', 'brightness',
+         'attackCurve', 'releaseCurve'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                updateAllParameterValues();
+                updateSoundInRealTime();
+            });
+        });
+
+        ['osc1Type', 'osc2Type'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => {
+                updateSoundInRealTime();
+            });
+        });
+
+        // Enhanced harmonics update
+        harmonicsChart.options.plugins.dragData.onDragEnd = (e, datasetIndex, index, value) => {
+            harmonicsChart.data.datasets[datasetIndex].data[index] = Math.max(0, Math.min(1, value));
+            harmonicsChart.update('none');
+            updateSoundInRealTime();
+        };
+
+        // Ensure canvas is resized properly
+        window.addEventListener('load', () => {
+            waveformCanvas.width = waveformCanvas.clientWidth;
+            waveformCanvas.height = waveformCanvas.clientHeight;
+            spectrumCanvas.width = spectrumCanvas.clientWidth;
+            spectrumCanvas.height = spectrumCanvas.clientHeight;
+            updateAllParameterValues();
+            // Load default guitar preset on startup
+            loadInstrumentPreset('guitar');
+        });
+
+        window.addEventListener('resize', () => {
+            waveformCanvas.width = waveformCanvas.clientWidth;
+            waveformCanvas.height = waveformCanvas.clientHeight;
+            spectrumCanvas.width = spectrumCanvas.clientWidth;
+            spectrumCanvas.height = spectrumCanvas.clientHeight;
+        });
+
+    </script>
+</body>
+</html>

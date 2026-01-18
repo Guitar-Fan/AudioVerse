@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundFont Player Test</title>
+</head>
+<body>
+    <h1>SoundFont Player Test</h1>
+    <div id="status">Loading...</div>
+    <br>
+    <input type="file" id="sf2-file" accept=".sf2,.sf3,.dls" />
+    <button id="test-note">Play Test Note (C4)</button>
+    
+    <!-- CDN Libraries -->
+    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+    <script src="https://unpkg.com/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
+    
+    <script src="js/tonejs-soundfont-player.js"></script>
+    <script src="js/advanced-player.js"></script>
+    
+    <script>
+        let player;
+        
+        async function init() {
+            try {
+                player = new AdvancedSoundFontPlayer();
+                player.onStatusChange = (status) => {
+                    document.getElementById('status').textContent = status;
+                };
+                player.onError = (error) => {
+                    document.getElementById('status').textContent = 'Error: ' + error;
+                };
+                
+                await player.initialize();
+                document.getElementById('status').textContent = 'Player ready - load a SoundFont';
+            } catch (error) {
+                document.getElementById('status').textContent = 'Failed to initialize: ' + error.message;
+            }
+        }
+        
+        document.getElementById('sf2-file').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file && player) {
+                document.getElementById('status').textContent = 'Loading SoundFont...';
+                const success = await player.loadSoundFont(file);
+                if (success) {
+                    document.getElementById('status').textContent = 'SoundFont loaded! Try playing a note.';
+                }
+            }
+        });
+        
+        document.getElementById('test-note').addEventListener('click', () => {
+            if (player && player.isInitialized) {
+                player.playNote(60, 100, 0); // Play middle C
+                setTimeout(() => {
+                    player.stopNote(60, 0);
+                }, 1000);
+            }
+        });
+        
+        init();
+    </script>
+</body>
+</html>

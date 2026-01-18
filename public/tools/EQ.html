@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Music Player with Parametric EQ & Spectrum</title>
+    <style>
+        body { font-family: sans-serif; background: #181818; color: #eee; margin: 0; padding: 0; }
+        .container { max-width: 700px; margin: 40px auto; background: #232323; border-radius: 12px; padding: 24px; box-shadow: 0 2px 16px #0008; }
+        .controls { margin: 16px 0; }
+        .eq-controls { display: flex; gap: 16px; margin: 24px 0; }
+        .eq-band { flex: 1; text-align: center; }
+        .eq-band input[type="range"] { width: 100%; }
+        svg { display: block; margin: 0 auto; background: #111; border-radius: 8px; }
+        label { font-size: 0.9em; }
+        .band-panel {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            top: auto !important;
+            transform: translateX(-50%) scale(0.95);
+            background: linear-gradient(90deg, #ffe066 0%, #ffb700 100%);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px #000b, 0 1px 0 #fff2 inset;
+            padding: 18px 32px 12px 32px;
+            display: flex;
+            gap: 32px;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s cubic-bezier(.4,2,.6,1), transform 0.25s cubic-bezier(.4,2,.6,1);
+        }
+        .band-panel.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) scale(1);
+        }
+        .dial-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 90px;
+        }
+        .dial-label {
+            color: #232323;
+            font-size: 1em;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+            text-shadow: 0 1px 2px #fff8;
+        }
+        .dial-value {
+            margin-top: 4px;
+            color: #232323;
+            font-size: 1.1em;
+            font-family: monospace;
+            text-shadow: 0 1px 2px #fff8;
+        }
+        .band-panel input[type="range"] {
+            width: 80px;
+            accent-color: #ff0;
+            margin: 0 0 0 0;
+            transition: box-shadow 0.2s;
+            box-shadow: 0 0 0 #ff0;
+            border-radius: 8px;
+            background: #fff;
+        }
+        .band-panel input[type="range"]:focus {
+            box-shadow: 0 0 8px #ff0b;
+            outline: none;
+        }
+        /* Stylish buttons */
+        button, .icon-btn {
+            background: linear-gradient(90deg, #ffe066 0%, #ffb700 100%);
+            color: #232323;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 24px;
+            font-size: 1.2em;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin: 0 8px;
+            box-shadow: 0 2px 8px #0006, 0 1px 0 #fff2 inset;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.13s, box-shadow 0.2s, color 0.2s;
+        }
+        button:enabled:hover, button:enabled:focus, .icon-btn:enabled:hover, .icon-btn:enabled:focus {
+            background: linear-gradient(90deg, #ffb700 0%, #ffe066 100%);
+            color: #fff;
+            transform: scale(1.12);
+            box-shadow: 0 4px 16px #ffe066a0, 0 1px 0 #fff2 inset;
+        }
+        button:disabled, .icon-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .icon-btn {
+            padding: 10px 16px;
+            font-size: 1.5em;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffe066 60%, #ffb700 100%);
+            color: #232323;
+            margin: 0 6px;
+            box-shadow: 0 2px 8px #0004, 0 1px 0 #fff2 inset;
+        }
+        .icon-btn.active, .icon-btn[aria-pressed="true"] {
+            background: linear-gradient(135deg, #ffb700 0%, #ffe066 100%);
+            color: #fff;
+            box-shadow: 0 0 16px #ffe066cc;
+        }
+        .transport-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: 32px auto 0 auto;
+            padding: 12px 18px;
+            background: linear-gradient(90deg, #232323 60%, #444 100%);
+            border-radius: 16px;
+            box-shadow: 0 2px 16px #0008;
+            max-width: 650px;
+            position: relative;
+        }
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 220px;
+        }
+        #progressBar {
+            width: 120px;
+            accent-color: #ffb700;
+            border-radius: 8px;
+            background: #fff;
+            height: 6px;
+            transition: box-shadow 0.2s;
+        }
+        #progressBar:focus {
+            box-shadow: 0 0 8px #ffb70088;
+            outline: none;
+        }
+        #currentTime, #duration {
+            color: #ffe066;
+            font-family: monospace;
+            font-size: 1em;
+            min-width: 38px;
+            text-align: center;
+        }
+        /* Fabfilter-like EQ dot and curve */
+        svg circle {
+            filter: drop-shadow(0 0 8px #fff8);
+            transition: r 0.15s, filter 0.2s;
+        }
+        svg circle[data-idx]:hover, svg circle[data-idx]:focus {
+            r: 12;
+            filter: drop-shadow(0 0 16px #ff0b);
+        }
+        svg .eq-dot-selected {
+            stroke: #ffe066;
+            stroke-width: 5;
+            filter: drop-shadow(0 0 16px #ffe066cc);
+        }
+        svg .eq-curve {
+            stroke: url(#eq-gradient);
+            stroke-width: 3.5;
+            filter: drop-shadow(0 0 10px #ffe06688);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Music Player with Parametric Equalizer</h2>
+        <input type="file" id="audioFile" accept="audio/*">
+        <div class="controls">
+            <button id="playBtn" disabled>Play</button>
+            <button id="pauseBtn" disabled>Pause</button>
+        </div>
+        <div class="eq-controls" id="eqControls"></div>
+        <svg id="spectrum" width="650" height="180" style="cursor:crosshair"></svg>
+        <div id="bandPanel" class="band-panel">
+            <div class="dial-group">
+                <div class="dial-label">Freq</div>
+                <input type="range" id="freqDial" min="40" max="20000" step="1">
+                <div class="dial-value" id="freqValue"></div>
+            </div>
+            <div class="dial-group">
+                <div class="dial-label">Gain</div>
+                <input type="range" id="gainDial" min="-60" max="12" step="0.1">
+                <div class="dial-value" id="gainValue"></div>
+            </div>
+            <div class="dial-group">
+                <div class="dial-label">Q</div>
+                <input type="range" id="qDial" min="0.1" max="10" step="0.01">
+                <div class="dial-value" id="qValue"></div>
+            </div>
+        </div>
+        <div class="transport-bar">
+            <button id="rewindBtn" class="icon-btn" title="Rewind">&#9194;</button>
+            <button id="playPauseBtn" class="icon-btn" title="Play/Pause">&#9654;</button>
+            <button id="stopBtn" class="icon-btn" title="Stop">&#9632;</button>
+            <button id="ffBtn" class="icon-btn" title="Fast Forward">&#9193;</button>
+            <div class="progress-container">
+                <span id="currentTime">0:00</span>
+                <input type="range" id="progressBar" min="0" max="100" value="0" step="0.01">
+                <span id="duration">0:00</span>
+            </div>
+            <button id="loopBtn" class="icon-btn" title="Loop">&#128257;</button>
+        </div>
+    </div>
+    <audio id="audio" style="display:none"></audio>
+    <script>
+        // EQ band settings
+        let eqBands = [
+            { freq: 60,   gain: 0, q: 1.0, label: "60Hz", type: "peaking" },
+            { freq: 170,  gain: 0, q: 1.0, label: "170Hz", type: "peaking" },
+            { freq: 350,  gain: 0, q: 1.0, label: "350Hz", type: "peaking" },
+            { freq: 1000, gain: 0, q: 1.0, label: "1kHz", type: "peaking" },
+            { freq: 3500, gain: 0, q: 1.0, label: "3.5kHz", type: "peaking" },
+            { freq: 10000,gain: 0, q: 1.0, label: "10kHz", type: "peaking" }
+        ];
+
+        // DOM elements
+        const audioFile = document.getElementById('audioFile');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const eqControls = document.getElementById('eqControls');
+        const spectrumSVG = document.getElementById('spectrum');
+        const audio = document.getElementById('audio');
+
+        // Audio context and nodes
+        let ctx, source, analyser, eqFilters = [];
+
+        // Remove old EQ controls UI
+        eqControls.style.display = "none";
+
+        // Utility: freq <-> x, gain <-> y
+        function freqToX(freq, width) {
+            const minF = 40, maxF = 20000;
+            const logMin = Math.log10(minF), logMax = Math.log10(maxF);
+            return ((Math.log10(freq) - logMin) / (logMax - logMin)) * width;
+        }
+        function xToFreq(x, width) {
+            const minF = 40, maxF = 20000;
+            const logMin = Math.log10(minF), logMax = Math.log10(maxF);
+            return Math.pow(10, logMin + (x / width) * (logMax - logMin));
+        }
+        function gainToY(gain, height) {
+            // -60dB (bottom) to +12dB (top)
+            return ((12 - gain) / 72) * (height - 30) + 10;
+        }
+        function yToGain(y, height) {
+            return 12 - ((y - 10) / (height - 30)) * 72;
+        }
+
+        // File upload
+        audioFile.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) {
+                audio.src = URL.createObjectURL(file);
+                playBtn.disabled = false;
+                pauseBtn.disabled = false;
+            }
+        });
+
+        // Play/Pause
+        playBtn.onclick = () => audio.play();
+        pauseBtn.onclick = () => audio.pause();
+
+        // Setup audio context and EQ
+        function setupAudioNodes() {
+            if (!ctx) {
+                ctx = new (window.AudioContext || window.webkitAudioContext)();
+                source = ctx.createMediaElementSource(audio);
+            }
+            // Remove old filters
+            if (eqFilters.length) eqFilters.forEach(f => f.disconnect());
+            eqFilters = eqBands.map(band => {
+                const filter = ctx.createBiquadFilter();
+                filter.type = band.type || 'peaking';
+                filter.frequency.value = band.freq;
+                filter.gain.value = band.gain;
+                filter.Q.value = band.q || 1.0;
+                return filter;
+            });
+            // Chain filters
+            let node = source;
+            eqFilters.forEach(filter => {
+                node.connect(filter);
+                node = filter;
+            });
+            // Analyser for spectrum
+            if (!analyser) {
+                analyser = ctx.createAnalyser();
+                analyser.fftSize = 2048;
+            }
+            node.connect(analyser);
+            analyser.connect(ctx.destination);
+        }
+
+        audio.onplay = async () => {
+            setupAudioNodes();
+            drawSpectrum();
+        };
+
+        let selectedIdx = null;
+
+        // --- Transport controls logic ---
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const rewindBtn = document.getElementById('rewindBtn');
+        const ffBtn = document.getElementById('ffBtn');
+        const loopBtn = document.getElementById('loopBtn');
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeSpan = document.getElementById('currentTime');
+        const durationSpan = document.getElementById('duration');
+
+        let isPlaying = false;
+        let isLoop = false;
+
+        function formatTime(sec) {
+            sec = Math.max(0, sec|0);
+            return Math.floor(sec/60) + ":" + (sec%60).toString().padStart(2, "0");
+        }
+
+        playPauseBtn.onclick = function() {
+            if (audio.paused) audio.play();
+            else audio.pause();
+        };
+        stopBtn.onclick = function() {
+            audio.pause();
+            audio.currentTime = 0;
+        };
+        rewindBtn.onclick = function() {
+            audio.currentTime = Math.max(0, audio.currentTime - 5);
+        };
+        ffBtn.onclick = function() {
+            audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 5);
+        };
+        loopBtn.onclick = function() {
+            isLoop = !isLoop;
+            audio.loop = isLoop;
+            loopBtn.classList.toggle('active', isLoop);
+            loopBtn.setAttribute('aria-pressed', isLoop ? "true" : "false");
+        };
+
+        audio.addEventListener('play', () => {
+            isPlaying = true;
+            playPauseBtn.innerHTML = "&#10073;&#10073;"; // Pause icon
+        });
+        audio.addEventListener('pause', () => {
+            isPlaying = false;
+            playPauseBtn.innerHTML = "&#9654;"; // Play icon
+        });
+        audio.addEventListener('ended', () => {
+            playPauseBtn.innerHTML = "&#9654;";
+        });
+
+        audio.addEventListener('timeupdate', () => {
+            progressBar.value = (audio.currentTime / (audio.duration || 1)) * 100;
+            currentTimeSpan.textContent = formatTime(audio.currentTime);
+            durationSpan.textContent = formatTime(audio.duration || 0);
+        });
+        audio.addEventListener('loadedmetadata', () => {
+            durationSpan.textContent = formatTime(audio.duration || 0);
+        });
+
+        progressBar.addEventListener('input', () => {
+            if (audio.duration) {
+                audio.currentTime = (progressBar.value / 100) * audio.duration;
+            }
+        });
+
+        // --- Band Panel logic ---
+        const bandPanel = document.getElementById('bandPanel');
+        const freqDial = document.getElementById('freqDial');
+        const gainDial = document.getElementById('gainDial');
+        const qDial = document.getElementById('qDial');
+        const freqValue = document.getElementById('freqValue');
+        const gainValue = document.getElementById('gainValue');
+        const qValue = document.getElementById('qValue');
+
+        function updateBandPanel() {
+            if (selectedIdx === null || !eqBands[selectedIdx]) {
+                bandPanel.classList.remove('active');
+                bandPanel.style.pointerEvents = "none";
+                return;
+            }
+            bandPanel.style.pointerEvents = "auto";
+            bandPanel.classList.add('active');
+            freqDial.value = eqBands[selectedIdx].freq;
+            gainDial.value = eqBands[selectedIdx].gain;
+            qDial.value = eqBands[selectedIdx].q;
+            freqValue.textContent = Math.round(eqBands[selectedIdx].freq) + " Hz";
+            gainValue.textContent = (eqBands[selectedIdx].gain > 0 ? "+" : "") + eqBands[selectedIdx].gain.toFixed(1) + " dB";
+            qValue.textContent = eqBands[selectedIdx].q.toFixed(2);
+        }
+        freqDial.oninput = function() {
+            if (selectedIdx === null) return;
+            eqBands[selectedIdx].freq = +freqDial.value;
+            updateBandPanel();
+            if (eqFilters[selectedIdx]) eqFilters[selectedIdx].frequency.value = eqBands[selectedIdx].freq;
+        };
+        gainDial.oninput = function() {
+            if (selectedIdx === null) return;
+            eqBands[selectedIdx].gain = +gainDial.value;
+            updateBandPanel();
+            if (eqFilters[selectedIdx]) eqFilters[selectedIdx].gain.value = eqBands[selectedIdx].gain;
+        };
+        qDial.oninput = function() {
+            if (selectedIdx === null) return;
+            eqBands[selectedIdx].q = +qDial.value;
+            updateBandPanel();
+            if (eqFilters[selectedIdx]) eqFilters[selectedIdx].Q.value = eqBands[selectedIdx].q;
+        };
+
+        // --- Draw SVG with Fabfilter-like look ---
+        function drawSpectrum() {
+            if (!analyser) return;
+            const width = spectrumSVG.width.baseVal.value;
+            const height = spectrumSVG.height.baseVal.value;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            analyser.getByteFrequencyData(dataArray);
+
+            // Clear SVG
+            spectrumSVG.innerHTML = '';
+
+            // Gradient for EQ curve
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+            grad.setAttribute('id', 'eq-gradient');
+            grad.setAttribute('x1', '0%'); grad.setAttribute('x2', '100%');
+            grad.setAttribute('y1', '0%'); grad.setAttribute('y2', '0%');
+            grad.innerHTML = `
+                <stop offset="0%" stop-color="#ffe066"/>
+                <stop offset="50%" stop-color="#ffb700"/>
+                <stop offset="100%" stop-color="#ffe066"/>
+            `;
+            defs.appendChild(grad);
+            spectrumSVG.appendChild(defs);
+
+            // Draw axes
+            drawAxes(width, height);
+
+            // Draw spectrum bars (logarithmic mapping, interpolate bins)
+            const barCount = 100;
+            const barWidth = width / barCount;
+            const minF = 40, maxF = 20000;
+            const nyquist = ctx ? ctx.sampleRate / 2 : 22050;
+            for (let i = 0; i < barCount; i++) {
+                const freq = minF * Math.pow(maxF / minF, i / (barCount - 1));
+                if (freq < minF || freq > maxF) continue;
+                const bin = freq / nyquist * bufferLength;
+                const bin0 = Math.floor(bin);
+                const bin1 = Math.min(bufferLength - 1, bin0 + 1);
+                const frac = bin - bin0;
+                const value = (1 - frac) * dataArray[bin0] + frac * dataArray[bin1];
+                const db = (value / 255) * (12 + 60) - 60;
+                const barHeight = ((db + 60) / 72) * (height - 30);
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', i * barWidth);
+                rect.setAttribute('y', height - barHeight - 10);
+                rect.setAttribute('width', barWidth - 1);
+                rect.setAttribute('height', barHeight);
+                rect.setAttribute('fill', `url(#eq-gradient)`);
+                rect.setAttribute('opacity', '0.32');
+                spectrumSVG.appendChild(rect);
+            }
+
+            // Draw EQ curve (sum dB, not linear gain)
+            const eqPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            let path = '';
+            for (let x = 0; x < width; x++) {
+                const freq = xToFreq(x, width);
+                let gain = 0;
+                eqBands.forEach(band => {
+                    gain += getBandGainAtFreq(band, freq);
+                });
+                const y = gainToY(Math.max(-60, Math.min(12, gain)), height);
+                path += (x === 0 ? 'M' : 'L') + x + ',' + y + ' ';
+            }
+            eqPath.setAttribute('d', path);
+            eqPath.setAttribute('class', 'eq-curve');
+            eqPath.setAttribute('fill', 'none');
+            spectrumSVG.appendChild(eqPath);
+
+            // Draw EQ band dots
+            eqBands.forEach((band, i) => {
+                const x = freqToX(band.freq, width);
+                const y = gainToY(band.gain, height);
+                const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                dot.setAttribute('cx', x);
+                dot.setAttribute('cy', y);
+                dot.setAttribute('r', 10);
+                dot.setAttribute('fill', band.type === "lowshelf" ? "#0af" : band.type === "highshelf" ? "#fa0" : "#f44");
+                dot.setAttribute('stroke', '#fff');
+                dot.setAttribute('stroke-width', selectedIdx === i ? '5' : '2');
+                dot.setAttribute('class', selectedIdx === i ? 'eq-dot-selected' : '');
+                dot.style.cursor = "pointer";
+                dot.setAttribute('data-idx', i);
+                dot.addEventListener('mousedown', ev => {
+                    selectedIdx = i;
+                    updateBandPanel();
+                });
+                spectrumSVG.appendChild(dot);
+
+                // Label
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', x + 14);
+                label.setAttribute('y', y - 12);
+                label.setAttribute('fill', '#fff');
+                label.setAttribute('font-size', '13');
+                label.setAttribute('font-weight', 'bold');
+                label.textContent = band.type === "lowshelf" ? "LS" : band.type === "highshelf" ? "HS" : "B";
+                spectrumSVG.appendChild(label);
+            });
+
+            requestAnimationFrame(drawSpectrum);
+        }
+
+        // Draw axes and labels
+        function drawAxes(width, height) {
+            const svgNS = "http://www.w3.org/2000/svg";
+            // X axis (frequency)
+            const axis = document.createElementNS(svgNS, 'line');
+            axis.setAttribute('x1', 0);
+            axis.setAttribute('y1', height - 10);
+            axis.setAttribute('x2', width);
+            axis.setAttribute('y2', height - 10);
+            axis.setAttribute('stroke', '#888');
+            axis.setAttribute('stroke-width', '1');
+            spectrumSVG.appendChild(axis);
+
+            // Y axis (gain)
+            const yAxis = document.createElementNS(svgNS, 'line');
+            yAxis.setAttribute('x1', 0);
+            yAxis.setAttribute('y1', 10);
+            yAxis.setAttribute('x2', 0);
+            yAxis.setAttribute('y2', height - 10);
+            yAxis.setAttribute('stroke', '#888');
+            yAxis.setAttribute('stroke-width', '1');
+            spectrumSVG.appendChild(yAxis);
+
+            // X axis labels (log scale)
+            const freqs = [40, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+            freqs.forEach(f => {
+                const x = freqToX(f, width);
+                const label = document.createElementNS(svgNS, 'text');
+                label.setAttribute('x', x);
+                label.setAttribute('y', height - 2);
+                label.setAttribute('fill', '#aaa');
+                label.setAttribute('font-size', '11');
+                label.setAttribute('text-anchor', 'middle');
+                label.textContent = f >= 1000 ? (f/1000) + "k" : f;
+                spectrumSVG.appendChild(label);
+
+                // Tick
+                const tick = document.createElementNS(svgNS, 'line');
+                tick.setAttribute('x1', x);
+                tick.setAttribute('y1', height - 10);
+                tick.setAttribute('x2', x);
+                tick.setAttribute('y2', height - 15);
+                tick.setAttribute('stroke', '#aaa');
+                tick.setAttribute('stroke-width', '1');
+                spectrumSVG.appendChild(tick);
+            });
+
+            // Y axis labels
+            const gains = [12, 6, 0, -12, -24, -36, -48, -60];
+            gains.forEach(g => {
+                const y = gainToY(g, height);
+                const label = document.createElementNS(svgNS, 'text');
+                label.setAttribute('x', 2);
+                label.setAttribute('y', y + 4);
+                label.setAttribute('fill', '#aaa');
+                label.setAttribute('font-size', '11');
+                label.textContent = g + "dB";
+                spectrumSVG.appendChild(label);
+
+                // Tick
+                const tick = document.createElementNS(svgNS, 'line');
+                tick.setAttribute('x1', 0);
+                tick.setAttribute('y1', y);
+                tick.setAttribute('x2', 8);
+                tick.setAttribute('y2', y);
+                tick.setAttribute('stroke', '#aaa');
+                tick.setAttribute('stroke-width', '1');
+                spectrumSVG.appendChild(tick);
+            });
+        }
+
+        // Improved shelf shapes and peaking (fix: lowshelf boosts below f0, highshelf boosts above f0)
+        function getBandGainAtFreq(band, freq) {
+            const f0 = band.freq;
+            const Q = band.q || 1.0;
+            const G = band.gain;
+            if (band.type === "lowshelf") {
+                // Lowshelf: sigmoid, boosts/cuts below f0
+                const x = Math.log2(freq / f0) * 4;
+                return G / (1 + Math.exp(x));
+            } else if (band.type === "highshelf") {
+                // Highshelf: sigmoid, boosts/cuts above f0
+                const x = Math.log2(freq / f0) * 4;
+                return G / (1 + Math.exp(-x));
+            } else {
+                // Peaking
+                const w = freq / f0;
+                return G / (1 + Math.pow((w - 1) / Q, 2));
+            }
+        }
+
+        // SVG interaction: drag, right-click add/cycle
+        let draggingIdx = null, dragOffset = {};
+        spectrumSVG.onmousedown = function(e) {
+            if (e.button !== 0) return; // left only
+            const pt = spectrumSVG.createSVGPoint();
+            pt.x = e.offsetX; pt.y = e.offsetY;
+            const width = spectrumSVG.width.baseVal.value;
+            const height = spectrumSVG.height.baseVal.value;
+            // Find dot under mouse
+            let found = false;
+            eqBands.forEach((band, i) => {
+                const x = freqToX(band.freq, width);
+                const y = gainToY(band.gain, height);
+                if (Math.hypot(x - pt.x, y - pt.y) < 14) {
+                    draggingIdx = i;
+                    dragOffset = { dx: x - pt.x, dy: y - pt.y };
+                    selectBand(i);
+                    found = true;
+                }
+            });
+            if (!found) {
+                draggingIdx = null;
+                selectedIdx = null;
+                updateBandPanel();
+            }
+        };
+        spectrumSVG.onmousemove = function(e) {
+            if (draggingIdx === null) return;
+            const width = spectrumSVG.width.baseVal.value;
+            const height = spectrumSVG.height.baseVal.value;
+            let x = e.offsetX + (dragOffset.dx || 0);
+            let y = e.offsetY + (dragOffset.dy || 0);
+            x = Math.max(0, Math.min(width, x));
+            y = Math.max(10, Math.min(height - 10, y));
+            eqBands[draggingIdx].freq = Math.max(40, Math.min(20000, xToFreq(x, width)));
+            eqBands[draggingIdx].gain = Math.max(-60, Math.min(12, yToGain(y, height)));
+            updateBandPanel();
+            if (eqFilters[draggingIdx]) {
+                eqFilters[draggingIdx].frequency.value = eqBands[draggingIdx].freq;
+                eqFilters[draggingIdx].gain.value = eqBands[draggingIdx].gain;
+            }
+        };
+        spectrumSVG.onmouseup = function(e) {
+            draggingIdx = null;
+        };
+        spectrumSVG.onmouseleave = function(e) {
+            draggingIdx = null;
+        };
+
+        // Right click: add band or cycle type
+        spectrumSVG.oncontextmenu = function(e) {
+            e.preventDefault();
+            const pt = spectrumSVG.createSVGPoint();
+            pt.x = e.offsetX; pt.y = e.offsetY;
+            const width = spectrumSVG.width.baseVal.value;
+            const height = spectrumSVG.height.baseVal.value;
+            // Check if on dot
+            let onDot = false;
+            eqBands.forEach((band, i) => {
+                const x = freqToX(band.freq, width);
+                const y = gainToY(band.gain, height);
+                if (Math.hypot(x - pt.x, y - pt.y) < 12) {
+                    // Cycle type
+                    if (band.type === "peaking") band.type = "lowshelf";
+                    else if (band.type === "lowshelf") band.type = "highshelf";
+                    else band.type = "peaking";
+                    if (eqFilters[i]) eqFilters[i].type = band.type;
+                    onDot = true;
+                }
+            });
+            if (!onDot) {
+                // Add new band
+                const freq = Math.max(40, Math.min(20000, xToFreq(pt.x, width)));
+                const gain = Math.max(-60, Math.min(12, yToGain(pt.y, height)));
+                eqBands.push({ freq, gain, q: 1.0, type: "peaking" });
+                setupAudioNodes();
+            }
+        };
+
+        // Remove band with double click on dot
+        spectrumSVG.ondblclick = function(e) {
+            const pt = spectrumSVG.createSVGPoint();
+            pt.x = e.offsetX; pt.y = e.offsetY;
+            const width = spectrumSVG.width.baseVal.value;
+            const height = spectrumSVG.height.baseVal.value;
+            eqBands.forEach((band, i) => {
+                const x = freqToX(band.freq, width);
+                const y = gainToY(band.gain, height);
+                if (Math.hypot(x - pt.x, y - pt.y) < 12) {
+                    eqBands.splice(i, 1);
+                    setupAudioNodes();
+                }
+            });
+        };
+
+        // Keyboard delete/backspace to remove selected band
+        document.addEventListener('keydown', function(e) {
+            if ((e.key === "Delete" || e.key === "Backspace") && selectedIdx !== null && eqBands[selectedIdx]) {
+                eqBands.splice(selectedIdx, 1);
+                selectedIdx = null;
+                updateBandPanel();
+                setupAudioNodes();
+            }
+        });
+    </script>
+</body>
+</html>

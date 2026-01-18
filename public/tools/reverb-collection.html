@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Reverb Collection - WASM Audio Processing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23, #1a1a2e, #16213e, #0f3460);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 4em;
+            font-weight: 700;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #d4a574);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientFlow 6s ease-in-out infinite;
+            text-shadow: 0 0 50px rgba(255, 107, 107, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .header .subtitle {
+            font-size: 1.4em;
+            color: #a0a0a0;
+            margin-bottom: 10px;
+        }
+
+        .header .description {
+            font-size: 1.1em;
+            color: #808080;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        @keyframes gradientFlow {
+            0%, 100% { background-position: 0% 50%; }
+            25% { background-position: 100% 50%; }
+            50% { background-position: 200% 50%; }
+            75% { background-position: 300% 50%; }
+        }
+
+        .reverb-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+
+        .reverb-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            border-radius: 25px;
+            padding: 35px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .reverb-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 35px 70px rgba(0, 0, 0, 0.4);
+        }
+
+        .reverb-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.03), transparent);
+            transform: rotate(45deg);
+            transition: all 0.6s ease;
+            opacity: 0;
+        }
+
+        .reverb-card:hover::before {
+            opacity: 1;
+            animation: shimmer 1.5s ease-in-out;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .distortion-card {
+            border-color: rgba(255, 107, 107, 0.3);
+        }
+
+        .distortion-card:hover {
+            border-color: rgba(255, 107, 107, 0.6);
+            box-shadow: 0 35px 70px rgba(255, 107, 107, 0.2);
+        }
+
+        .hibiki-card {
+            border-color: rgba(78, 205, 196, 0.3);
+        }
+
+        .hibiki-card:hover {
+            border-color: rgba(78, 205, 196, 0.6);
+            box-shadow: 0 35px 70px rgba(78, 205, 196, 0.2);
+        }
+
+        .prog-card {
+            border-color: rgba(212, 165, 116, 0.3);
+        }
+
+        .prog-card:hover {
+            border-color: rgba(212, 165, 116, 0.6);
+            box-shadow: 0 35px 70px rgba(212, 165, 116, 0.2);
+        }
+
+        .card-header {
+            margin-bottom: 25px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .card-title {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .distortion-card .card-title {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hibiki-card .card-title {
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .prog-card .card-title {
+            background: linear-gradient(45deg, #d4a574, #e8a558);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card-subtitle {
+            font-size: 1.1em;
+            color: #b0b0b0;
+            font-weight: 500;
+        }
+
+        .card-description {
+            color: #a0a0a0;
+            line-height: 1.7;
+            margin-bottom: 25px;
+            font-size: 1.05em;
+            position: relative;
+            z-index: 2;
+        }
+
+        .features-list {
+            list-style: none;
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .features-list li {
+            padding: 8px 0;
+            color: #c0c0c0;
+            position: relative;
+            padding-left: 25px;
+            font-size: 0.95em;
+        }
+
+        .features-list li::before {
+            content: '▶';
+            position: absolute;
+            left: 0;
+            color: inherit;
+            font-size: 0.8em;
+        }
+
+        .distortion-card .features-list li::before {
+            color: #ff6b6b;
+        }
+
+        .hibiki-card .features-list li::before {
+            color: #4ecdc4;
+        }
+
+        .prog-card .features-list li::before {
+            color: #d4a574;
+        }
+
+        .card-button {
+            display: inline-block;
+            padding: 15px 35px;
+            border-radius: 30px;
+            text-decoration: none;
+            color: white;
+            font-weight: 600;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            width: 100%;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .distortion-card .card-button {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+        }
+
+        .distortion-card .card-button:hover {
+            background: linear-gradient(45deg, #ff8e8e, #ffb3b3);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(255, 107, 107, 0.4);
+        }
+
+        .hibiki-card .card-button {
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+        }
+
+        .hibiki-card .card-button:hover {
+            background: linear-gradient(45deg, #45b7d1, #69d3f0);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(78, 205, 196, 0.4);
+        }
+
+        .prog-card .card-button {
+            background: linear-gradient(45deg, #d4a574, #e8a558);
+        }
+
+        .prog-card .card-button:hover {
+            background: linear-gradient(45deg, #e8a558, #f4c2a1);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(212, 165, 116, 0.4);
+        }
+
+        .tech-specs {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 50px 0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .tech-title {
+            font-size: 2em;
+            font-weight: 600;
+            margin-bottom: 25px;
+            color: #4ecdc4;
+            text-align: center;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .tech-item {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .tech-item h3 {
+            color: #45b7d1;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .tech-item p {
+            color: #b0b0b0;
+            line-height: 1.6;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px;
+            color: #808080;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 50px;
+        }
+
+        @media (max-width: 768px) {
+            .reverb-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2.8em;
+            }
+            
+            .card-title {
+                font-size: 1.8em;
+            }
+            
+            .tech-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin: 5px 5px 15px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .distortion-card .badge {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+
+        .hibiki-card .badge {
+            background: rgba(78, 205, 196, 0.2);
+            color: #4ecdc4;
+            border: 1px solid rgba(78, 205, 196, 0.3);
+        }
+
+        .prog-card .badge {
+            background: rgba(212, 165, 116, 0.2);
+            color: #d4a574;
+            border: 1px solid rgba(212, 165, 116, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Professional Reverb Collection</h1>
+            <div class="subtitle">WASM-Powered Real-Time Audio Processing</div>
+            <div class="description">
+                Experience three distinct reverb algorithms compiled to WebAssembly for professional-grade 
+                real-time audio processing. Each reverb offers unique sonic characteristics for different 
+                production needs - from creative distortion effects to pristine hall ambience and warm room acoustics.
+            </div>
+        </div>
+
+        <div class="reverb-grid">
+            <div class="reverb-card distortion-card">
+                <div class="card-header">
+                    <div class="card-title">Dragonfly Distortion</div>
+                    <div class="card-subtitle">Creative Distortion Reverb</div>
+                    <div class="badge">Experimental</div>
+                    <div class="badge">Creative</div>
+                </div>
+                <div class="card-description">
+                    The original Dragonfly-inspired reverb that produces unique distortion-like effects. 
+                    Perfect for creative sound design, adding grit and character to audio sources, 
+                    and experimental music production.
+                </div>
+                <ul class="features-list">
+                    <li>Unique distortion-style reverb character</li>
+                    <li>Real-time parameter control</li>
+                    <li>Professional preset system</li>
+                    <li>High-performance WASM processing</li>
+                    <li>Ideal for creative sound design</li>
+                </ul>
+                <a href="wasm-tests/cpp-reverb/dragonfly-distortion-reverb.html" class="card-button">
+                    Launch Distortion Reverb
+                </a>
+            </div>
+
+            <div class="reverb-card hibiki-card">
+                <div class="card-header">
+                    <div class="card-title">Hibiki Hall</div>
+                    <div class="card-subtitle">Professional Hall Reverb</div>
+                    <div class="badge">Professional</div>
+                    <div class="badge">Hall</div>
+                </div>
+                <div class="card-description">
+                    Inspired by FreeVerb3 algorithms, Hibiki delivers pristine hall reverb with advanced 
+                    modulation, early reflections, and nested all-pass networks. Perfect for orchestral 
+                    recordings, vocals, and any source requiring spacious, natural ambience.
+                </div>
+                <ul class="features-list">
+                    <li>Advanced early reflection modeling</li>
+                    <li>Nested all-pass diffusion networks</li>
+                    <li>Smooth modulation for natural movement</li>
+                    <li>Multiple hall-style presets</li>
+                    <li>Professional stereo width control</li>
+                </ul>
+                <a href="wasm-tests/hibiki-reverb/hibiki-hall-reverb.html" class="card-button">
+                    Launch Hibiki Hall
+                </a>
+            </div>
+
+            <div class="reverb-card prog-card">
+                <div class="card-header">
+                    <div class="card-title">ProG Room</div>
+                    <div class="card-subtitle">Warm Natural Room Reverb</div>
+                    <div class="badge">Natural</div>
+                    <div class="badge">Warm</div>
+                </div>
+                <div class="card-description">
+                    ProG offers warm, intimate room acoustics with natural character and professional 
+                    warmth filtering. Designed for recording studio environments, vocal processing, 
+                    and adding subtle ambience without overwhelming the source material.
+                </div>
+                <ul class="features-list">
+                    <li>Warm, natural room acoustics</li>
+                    <li>Professional warmth filtering</li>
+                    <li>Intimate early reflection patterns</li>
+                    <li>Studio-quality ambience control</li>
+                    <li>Optimized for vocal processing</li>
+                </ul>
+                <a href="wasm-tests/prog-reverb/prog-room-reverb.html" class="card-button">
+                    Launch ProG Room
+                </a>
+            </div>
+        </div>
+
+        <div class="tech-specs">
+            <div class="tech-title">Technical Specifications</div>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <h3>WASM Performance</h3>
+                    <p>
+                        All reverb algorithms are compiled with Emscripten using -O3 optimization for 
+                        maximum performance. Real-time processing with 4096-sample buffers ensures 
+                        low latency and professional audio quality.
+                    </p>
+                </div>
+                <div class="tech-item">
+                    <h3>Audio Processing</h3>
+                    <p>
+                        Supports sample rates up to 192kHz with 32-bit float precision. Each reverb 
+                        features independent stereo processing, parameter automation, and preset management 
+                        for professional workflow integration.
+                    </p>
+                </div>
+                <div class="tech-item">
+                    <h3>Browser Compatibility</h3>
+                    <p>
+                        Compatible with all modern browsers supporting WebAssembly and Web Audio API. 
+                        Requires no plugins or additional software - everything runs natively in your 
+                        browser with professional audio quality.
+                    </p>
+                </div>
+                <div class="tech-item">
+                    <h3>Algorithm Design</h3>
+                    <p>
+                        Each reverb implements different DSP approaches: distortion-style processing, 
+                        hall-characteristic diffusion networks, and warm room modeling. All algorithms 
+                        feature carefully tuned delay networks and professional parameter ranges.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Professional Reverb Collection | WASM Audio Processing | Real-time DSP</p>
+            <p>Experience the future of browser-based audio processing with professional-grade reverb algorithms</p>
+        </div>
+    </div>
+</body>
+</html>

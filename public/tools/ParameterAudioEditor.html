@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Audio Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1e1e1e;
+            color: #ffffff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #4a9eff;
+        }
+
+        .upload-section {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .file-input {
+            margin: 10px;
+            padding: 10px 20px;
+            background: #4a9eff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .audio-controls {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #4a9eff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #357abd;
+        }
+
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .graph-selector {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .graph-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: #444;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .tab.active {
+            background: #4a9eff;
+        }
+
+        .visualization-area {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 300px;
+            background: #1a1a1a;
+            border-radius: 5px;
+            cursor: crosshair;
+        }
+
+        .eq-controls {
+            display: none;
+            margin-top: 20px;
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .eq-band {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .eq-label {
+            width: 80px;
+            font-size: 12px;
+        }
+
+        .eq-slider {
+            flex: 1;
+            margin: 0 10px;
+        }
+
+        .eq-value {
+            width: 50px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .export-section {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #444;
+            border-radius: 2px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #4a9eff;
+            transition: width 0.1s;
+            width: 0%;
+        }
+
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .status.success {
+            background: #2d5016;
+            color: #90ee90;
+        }
+
+        .status.error {
+            background: #5d1a1a;
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive Audio Editor</h1>
+        
+        <div class="upload-section">
+            <h3>Upload Audio File</h3>
+            <input type="file" id="audioFile" accept="audio/*" class="file-input">
+            <div class="status" id="uploadStatus"></div>
+        </div>
+
+        <div class="audio-controls" id="audioControls">
+            <div class="control-buttons">
+                <button class="btn" id="playBtn">Play</button>
+                <button class="btn" id="pauseBtn" disabled>Pause</button>
+                <button class="btn" id="stopBtn" disabled>Stop</button>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <div class="graph-selector">
+            <h3>Select Visualization</h3>
+            <div class="graph-tabs">
+                <button class="tab active" data-graph="waveform">Waveform</button>
+                <button class="tab" data-graph="pitch">Pitch</button>
+                <button class="tab" data-graph="envelope">Envelope</button>
+                <button class="tab" data-graph="eq">EQ</button>
+            </div>
+        </div>
+
+        <div class="visualization-area">
+            <canvas id="audioCanvas"></canvas>
+            <div class="eq-controls" id="eqControls">
+                <div class="eq-band">
+                    <span class="eq-label">Bass (60Hz)</span>
+                    <input type="range" class="eq-slider" min="-12" max="12" value="0" data-freq="60">
+                    <span class="eq-value">0 dB</span>
+                </div>
+                <div class="eq-band">
+                    <span class="eq-label">Low-Mid (250Hz)</span>
+                    <input type="range" class="eq-slider" min="-12" max="12" value="0" data-freq="250">
+                    <span class="eq-value">0 dB</span>
+                </div>
+                <div class="eq-band">
+                    <span class="eq-label">Mid (1kHz)</span>
+                    <input type="range" class="eq-slider" min="-12" max="12" value="0" data-freq="1000">
+                    <span class="eq-value">0 dB</span>
+                </div>
+                <div class="eq-band">
+                    <span class="eq-label">High-Mid (4kHz)</span>
+                    <input type="range" class="eq-slider" min="-12" max="12" value="0" data-freq="4000">
+                    <span class="eq-value">0 dB</span>
+                </div>
+                <div class="eq-band">
+                    <span class="eq-label">Treble (8kHz)</span>
+                    <input type="range" class="eq-slider" min="-12" max="12" value="0" data-freq="8000">
+                    <span class="eq-value">0 dB</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="export-section">
+            <h3>Export Audio</h3>
+            <button class="btn" id="exportBtn" disabled>Export as WAV</button>
+            <div class="status" id="exportStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        class AudioEditor {
+            constructor() {
+                this.audioContext = null;
+                this.audioBuffer = null;
+                this.sourceNode = null;
+                this.gainNode = null;
+                this.eqNodes = [];
+                this.analyser = null;
+                this.isPlaying = false;
+                this.currentGraph = 'waveform';
+                this.controlPoints = {
+                    envelope: [],
+                    pitch: []
+                };
+                this.canvas = document.getElementById('audioCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.setupCanvas();
+                this.setupEventListeners();
+                this.setupEQ();
+            }
+
+            setupCanvas() {
+                const rect = this.canvas.getBoundingClientRect();
+                this.canvas.width = rect.width * window.devicePixelRatio;
+                this.canvas.height = rect.height * window.devicePixelRatio;
+                this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                this.canvas.style.width = rect.width + 'px';
+                this.canvas.style.height = rect.height + 'px';
+            }
+
+            setupEventListeners() {
+                document.getElementById('audioFile').addEventListener('change', (e) => this.handleFileUpload(e));
+                document.getElementById('playBtn').addEventListener('click', () => this.play());
+                document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stop());
+                document.getElementById('exportBtn').addEventListener('click', () => this.exportAudio());
+
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.addEventListener('click', (e) => this.switchGraph(e.target.dataset.graph));
+                });
+
+                this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleCanvasMove(e));
+
+                window.addEventListener('resize', () => this.setupCanvas());
+            }
+
+            setupEQ() {
+                document.querySelectorAll('.eq-slider').forEach(slider => {
+                    slider.addEventListener('input', (e) => {
+                        const value = e.target.value;
+                        e.target.nextElementSibling.textContent = value + ' dB';
+                        this.updateEQ();
+                        this.drawEQ();
+                    });
+                });
+            }
+
+            async handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                try {
+                    this.showStatus('uploadStatus', 'Loading audio file...', 'success');
+                    
+                    if (!this.audioContext) {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+
+                    const arrayBuffer = await file.arrayBuffer();
+                    this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                    
+                    this.setupAudioNodes();
+                    this.drawCurrentGraph();
+                    
+                    document.getElementById('audioControls').style.display = 'block';
+                    document.getElementById('exportBtn').disabled = false;
+                    
+                    this.showStatus('uploadStatus', 'Audio file loaded successfully!', 'success');
+                } catch (error) {
+                    this.showStatus('uploadStatus', 'Error loading audio file: ' + error.message, 'error');
+                }
+            }
+
+            setupAudioNodes() {
+                this.gainNode = this.audioContext.createGain();
+                this.analyser = this.audioContext.createAnalyser();
+                this.analyser.fftSize = 2048;
+                
+                // Setup EQ chain
+                this.eqNodes = [];
+                const frequencies = [60, 250, 1000, 4000, 8000];
+                let previousNode = this.gainNode;
+                
+                frequencies.forEach(freq => {
+                    const filter = this.audioContext.createBiquadFilter();
+                    filter.type = 'peaking';
+                    filter.frequency.value = freq;
+                    filter.Q.value = 1;
+                    filter.gain.value = 0;
+                    
+                    previousNode.connect(filter);
+                    filter.connect(this.analyser);
+                    this.eqNodes.push(filter);
+                    previousNode = filter;
+                });
+                
+                this.analyser.connect(this.audioContext.destination);
+            }
+
+            play() {
+                if (!this.audioBuffer) return;
+
+                this.stop();
+                this.sourceNode = this.audioContext.createBufferSource();
+                this.sourceNode.buffer = this.audioBuffer;
+                this.sourceNode.connect(this.gainNode);
+                
+                this.sourceNode.start();
+                this.isPlaying = true;
+                
+                document.getElementById('playBtn').disabled = true;
+                document.getElementById('pauseBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = false;
+                
+                this.updateProgress();
+            }
+
+            pause() {
+                if (this.sourceNode) {
+                    this.sourceNode.stop();
+                    this.isPlaying = false;
+                    document.getElementById('playBtn').disabled = false;
+                    document.getElementById('pauseBtn').disabled = true;
+                }
+            }
+
+            stop() {
+                if (this.sourceNode) {
+                    this.sourceNode.stop();
+                    this.sourceNode = null;
+                }
+                this.isPlaying = false;
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('progressFill').style.width = '0%';
+            }
+
+            updateProgress() {
+                if (!this.isPlaying) return;
+                
+                // Simplified progress tracking
+                const progress = (this.audioContext.currentTime % this.audioBuffer.duration) / this.audioBuffer.duration * 100;
+                document.getElementById('progressFill').style.width = progress + '%';
+                
+                requestAnimationFrame(() => this.updateProgress());
+            }
+
+            switchGraph(graphType) {
+                document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+                document.querySelector(`[data-graph="${graphType}"]`).classList.add('active');
+                
+                this.currentGraph = graphType;
+                
+                if (graphType === 'eq') {
+                    document.getElementById('eqControls').style.display = 'block';
+                } else {
+                    document.getElementById('eqControls').style.display = 'none';
+                }
+                
+                this.drawCurrentGraph();
+            }
+
+            drawCurrentGraph() {
+                if (!this.audioBuffer) return;
+                
+                switch (this.currentGraph) {
+                    case 'waveform':
+                        this.drawWaveform();
+                        break;
+                    case 'pitch':
+                        this.drawPitch();
+                        break;
+                    case 'envelope':
+                        this.drawEnvelope();
+                        break;
+                    case 'eq':
+                        this.drawEQ();
+                        break;
+                }
+            }
+
+            drawWaveform() {
+                const width = this.canvas.offsetWidth;
+                const height = this.canvas.offsetHeight;
+                
+                this.ctx.clearRect(0, 0, width, height);
+                this.ctx.strokeStyle = '#4a9eff';
+                this.ctx.lineWidth = 1;
+                
+                const channelData = this.audioBuffer.getChannelData(0);
+                const samples = channelData.length;
+                const step = samples / width;
+                
+                this.ctx.beginPath();
+                for (let x = 0; x < width; x++) {
+                    const sampleIndex = Math.floor(x * step);
+                    const amplitude = channelData[sampleIndex];
+                    const y = (amplitude * height / 2) + height / 2;
+                    
+                    if (x === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                }
+                this.ctx.stroke();
+                
+                // Draw center line
+                this.ctx.strokeStyle = '#666';
+                this.ctx.lineWidth = 0.5;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, height / 2);
+                this.ctx.lineTo(width, height / 2);
+                this.ctx.stroke();
+            }
+
+            drawPitch() {
+                const width = this.canvas.offsetWidth;
+                const height = this.canvas.offsetHeight;
+                
+                this.ctx.clearRect(0, 0, width, height);
+                
+                // Draw musical staff lines
+                this.ctx.strokeStyle = '#666';
+                this.ctx.lineWidth = 0.5;
+                for (let i = 1; i < 5; i++) {
+                    const y = (height / 5) * i;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(width, y);
+                    this.ctx.stroke();
+                }
+                
+                // Draw pitch curve (simplified)
+                this.ctx.strokeStyle = '#ff6b6b';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                
+                for (let x = 0; x < width; x++) {
+                    // Simulate pitch detection with sine wave
+                    const frequency = 200 + Math.sin(x * 0.01) * 100;
+                    const y = height - (frequency / 500) * height;
+                    
+                    if (x === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                }
+                this.ctx.stroke();
+                
+                // Draw control points
+                this.drawControlPoints('pitch');
+            }
+
+            drawEnvelope() {
+                const width = this.canvas.offsetWidth;
+                const height = this.canvas.offsetHeight;
+                
+                this.ctx.clearRect(0, 0, width, height);
+                
+                // Default envelope if no control points
+                if (this.controlPoints.envelope.length === 0) {
+                    this.controlPoints.envelope = [
+                        {x: 0, y: height},
+                        {x: width * 0.1, y: height * 0.2},
+                        {x: width * 0.8, y: height * 0.3},
+                        {x: width, y: height}
+                    ];
+                }
+                
+                // Draw envelope curve
+                this.ctx.strokeStyle = '#90ee90';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                
+                const points = this.controlPoints.envelope;
+                this.ctx.moveTo(points[0].x, points[0].y);
+                
+                for (let i = 1; i < points.length; i++) {
+                    this.ctx.lineTo(points[i].x, points[i].y);
+                }
+                this.ctx.stroke();
+                
+                // Fill area under curve
+                this.ctx.fillStyle = 'rgba(144, 238, 144, 0.2)';
+                this.ctx.fill();
+                
+                this.drawControlPoints('envelope');
+            }
+
+            drawEQ() {
+                const width = this.canvas.offsetWidth;
+                const height = this.canvas.offsetHeight;
+                
+                this.ctx.clearRect(0, 0, width, height);
+                
+                // Draw frequency response curve
+                this.ctx.strokeStyle = '#ffd700';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                
+                for (let x = 0; x < width; x++) {
+                    const freq = (x / width) * 20000; // 0-20kHz
+                    let gain = 0;
+                    
+                    // Calculate combined effect of all EQ bands
+                    document.querySelectorAll('.eq-slider').forEach(slider => {
+                        const bandFreq = parseFloat(slider.dataset.freq);
+                        const bandGain = parseFloat(slider.value);
+                        const distance = Math.abs(Math.log(freq / bandFreq));
+                        const influence = Math.exp(-distance * 2); // Gaussian-like influence
+                        gain += bandGain * influence;
+                    });
+                    
+                    const y = height / 2 - (gain / 12) * (height / 2);
+                    
+                    if (x === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                }
+                this.ctx.stroke();
+                
+                // Draw 0dB line
+                this.ctx.strokeStyle = '#666';
+                this.ctx.lineWidth = 0.5;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, height / 2);
+                this.ctx.lineTo(width, height / 2);
+                this.ctx.stroke();
+                
+                // Draw frequency labels
+                this.ctx.fillStyle = '#ccc';
+                this.ctx.font = '12px Arial';
+                const freqs = [100, 1000, 10000];
+                freqs.forEach(freq => {
+                    const x = (Math.log(freq) / Math.log(20000)) * width;
+                    this.ctx.fillText(freq < 1000 ? freq + 'Hz' : (freq/1000) + 'kHz', x, height - 10);
+                });
+            }
+
+            drawControlPoints(type) {
+                const points = this.controlPoints[type] || [];
+                
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.strokeStyle = '#000000';
+                this.ctx.lineWidth = 1;
+                
+                points.forEach((point, index) => {
+                    this.ctx.beginPath();
+                    this.ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                });
+            }
+
+            handleCanvasClick(event) {
+                if (this.currentGraph === 'eq') return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                
+                // Add new control point
+                if (!this.controlPoints[this.currentGraph]) {
+                    this.controlPoints[this.currentGraph] = [];
+                }
+                
+                this.controlPoints[this.currentGraph].push({x, y});
+                this.controlPoints[this.currentGraph].sort((a, b) => a.x - b.x);
+                
+                this.drawCurrentGraph();
+            }
+
+            handleCanvasMove(event) {
+                // Handle dragging control points (simplified)
+                if (this.isDragging) {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = event.clientX - rect.left;
+                    const y = event.clientY - rect.top;
+                    
+                    if (this.draggedPoint) {
+                        this.draggedPoint.x = x;
+                        this.draggedPoint.y = y;
+                        this.drawCurrentGraph();
+                    }
+                }
+            }
+
+            updateEQ() {
+                if (!this.eqNodes.length) return;
+                
+                document.querySelectorAll('.eq-slider').forEach((slider, index) => {
+                    const gain = parseFloat(slider.value);
+                    if (this.eqNodes[index]) {
+                        this.eqNodes[index].gain.value = gain;
+                    }
+                });
+            }
+
+            async exportAudio() {
+                if (!this.audioBuffer) return;
+                
+                try {
+                    this.showStatus('exportStatus', 'Preparing audio for export...', 'success');
+                    
+                    // Create offline context for rendering
+                    const offlineContext = new OfflineAudioContext(
+                        this.audioBuffer.numberOfChannels,
+                        this.audioBuffer.length,
+                        this.audioBuffer.sampleRate
+                    );
+                    
+                    const source = offlineContext.createBufferSource();
+                    source.buffer = this.audioBuffer;
+                    
+                    // Apply modifications (simplified)
+                    const gainNode = offlineContext.createGain();
+                    source.connect(gainNode);
+                    gainNode.connect(offlineContext.destination);
+                    
+                    source.start(0);
+                    
+                    const renderedBuffer = await offlineContext.startRendering();
+                    
+                    // Convert to WAV
+                    const wav = this.audioBufferToWav(renderedBuffer);
+                    const blob = new Blob([wav], {type: 'audio/wav'});
+                    
+                    // Download
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'edited_audio.wav';
+                    a.click();
+                    
+                    URL.revokeObjectURL(url);
+                    
+                    this.showStatus('exportStatus', 'Audio exported successfully!', 'success');
+                } catch (error) {
+                    this.showStatus('exportStatus', 'Error exporting audio: ' + error.message, 'error');
+                }
+            }
+
+            audioBufferToWav(buffer) {
+                const length = buffer.length;
+                const numberOfChannels = buffer.numberOfChannels;
+                const sampleRate = buffer.sampleRate;
+                const arrayBuffer = new ArrayBuffer(44 + length * numberOfChannels * 2);
+                const view = new DataView(arrayBuffer);
+                
+                // WAV header
+                const writeString = (offset, string) => {
+                    for (let i = 0; i < string.length; i++) {
+                        view.setUint8(offset + i, string.charCodeAt(i));
+                    }
+                };
+                
+                writeString(0, 'RIFF');
+                view.setUint32(4, 36 + length * numberOfChannels * 2, true);
+                writeString(8, 'WAVE');
+                writeString(12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true);
+                view.setUint16(22, numberOfChannels, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, sampleRate * numberOfChannels * 2, true);
+                view.setUint16(32, numberOfChannels * 2, true);
+                view.setUint16(34, 16, true);
+                writeString(36, 'data');
+                view.setUint32(40, length * numberOfChannels * 2, true);
+                
+                // Convert float samples to 16-bit PCM
+                let offset = 44;
+                for (let i = 0; i < length; i++) {
+                    for (let channel = 0; channel < numberOfChannels; channel++) {
+                        const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
+                        view.setInt16(offset, sample * 0x7FFF, true);
+                        offset += 2;
+                    }
+                }
+                
+                return arrayBuffer;
+            }
+
+            showStatus(elementId, message, type) {
+                const element = document.getElementById(elementId);
+                element.textContent = message;
+                element.className = `status ${type}`;
+                element.style.display = 'block';
+                
+                if (type === 'success') {
+                    setTimeout(() => {
+                        element.style.display = 'none';
+                    }, 3000);
+                }
+            }
+        }
+
+        // Initialize the audio editor when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new AudioEditor();
+        });
+    </script>
+</body>
+</html>

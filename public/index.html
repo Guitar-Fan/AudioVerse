@@ -1,0 +1,2409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AudioVerse Solar System</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Space Grotesk', 'Orbitron', monospace;
+      background: #000;
+      overflow: hidden;
+      color: #fff;
+      cursor: none;
+    }
+
+    /* Custom Crosshair Cursor */
+    #crosshair {
+      position: fixed;
+      width: 40px;
+      height: 40px;
+      pointer-events: none;
+      z-index: 10000;
+      transform: translate(-50%, -50%);
+    }
+
+    #crosshair::before,
+    #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(79, 172, 254, 0.8);
+      box-shadow: 0 0 10px rgba(79, 172, 254, 0.6);
+    }
+
+    /* Vertical line */
+    #crosshair::before {
+      left: 50%;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      transform: translateX(-50%);
+    }
+
+    /* Horizontal line */
+    #crosshair::after {
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      transform: translateY(-50%);
+    }
+
+    /* Circle */
+    #crosshair-circle {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border: 2px solid rgba(79, 172, 254, 0.6);
+      border-radius: 50%;
+      box-shadow: 0 0 15px rgba(79, 172, 254, 0.4), inset 0 0 15px rgba(79, 172, 254, 0.2);
+    }
+
+    /* Dot in center */
+    #crosshair-dot {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 4px;
+      height: 4px;
+      background: #4facfe;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 8px rgba(79, 172, 254, 0.8);
+    }
+
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    /* UI Overlay */
+    #ui-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    /* Title */
+    #title {
+      position: absolute;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      pointer-events: auto;
+    }
+
+    #title h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: 3.5rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #ff6ec7, #7873f5, #4facfe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 40px rgba(127, 115, 245, 0.8);
+      letter-spacing: 4px;
+      margin-bottom: 10px;
+      animation: titlePulse 3s ease-in-out infinite;
+    }
+
+    @keyframes titlePulse {
+      0%, 100% { opacity: 0.9; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.02); }
+    }
+
+    #title p {
+      font-size: 1.2rem;
+      color: #a0cfff;
+      font-weight: 300;
+      letter-spacing: 2px;
+    }
+
+    /* Instructions Panel - Bottom Right */
+    #instructions {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+      pointer-events: auto;
+      text-align: left;
+      max-width: 280px;
+    }
+
+    /* Instruction Dialogue Popup */
+    .instruction-popup {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: linear-gradient(135deg, rgba(20, 20, 40, 0.98), rgba(30, 25, 50, 0.98));
+      border: 2px solid rgba(120, 115, 245, 0.6);
+      border-radius: 12px;
+      padding: 20px 30px;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 10px 40px rgba(120, 115, 245, 0.6);
+      pointer-events: auto;
+      text-align: center;
+      max-width: 400px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.5s ease;
+      z-index: 3000;
+    }
+
+    .instruction-popup.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .instruction-popup h3 {
+      font-family: 'Orbitron', monospace;
+      color: #fff;
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .instruction-popup p {
+      color: #fff;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin: 8px 0;
+    }
+
+    .instruction-popup .close-popup-btn {
+      margin-top: 15px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: #fff;
+      padding: 8px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .instruction-popup .close-popup-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Slide navigation for welcome popup */
+    .popup-slides {
+      position: relative;
+      overflow: hidden;
+      min-height: 350px;
+    }
+
+    .popup-slide {
+      display: none;
+      animation: slideIn 0.4s ease;
+    }
+
+    .popup-slide.active {
+      display: block;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .slide-nav {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .slide-nav button {
+      flex: 1;
+      background: rgba(79, 172, 254, 0.2);
+      border: 1px solid rgba(79, 172, 254, 0.4);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .slide-nav button:hover:not(:disabled) {
+      background: rgba(79, 172, 254, 0.4);
+    }
+
+    .slide-nav button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .slide-indicators {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .slide-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .slide-indicator.active {
+      background: #4facfe;
+      width: 30px;
+      border-radius: 5px;
+    }
+
+    .highlight-box {
+      background: rgba(79, 172, 254, 0.15);
+      border: 2px solid rgba(79, 172, 254, 0.4);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 12px 0;
+    }
+
+    .tool-name {
+      color: #4facfe;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    #instructions h3 {
+      font-family: 'Orbitron', monospace;
+      color: #fff;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+      font-weight: 700;
+    }
+
+    #instructions p {
+      margin: 4px 0;
+      font-size: 0.75rem;
+      color: #ccc;
+      line-height: 1.4;
+    }
+
+    #instructions .key {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 2px 6px;
+      border-radius: 3px;
+      margin: 0 2px;
+      font-weight: 600;
+      font-size: 0.7rem;
+    }
+
+    /* Cannon Power Display */
+    #power-display {
+      position: absolute;
+      top: 150px;
+      left: 30px;
+      background: rgba(20, 20, 40, 0.9);
+      border: 2px solid rgba(255, 110, 199, 0.6);
+      border-radius: 12px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      min-width: 200px;
+      box-shadow: 0 10px 30px rgba(255, 110, 199, 0.4);
+    }
+
+    #power-display h3 {
+      font-family: 'Orbitron', monospace;
+      color: #ff6ec7;
+      margin-bottom: 12px;
+      font-size: 1.2rem;
+    }
+
+    #power-bar-container {
+      width: 100%;
+      height: 25px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 110, 199, 0.4);
+    }
+
+    #power-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #4facfe, #7873f5, #ff6ec7);
+      width: 50%;
+      transition: width 0.1s ease;
+      box-shadow: 0 0 20px rgba(255, 110, 199, 0.8);
+    }
+
+    #power-value {
+      margin-top: 8px;
+      font-size: 1.1rem;
+      color: #a0cfff;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    /* Time Speed Controls */
+    #time-controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 2px solid rgba(79, 172, 254, 0.4);
+      border-radius: 12px;
+      padding: 16px 20px;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      pointer-events: auto;
+    }
+
+    #time-controls h4 {
+      font-family: 'Orbitron', monospace;
+      color: #4facfe;
+      margin: 0 0 12px 0;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+
+    .speed-buttons {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .speed-btn {
+      background: rgba(79, 172, 254, 0.2);
+      border: 1px solid rgba(79, 172, 254, 0.4);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.75rem;
+      transition: all 0.3s ease;
+      font-weight: 600;
+    }
+
+    .speed-btn:hover {
+      background: rgba(79, 172, 254, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .speed-btn.active {
+      background: rgba(79, 172, 254, 0.6);
+      border-color: #4facfe;
+      box-shadow: 0 0 15px rgba(79, 172, 254, 0.5);
+    }
+
+    #speed-display {
+      text-align: center;
+      color: #4facfe;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-top: 8px;
+      text-shadow: 0 0 10px rgba(79, 172, 254, 0.6);
+    }
+
+    /* Target Info Display */
+    #target-info {
+      position: absolute;
+      top: 150px;
+      right: 30px;
+      background: rgba(20, 20, 40, 0.9);
+      border: 2px solid rgba(79, 172, 254, 0.6);
+      border-radius: 12px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      min-width: 250px;
+      box-shadow: 0 10px 30px rgba(79, 172, 254, 0.4);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    #target-info.visible {
+      opacity: 1;
+    }
+
+    #target-info h3 {
+      font-family: 'Orbitron', monospace;
+      color: #4facfe;
+      margin-bottom: 10px;
+      font-size: 1.3rem;
+    }
+
+    #target-info p {
+      color: #e0e0ff;
+      margin: 5px 0;
+      font-size: 0.95rem;
+    }
+
+    /* Launch Button - Removed (using spacebar only) */
+
+    /* Time Speed Controls */
+    #time-controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 2px solid rgba(79, 172, 254, 0.4);
+      border-radius: 12px;
+      padding: 16px 20px;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      pointer-events: auto;
+    }
+
+    #time-controls h4 {
+      font-family: 'Orbitron', monospace;
+      color: #4facfe;
+      margin: 0 0 12px 0;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+
+    .speed-buttons {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .speed-btn {
+      background: rgba(79, 172, 254, 0.2);
+      border: 1px solid rgba(79, 172, 254, 0.4);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.75rem;
+      transition: all 0.3s ease;
+      font-weight: 600;
+    }
+
+    .speed-btn:hover {
+      background: rgba(79, 172, 254, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .speed-btn.active {
+      background: rgba(79, 172, 254, 0.6);
+      border-color: #4facfe;
+      box-shadow: 0 0 15px rgba(79, 172, 254, 0.5);
+    }
+
+    #speed-display {
+      text-align: center;
+      color: #4facfe;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-top: 8px;
+      text-shadow: 0 0 10px rgba(79, 172, 254, 0.6);
+    }
+
+    /* Reset Button - Bottom Left */
+    #reset-btn {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 8px 16px;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      pointer-events: auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+      transition: all 0.3s ease;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      opacity: 0;
+    }
+
+    #reset-btn.visible {
+      opacity: 1;
+    }
+
+    #reset-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Loading Screen */
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(ellipse at center, #1a1a2e, #0a0a15);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+
+    #loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loader {
+      width: 80px;
+      height: 80px;
+      border: 6px solid rgba(127, 115, 245, 0.3);
+      border-top: 6px solid #7873f5;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #loading p {
+      margin-top: 20px;
+      font-size: 1.2rem;
+      color: #a0cfff;
+      letter-spacing: 2px;
+    }
+
+    /* Planet List Sidebar - Enhanced */
+    #planet-list {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, rgba(20, 20, 40, 0.95), rgba(40, 30, 60, 0.95));
+      border: 2px solid rgba(120, 115, 245, 0.4);
+      border-radius: 12px;
+      padding: 16px;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 8px 32px rgba(120, 115, 245, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      pointer-events: auto;
+      max-width: 220px;
+      max-height: 65vh;
+      overflow-y: auto;
+    }
+
+    #planet-list h3 {
+      font-family: 'Orbitron', monospace;
+      color: #4facfe;
+      margin-bottom: 12px;
+      font-size: 1rem;
+      letter-spacing: 2px;
+      font-weight: 700;
+      border-bottom: 2px solid rgba(79, 172, 254, 0.4);
+      padding-bottom: 10px;
+      text-shadow: 0 0 10px rgba(79, 172, 254, 0.6);
+    }
+
+    .planet-item {
+      padding: 10px 12px;
+      margin: 6px 0;
+      background: linear-gradient(135deg, rgba(79, 172, 254, 0.05), rgba(120, 115, 245, 0.05));
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border-left: 3px solid transparent;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .planet-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(79, 172, 254, 0.1), rgba(120, 115, 245, 0.1));
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .planet-item:hover::before {
+      opacity: 1;
+    }
+
+    .planet-item:hover {
+      background: linear-gradient(135deg, rgba(79, 172, 254, 0.15), rgba(120, 115, 245, 0.15));
+      border-left-color: #4facfe;
+      transform: translateX(-3px);
+      box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3);
+    }
+
+    .planet-item.active {
+      background: linear-gradient(135deg, rgba(79, 172, 254, 0.25), rgba(120, 115, 245, 0.25));
+      border-left-color: #4facfe;
+      box-shadow: 0 4px 16px rgba(79, 172, 254, 0.5);
+    }
+
+    .planet-item-name {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    .planet-item-desc {
+      font-size: 0.68rem;
+      color: #b8c5ff;
+      line-height: 1.4;
+    }
+
+    /* Planet Info Popup - Enhanced Space Game Theme */
+    #planet-popup {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: linear-gradient(135deg, rgba(15, 15, 30, 0.98), rgba(25, 20, 40, 0.98));
+      border: 3px solid;
+      border-image: linear-gradient(135deg, #4facfe, #7873f5, #ff6ec7) 1;
+      border-radius: 16px;
+      padding: 32px;
+      backdrop-filter: blur(20px);
+      box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.9),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 0 100px rgba(120, 115, 245, 0.4);
+      pointer-events: auto;
+      max-width: 500px;
+      min-width: 400px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 2000;
+    }
+
+    #planet-popup.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    #planet-popup::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(135deg, #4facfe, #7873f5, #ff6ec7);
+      border-radius: 16px;
+      z-index: -1;
+      opacity: 0.3;
+      filter: blur(10px);
+      animation: borderPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes borderPulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.6; }
+    }
+
+    #planet-popup h2 {
+      font-family: 'Orbitron', monospace;
+      background: linear-gradient(135deg, #4facfe, #7873f5);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+      font-size: 1.8rem;
+      text-shadow: 0 0 20px rgba(79, 172, 254, 0.5);
+      letter-spacing: 2px;
+    }
+
+    #planet-popup p {
+      color: #e0e8ff;
+      margin: 12px 0;
+      font-size: 1rem;
+      line-height: 1.8;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    #planet-popup .popup-detail {
+      background: rgba(79, 172, 254, 0.1);
+      border-left: 3px solid #4facfe;
+      padding: 12px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: #b8c5ff;
+    }
+
+    #planet-popup .close-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      transition: all 0.3s ease;
+      font-weight: 300;
+    }
+
+    #planet-popup .close-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: rotate(90deg);
+    }
+
+    #planet-popup .visit-btn {
+      background: linear-gradient(135deg, rgba(79, 172, 254, 0.4), rgba(120, 115, 245, 0.4));
+      border: 2px solid #4facfe;
+      color: #fff;
+      padding: 12px 28px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-top: 20px;
+      transition: all 0.3s ease;
+      display: inline-block;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      box-shadow: 0 4px 16px rgba(79, 172, 254, 0.3);
+    }
+
+    #planet-popup .visit-btn:hover {
+      background: linear-gradient(135deg, rgba(79, 172, 254, 0.6), rgba(120, 115, 245, 0.6));
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(79, 172, 254, 0.5);
+    }
+
+    /* Planet Highlight Circle */
+    .planet-highlight {
+      position: absolute;
+      border: 3px solid #4facfe;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: highlightPulse 2s ease-in-out infinite;
+      box-shadow: 0 0 20px rgba(79, 172, 254, 0.8), inset 0 0 20px rgba(79, 172, 254, 0.4);
+    }
+
+    @keyframes highlightPulse {
+      0%, 100% { 
+        transform: scale(1);
+        opacity: 0.8;
+      }
+      50% { 
+        transform: scale(1.1);
+        opacity: 1;
+      }
+    }
+
+    /* Scrollbar for planet list */
+    #planet-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #planet-list::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+    }
+
+    #planet-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    #planet-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      #title h1 {
+        font-size: 2rem;
+      }
+      #title p {
+        font-size: 0.9rem;
+      }
+      #instructions {
+        bottom: 20px;
+        padding: 15px 25px;
+      }
+      #instructions h3 {
+        font-size: 1.1rem;
+      }
+      #instructions p {
+        font-size: 0.85rem;
+      }
+      #power-display, #target-info {
+        top: 120px;
+        left: 10px;
+        right: 10px;
+        min-width: auto;
+      }
+      #target-info {
+        top: auto;
+        bottom: 200px;
+        right: 10px;
+      }
+      #launch-btn {
+        bottom: 110px;
+        font-size: 1.1rem;
+        padding: 15px 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading">
+    <div class="loader"></div>
+    <p>Initializing Some Super Super Sick Audio Tools...</p>
+  </div>
+
+  <!-- 3D Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- UI Overlay -->
+  <!-- Custom Crosshair Cursor -->
+  <div id="crosshair">
+    <div id="crosshair-circle"></div>
+    <div id="crosshair-dot"></div>
+  </div>
+
+  <div id="ui-overlay">
+    <!-- Time Speed Controls -->
+    <div id="time-controls">
+      <h4>⏱️ TIME SPEED</h4>
+      <div class="speed-buttons">
+        <button class="speed-btn" onclick="setTimeSpeed(0.25)">0.25×</button>
+        <button class="speed-btn" onclick="setTimeSpeed(0.5)">0.5×</button>
+        <button class="speed-btn active" onclick="setTimeSpeed(1)">1×</button>
+        <button class="speed-btn" onclick="setTimeSpeed(2)">2×</button>
+        <button class="speed-btn" onclick="setTimeSpeed(5)">5×</button>
+      </div>
+      <div id="speed-display">Normal Speed</div>
+    </div>
+
+    <!-- Title -->
+    <div id="title">
+      <h1>AUDIOVERSE UNIVERSE</h1>
+      <p>Navigate through the cosmos of audio creation</p>
+    </div>
+
+    <!-- Planet List Sidebar -->
+    <div id="planet-list">
+      <h3>PLANETS</h3>
+      <div id="planet-items"></div>
+    </div>
+
+    <!-- Planet Info Popup -->
+    <div id="planet-popup">
+      <button class="close-btn" onclick="closePlanetPopup()">×</button>
+      <h2 id="popup-name">Planet Name</h2>
+      <p id="popup-desc">Description</p>
+      <div class="popup-detail" id="popup-distance"></div>
+      <p style="color: #ff6ec7; font-size: 0.85rem; margin-top: 16px;">⚠️ Access only via Cosmic Cannon</p>
+      <button class="visit-btn" onclick="highlightPlanet()">🎯 Highlight Planet</button>
+    </div>
+
+    <!-- Instruction Dialogue Popups -->
+    <div id="welcome-popup" class="instruction-popup visible">
+      <div class="popup-slides">
+        <!-- Slide 1: Welcome & File Preparation -->
+        <div class="popup-slide active" data-slide="1">
+          <h3>🌌 Welcome to AudioVerse Universe!</h3>
+          <p style="font-size: 1.1rem; color: #4facfe; font-weight: 700; margin: 15px 0;">🎵 Get Your Files Ready!</p>
+          <div class="highlight-box">
+            <p style="font-size: 0.95rem; margin: 8px 0;">📁 <strong style="color: #ff6ec7;">Have these ready:</strong></p>
+            <p style="font-size: 0.85rem;">• Audio files (.mp3, .wav, .ogg)</p>
+            <p style="font-size: 0.85rem;">• MIDI files (.mid) for sequencing</p>
+            <p style="font-size: 0.85rem;">• Soundfonts (.sf2) for instruments</p>
+          </div>
+          <p style="font-size: 0.85rem; color: #b8c5ff; margin-top: 12px;">Most tools let you upload and process your own music!</p>
+        </div>
+
+        <!-- Slide 2: Main Tools -->
+        <div class="popup-slide" data-slide="2">
+          <h3>⭐ Start Here: Top 3 Tools!</h3>
+          <p style="font-size: 0.9rem; color: #b8c5ff; margin-bottom: 15px;">Try these powerful tools first:</p>
+          
+          <div class="highlight-box" style="margin-bottom: 10px;">
+            <p class="tool-name">1. 🎹 MIDI DAW With Ideas</p>
+            <p style="font-size: 0.8rem; color: #d0d0ff;">Full MIDI sequencer with piano roll</p>
+          </div>
+          
+          <div class="highlight-box" style="margin-bottom: 10px;">
+            <p class="tool-name">2. 🎨 CraftySound</p>
+            <p style="font-size: 0.8rem; color: #d0d0ff;">Advanced sound design & synthesis</p>
+          </div>
+          
+          <div class="highlight-box" style="margin-bottom: 10px;">
+            <p class="tool-name">3. 🎛️ AudioVerse DAW</p>
+            <p style="font-size: 0.8rem; color: #d0d0ff;">Complete multi-track workstation</p>
+          </div>
+          
+          <p style="font-size: 0.8rem; color: #7873f5; margin-top: 12px;">✨ Other planets are experimental tools for fun exploration!</p>
+        </div>
+
+        <!-- Slide 3: Controls -->
+        <div class="popup-slide" data-slide="3">
+          <h3>🚀 Cosmic Cannon Controls</h3>
+          <p style="font-size: 1.1rem; color: #4facfe; font-weight: 700; margin: 15px 0;">🎯 Hit planets to access tools!</p>
+          <p><strong style="color: #ff6ec7;">MOUSE POSITION</strong> = Aim Direction</p>
+          <p><strong style="color: #4facfe;">HOLD SPACEBAR</strong> = Charge Power</p>
+          <p><strong style="color: #7873f5;">RELEASE SPACEBAR</strong> = FIRE! 🚀</p>
+          <p style="border-top: 2px solid rgba(79, 172, 254, 0.3); padding-top: 12px; margin-top: 12px;">
+            <strong style="color: #34d399;">DRAG MOUSE</strong> = Orbit the universe
+          </p>
+          <p style="font-size: 0.85rem; color: #b8c5ff; margin-top: 10px;">Hit a planet successfully to access its audio tool!</p>
+        </div>
+      </div>
+
+      <!-- Slide navigation -->
+      <div class="slide-nav">
+        <button id="prev-slide" onclick="changeSlide(-1)" disabled>← Previous</button>
+        <button id="next-slide" onclick="changeSlide(1)">Next →</button>
+      </div>
+      
+      <!-- Slide indicators -->
+      <div class="slide-indicators">
+        <div class="slide-indicator active" data-indicator="1"></div>
+        <div class="slide-indicator" data-indicator="2"></div>
+        <div class="slide-indicator" data-indicator="3"></div>
+      </div>
+      
+      <button class="close-popup-btn" onclick="closeInstructionPopup('welcome-popup')" style="margin-top: 20px;">🚀 Start Exploring!</button>
+    </div>
+
+    <div id="missed-popup" class="instruction-popup">
+      <h3>🎯 Missed!</h3>
+      <p>Lost in space? Press <strong>R</strong> to reset your position</p>
+      <p>Or wait to drift back naturally...</p>
+      <button class="close-popup-btn" onclick="closeInstructionPopup('missed-popup')">Reset Now</button>
+    </div>
+
+    <!-- Power Display -->
+    <div id="power-display">
+      <h3>⚡ POWER</h3>
+      <div id="power-bar-container">
+        <div id="power-bar"></div>
+      </div>
+      <div id="power-value">50%</div>
+    </div>
+
+    <!-- Instructions -->
+    <div id="instructions">
+      <h3>🚀 CONTROLS</h3>
+      <p><span class="key">Drag</span> to orbit view</p>
+      <p><span class="key">Cursor</span> to aim cannon</p>
+      <p><span class="key">SPACE</span> hold to charge & fire</p>
+      <p><span class="key">R</span> to reset camera</p>
+    </div>
+
+    <!-- Reset Button -->
+    <button id="reset-btn">↺ RESET</button>
+  </div>
+    <button id="reset-btn">↺ RESET</button>
+  </div>
+
+  <script>
+    // ===== PLANET DATA =====
+    const planets = [
+      {
+        name: 'AudioVerse DAW',
+        description: 'The Heart of Audio Creation',
+        detailedDescription: 'Full-featured Digital Audio Workstation with multi-track recording, mixing, MIDI sequencing, and comprehensive audio effects. Your central hub for professional music production.',
+        url: 'AudioVerse/AudioVerse.html',
+        color: 0xff9500,
+        size: 6,
+        distance: 0,
+        orbitSpeed: 0,
+        glowColor: 0xffaa00,
+        isSun: true
+      },
+      {
+        name: 'MIDI DAW With Ideas',
+        description: 'Piano Roll & MIDI Editing',
+        detailedDescription: 'Advanced MIDI sequencer with intuitive piano roll interface. Create melodies, harmonies, and complex musical arrangements with precision note editing, velocity control, and real-time MIDI input.',
+        url: 'tools/MIDI_Daw_With_Ideas.html',
+        color: 0x4f46e5,
+        size: 4.5,
+        distance: 20,
+        orbitSpeed: 0.5,
+        glowColor: 0x6366f1
+      },
+      {
+        name: 'CraftySound',
+        description: 'Sound Design & Synthesis',
+        detailedDescription: 'Advanced sound design and synthesis playground. Build custom sounds with modular audio routing, effect chaining, and comprehensive preset management.',
+        url: 'tools/CraftySound.html',
+        color: 0xff6ec7,
+        size: 3.4,
+        distance: 28,
+        orbitSpeed: 0.45,
+        glowColor: 0xff8ad8
+      },
+      {
+        name: 'Parameter Audio Editor',
+        description: 'Precision Waveform Control',
+        detailedDescription: 'Waveform editor with real-time parameter manipulation. Fine-tune audio with precision tools for cutting, fading, normalization, and apply dynamic effects chains with full automation support.',
+        url: 'tools/ParameterAudioEditor.html',
+        color: 0x059669,
+        size: 1.5,
+        distance: 38,
+        orbitSpeed: 0.4,
+        glowColor: 0x10b981
+      },
+      {
+        name: 'Wavetable Synth',
+        description: 'Custom Wavetable Design',
+        detailedDescription: 'Powerful wavetable synthesizer with morphing capabilities. Create evolving soundscapes using custom wavetables, multi-oscillator architecture, and extensive modulation routing for unique timbres.',
+        url: 'tools/Wavetable_Synth.html',
+        color: 0x7c3aed,
+        size: 1.6,
+        distance: 48,
+        orbitSpeed: 0.35,
+        glowColor: 0x8b5cf6
+      },
+      {
+        name: 'EQ Station',
+        description: 'Frequency Control',
+        detailedDescription: 'Professional parametric equalizer with visual frequency spectrum analyzer. Sculpt your sound with precision bands, high/low pass filters, and real-time frequency response visualization.',
+        url: 'tools/EQ.html',
+        color: 0xdc2626,
+        size: 1.4,
+        distance: 58,
+        orbitSpeed: 0.3,
+        glowColor: 0xef4444
+      },
+      {
+        name: 'DrawAudio',
+        description: 'Draw Custom Waveforms',
+        detailedDescription: 'Interactive waveform design tool. Draw custom oscillator shapes by hand, create unique timbres, and export your creations for use in synthesizers and samplers.',
+        url: 'tools/DrawAudio.html',
+        color: 0x0891b2,
+        size: 1.4,
+        distance: 68,
+        orbitSpeed: 0.25,
+        glowColor: 0x06b6d4
+      },
+      {
+        name: 'ReaVerse',
+        description: 'REAPER-inspired DAW',
+        detailedDescription: 'Web-based DAW inspired by REAPER with professional routing, JSFX script support, VST-style effects, and advanced mixing capabilities. Full production environment in your browser.',
+        url: 'reaper-web/ui/ReaVerse.html',
+        color: 0xea580c,
+        size: 1.7,
+        distance: 78,
+        orbitSpeed: 0.2,
+        glowColor: 0xf97316
+      },
+      {
+        name: 'Tone.js Instruments',
+        description: 'Synthesis Engine',
+        detailedDescription: 'Collection of Web Audio synthesizers powered by Tone.js. Explore FM, AM, additive synthesis, samplers, and polysynths with professional-grade sound generation and built-in effects.',
+        url: 'tools/TonejsInst.html',
+        color: 0x10b981,
+        size: 1.5,
+        distance: 88,
+        orbitSpeed: 0.18,
+        glowColor: 0x34d399
+      },
+      {
+        name: 'ToneJS Deep Exploration',
+        description: 'Advanced Tone.js Features',
+        detailedDescription: 'Comprehensive showcase of advanced Tone.js capabilities. Dive deep into complex synthesis techniques, audio analysis, transport control, and cutting-edge Web Audio API features.',
+        url: 'tools/ToneJS_Deep_Exploration.html',
+        color: 0x6366f1,
+        size: 1.6,
+        distance: 98,
+        orbitSpeed: 0.15,
+        glowColor: 0x818cf8
+      },
+      {
+        name: 'ToneJS Instrument Exhibit',
+        description: 'Interactive Instrument Gallery',
+        detailedDescription: 'Interactive gallery of Tone.js instruments with presets and real-time controls. Explore and experiment with various synthesis techniques.',
+        url: 'tools/ToneJS_Instrument_Exhibit.html',
+        color: 0xa855f7,
+        size: 1.5,
+        distance: 108,
+        orbitSpeed: 0.13,
+        glowColor: 0xc084fc
+      },
+      {
+        name: 'Convolution Reverb',
+        description: 'Upload your own IRs',
+        detailedDescription: 'High-quality convolution reverb processor. Upload custom impulse responses to simulate any acoustic space, from intimate rooms to massive cathedrals. Includes IR library and real-time processing.',
+        url: 'tools/ConvolutionReverb.html',
+        color: 0x8b5cf6,
+        size: 1.3,
+        distance: 118,
+        orbitSpeed: 0.12,
+        glowColor: 0xa78bfa
+      },
+      {
+        name: 'Reverb Collection',
+        description: 'Algorithmic Reverbs',
+        detailedDescription: 'Curated collection of algorithmic reverbs. From vintage plate and spring emulations to modern algorithmic spaces. Fine-tune decay, damping, and diffusion for perfect ambience.',
+        url: 'tools/reverb-collection.html',
+        color: 0x10b981,
+        size: 1.2,
+        distance: 128,
+        orbitSpeed: 0.1,
+        glowColor: 0x34d399
+      },
+      {
+        name: 'C++ Audio Studio',
+        description: 'WebAssembly Audio Analysis',
+        detailedDescription: 'Professional C++ audio analysis engine compiled to WebAssembly. Real-time FFT spectrum analyzer, waveform visualization, phase spectrum, spectrogram generation, and advanced spectral analysis with custom DSP algorithms.',
+        url: 'cpp-audio-studio/web/index.html',
+        color: 0xf59e0b,
+        size: 1.4,
+        distance: 148,
+        orbitSpeed: 0.07,
+        glowColor: 0xfbbf24
+      },
+      {
+        name: 'AudioVerse Pro Plugin',
+        description: 'iPlug2-Style Professional UI',
+        detailedDescription: 'Professional audio plugin with studio-quality graphics powered by C++ PluginUI renderer. Features plugin-grade knobs, faders, VU meters, and real-time spectrum analysis with WebAssembly performance.',
+        url: 'cpp-audio-studio/web/editor.html',
+        color: 0x9333ea,
+        size: 1.6,
+        distance: 158,
+        orbitSpeed: 0.065,
+        glowColor: 0xa855f7
+      },
+      {
+        name: 'Algorithmic Reverb',
+        description: 'Custom Reverb Design',
+        detailedDescription: 'Design custom reverb algorithms from scratch. Dive deep into digital signal processing and create unique spatial effects.',
+        url: 'tools/AlgorithmicReverb.html',
+        color: 0x06b6d4,
+        size: 1.2,
+        distance: 168,
+        orbitSpeed: 0.06,
+        glowColor: 0x22d3ee
+      }
+    ];
+
+    // ===== THREE.JS SETUP =====
+    let scene, camera, renderer, controls;
+    let planetMeshes = [];
+    let cannonBall = null;
+    let playerCamera;
+    let targetPlanet = null;
+    let launchPower = 50;
+    let isFlying = false;
+    let originalCameraPosition = new THREE.Vector3(0, 50, 120);
+    let timeSpeed = 1; // Time speed multiplier
+
+    // Physics world
+    let world;
+    let cannonBodies = [];
+    let timeStep = 1/60;
+    let highlightBox = null;
+    let highlightRing = null;
+    let controlsArrow = null;
+    let firstActionDone = false;
+    let moonMeshes = [];
+
+    function init() {
+      // Create scene
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x000000, 0.0015);
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        2000
+      );
+      camera.position.copy(originalCameraPosition);
+      camera.lookAt(0, 0, 0);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+      // Add OrbitControls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 30;
+      controls.maxDistance = 300;
+      controls.enablePan = true;
+      controls.autoRotate = false;
+      controls.autoRotateSpeed = 0.5;
+
+      // Initialize Physics World
+      world = new CANNON.World();
+      world.gravity.set(0, 0, 0); // Space has no gravity
+      world.broadphase = new CANNON.NaiveBroadphase();
+      world.solver.iterations = 10;
+
+      // Add lights
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+      scene.add(ambientLight);
+
+      const pointLight = new THREE.PointLight(0xff9500, 2, 300);
+      pointLight.position.set(0, 0, 0);
+      scene.add(pointLight);
+
+      // Create starfield
+      createStarfield();
+
+      // Create planets
+      createPlanets();
+
+      // Event listeners
+      window.addEventListener('resize', onWindowResize);
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mousemove', updateCrosshair);
+      document.addEventListener('keydown', onKeyDown);
+      document.addEventListener('keyup', onKeyUp);
+      document.getElementById('reset-btn').addEventListener('click', resetCamera);
+
+      // Populate planet list
+      populatePlanetList();
+
+      // Hide loading screen and show welcome popup
+      setTimeout(() => {
+        document.getElementById('loading').classList.add('hidden');
+        // Always show welcome popup on load
+        showInstructionPopup('welcome-popup');
+      }, 1000);
+
+      // Start animation
+      animate();
+    }
+    
+    // Create 3D arrow pointing to controls from LEFT side
+    function createControlsArrow() {
+      console.log('[DEBUG] Creating controls arrow');
+      const arrowGroup = new THREE.Group();
+      
+      // Arrow shaft - bright red, always visible
+      const shaftGeo = new THREE.CylinderGeometry(1, 1, 20, 8);
+      const arrowMat = new THREE.MeshBasicMaterial({ 
+        color: 0xff0000,
+        transparent: false
+      });
+      const shaft = new THREE.Mesh(shaftGeo, arrowMat);
+      shaft.rotation.z = Math.PI / 2;
+      arrowGroup.add(shaft);
+      
+      // Arrow head - bigger and brighter
+      const headGeo = new THREE.ConeGeometry(2, 5, 8);
+      const head = new THREE.Mesh(headGeo, arrowMat);
+      head.rotation.z = -Math.PI / 2;
+      head.position.x = 12.5;
+      arrowGroup.add(head);
+      
+      // Add glow sphere for extra visibility
+      const glowGeo = new THREE.SphereGeometry(3, 16, 16);
+      const glowMat = new THREE.MeshBasicMaterial({ 
+        color: 0xff0000, 
+        transparent: true, 
+        opacity: 0.3 
+      });
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      glow.position.x = 12.5;
+      arrowGroup.add(glow);
+      
+      // Position arrow at bottom right from LEFT side, pointing RIGHT at controls
+      // Camera starts at (0, 50, 120), controls box is bottom-right
+      arrowGroup.position.set(80, -30, 100);
+      arrowGroup.rotation.y = -Math.PI / 4; // Point right
+      arrowGroup.rotation.x = -Math.PI / 8; // Point slightly down
+      arrowGroup.rotation.z = 0; // Horizontal
+      
+      controlsArrow = arrowGroup;
+      scene.add(controlsArrow);
+      console.log('[DEBUG] Controls arrow added at:', arrowGroup.position);
+      console.log('[DEBUG] Scene children count:', scene.children.length);
+    }
+
+    // Update crosshair position
+    function updateCrosshair(event) {
+      const crosshair = document.getElementById('crosshair');
+      crosshair.style.left = event.clientX + 'px';
+      crosshair.style.top = event.clientY + 'px';
+    }
+
+    // Time speed control
+    function setTimeSpeed(speed) {
+      timeSpeed = speed;
+      const speedDisplay = document.getElementById('speed-display');
+      const speedLabels = {
+        0.25: 'Very Slow',
+        0.5: 'Slow',
+        1: 'Normal Speed',
+        2: 'Fast',
+        5: 'Very Fast'
+      };
+      speedDisplay.textContent = speedLabels[speed] || `${speed}×`;
+      
+      // Update active button
+      document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+    }
+
+    function createStarfield() {
+      const starGeometry = new THREE.BufferGeometry();
+      const starMaterial = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.7,
+        transparent: true,
+        opacity: 0.8
+      });
+
+      const starVertices = [];
+      for (let i = 0; i < 10000; i++) {
+        const x = (Math.random() - 0.5) * 2000;
+        const y = (Math.random() - 0.5) * 2000;
+        const z = (Math.random() - 0.5) * 2000;
+        starVertices.push(x, y, z);
+      }
+
+      starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+      const stars = new THREE.Points(starGeometry, starMaterial);
+      scene.add(stars);
+    }
+
+    function createPlanets() {
+      
+      planets.forEach((planetData, index) => {
+        // Create unique music-themed design for each planet
+        let planet;
+        
+        if (planetData.isSun) {
+          // AudioVerse Sun - Pulsing core with orbiting musical notes
+          const sunGroup = new THREE.Group();
+          const coreGeo = new THREE.SphereGeometry(planetData.size, 64, 64);
+          const coreMat = new THREE.MeshPhongMaterial({
+            color: planetData.color,
+            emissive: planetData.color,
+            emissiveIntensity: 0.8,
+            shininess: 100
+          });
+          const core = new THREE.Mesh(coreGeo, coreMat);
+          sunGroup.add(core);
+          
+          // Add rotating rings of light
+          for (let i = 0; i < 3; i++) {
+            const ringGeo = new THREE.TorusGeometry(planetData.size * (1.3 + i * 0.3), 0.1, 8, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ 
+              color: 0xffaa00, 
+              transparent: true, 
+              opacity: 0.4 - i * 0.1 
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2 + i * 0.3;
+            ring.userData.rotSpeed = 0.01 * (i + 1);
+            sunGroup.add(ring);
+          }
+          planet = sunGroup;
+        } else if (planetData.name === 'MIDI DAW With Ideas') {
+          // Piano keyboard design
+          const group = new THREE.Group();
+          const baseGeo = new THREE.CylinderGeometry(planetData.size, planetData.size, planetData.size * 0.5, 32);
+          const baseMat = new THREE.MeshPhongMaterial({ color: planetData.color, emissive: planetData.color, emissiveIntensity: 0.3 });
+          const base = new THREE.Mesh(baseGeo, baseMat);
+          group.add(base);
+          
+          // Add piano keys around it
+          for (let i = 0; i < 12; i++) {
+            const keyGeo = new THREE.BoxGeometry(0.3, planetData.size * 0.8, 0.8);
+            const isBlack = [1, 3, 6, 8, 10].includes(i);
+            const keyMat = new THREE.MeshPhongMaterial({ color: isBlack ? 0x000000 : 0xffffff });
+            const key = new THREE.Mesh(keyGeo, keyMat);
+            const angle = (i / 12) * Math.PI * 2;
+            key.position.x = Math.cos(angle) * planetData.size * 1.2;
+            key.position.z = Math.sin(angle) * planetData.size * 1.2;
+            key.lookAt(0, 0, 0);
+            group.add(key);
+          }
+          planet = group;
+        } else if (planetData.name === 'CraftySound') {
+          // Waveform sphere with frequency bands
+          const group = new THREE.Group();
+          const coreGeo = new THREE.SphereGeometry(planetData.size, 32, 32);
+          const coreMat = new THREE.MeshPhongMaterial({ color: planetData.color, emissive: planetData.color, emissiveIntensity: 0.3 });
+          const core = new THREE.Mesh(coreGeo, coreMat);
+          group.add(core);
+          
+          // Add orbiting waveform rings
+          for (let i = 0; i < 5; i++) {
+            const points = [];
+            for (let j = 0; j <= 64; j++) {
+              const angle = (j / 64) * Math.PI * 2;
+              const radius = planetData.size * 1.3;
+              const wave = Math.sin(j * 0.5) * 0.3;
+              points.push(new THREE.Vector3(Math.cos(angle) * (radius + wave), Math.sin(angle) * (radius + wave), 0));
+            }
+            const waveGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const waveMat = new THREE.LineBasicMaterial({ color: planetData.glowColor });
+            const wave = new THREE.Line(waveGeo, waveMat);
+            wave.rotation.x = (i / 5) * Math.PI;
+            wave.userData.rotSpeed = 0.02 * (i + 1);
+            group.add(wave);
+          }
+          planet = group;
+        } else if (planetData.name.includes('EQ')) {
+          // EQ frequency bars
+          const group = new THREE.Group();
+          const coreGeo = new THREE.SphereGeometry(planetData.size * 0.7, 32, 32);
+          const coreMat = new THREE.MeshPhongMaterial({ color: planetData.color, emissive: planetData.color, emissiveIntensity: 0.3 });
+          group.add(new THREE.Mesh(coreGeo, coreMat));
+          
+          // Frequency bars around sphere
+          for (let i = 0; i < 16; i++) {
+            const height = planetData.size * (0.5 + Math.random() * 1.5);
+            const barGeo = new THREE.BoxGeometry(0.3, height, 0.3);
+            const barMat = new THREE.MeshPhongMaterial({ color: planetData.glowColor });
+            const bar = new THREE.Mesh(barGeo, barMat);
+            const angle = (i / 16) * Math.PI * 2;
+            bar.position.x = Math.cos(angle) * planetData.size;
+            bar.position.z = Math.sin(angle) * planetData.size;
+            bar.userData.phaseOffset = i * 0.4;
+            group.add(bar);
+          }
+          planet = group;
+        } else if (planetData.name.includes('Synth')) {
+          // Oscillator design with modulating waves
+          const group = new THREE.Group();
+          const coreGeo = new THREE.IcosahedronGeometry(planetData.size, 1);
+          const coreMat = new THREE.MeshPhongMaterial({ color: planetData.color, emissive: planetData.color, emissiveIntensity: 0.3, wireframe: false });
+          group.add(new THREE.Mesh(coreGeo, coreMat));
+          
+          // Orbiting oscillator shapes
+          for (let i = 0; i < 3; i++) {
+            const oscGeo = new THREE.TorusKnotGeometry(planetData.size * 0.4, planetData.size * 0.1, 64, 8);
+            const oscMat = new THREE.MeshPhongMaterial({ color: planetData.glowColor, transparent: true, opacity: 0.6 });
+            const osc = new THREE.Mesh(oscGeo, oscMat);
+            osc.position.x = planetData.size * 1.5;
+            osc.userData.orbitSpeed = 0.02 * (i + 1);
+            osc.userData.orbitRadius = planetData.size * 1.5;
+            osc.userData.orbitAngle = (i / 3) * Math.PI * 2;
+            group.add(osc);
+          }
+          planet = group;
+        } else if (planetData.name.includes('Reverb') || planetData.name.includes('ReaVerse')) {
+          // Echo sphere with expanding rings
+          const group = new THREE.Group();
+          const coreGeo = new THREE.OctahedronGeometry(planetData.size, 2);
+          const coreMat = new THREE.MeshPhongMaterial({ color: planetData.color, emissive: planetData.color, emissiveIntensity: 0.3 });
+          group.add(new THREE.Mesh(coreGeo, coreMat));
+          
+          // Pulsing echo rings
+          for (let i = 0; i < 4; i++) {
+            const ringGeo = new THREE.TorusGeometry(planetData.size * (1.2 + i * 0.4), 0.08, 8, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: planetData.glowColor, transparent: true, opacity: 0.3 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.userData.pulseOffset = i * 0.5;
+            group.add(ring);
+          }
+          planet = group;
+        } else if (planetData.name.includes('C++') || planetData.name.includes('AudioVerse Pro')) {
+          // Technical/code design
+          const group = new THREE.Group();
+          const coreGeo = new THREE.DodecahedronGeometry(planetData.size, 0);
+          const coreMat = new THREE.MeshPhongMaterial({ color: planetData.color, emissive: planetData.color, emissiveIntensity: 0.3 });
+          group.add(new THREE.Mesh(coreGeo, coreMat));
+          
+          // Orbiting data cubes
+          for (let i = 0; i < 8; i++) {
+            const cubeGeo = new THREE.BoxGeometry(planetData.size * 0.3, planetData.size * 0.3, planetData.size * 0.3);
+            const cubeMat = new THREE.MeshPhongMaterial({ color: planetData.glowColor, wireframe: true });
+            const cube = new THREE.Mesh(cubeGeo, cubeMat);
+            const angle = (i / 8) * Math.PI * 2;
+            cube.position.x = Math.cos(angle) * planetData.size * 1.5;
+            cube.position.z = Math.sin(angle) * planetData.size * 1.5;
+            cube.userData.rotSpeed = 0.03;
+            group.add(cube);
+          }
+          planet = group;
+        } else {
+          // Default: Musical sphere with staff lines
+          const group = new THREE.Group();
+          const coreGeo = new THREE.SphereGeometry(planetData.size, 32, 32);
+          const coreMat = new THREE.MeshPhongMaterial({ color: planetData.color, emissive: planetData.color, emissiveIntensity: 0.3 });
+          group.add(new THREE.Mesh(coreGeo, coreMat));
+          
+          // Music staff lines
+          for (let i = 0; i < 5; i++) {
+            const points = [];
+            const y = (i - 2) * planetData.size * 0.4;
+            for (let j = 0; j <= 64; j++) {
+              const angle = (j / 64) * Math.PI * 2;
+              points.push(new THREE.Vector3(Math.cos(angle) * planetData.size * 1.2, y, Math.sin(angle) * planetData.size * 1.2));
+            }
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.5, transparent: true });
+            group.add(new THREE.Line(lineGeo, lineMat));
+          }
+          planet = group;
+        }
+        
+        const material = null; // Not used for groups
+
+        // Add outer glow effect
+        const glowGeometry = new THREE.SphereGeometry(planetData.size * 1.5, 32, 32);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+          color: planetData.glowColor,
+          transparent: true,
+          opacity: planetData.isSun ? 0.6 : 0.3,
+          side: THREE.BackSide
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        planet.add(glow);
+
+        // Add enhanced text label
+        createPlanetLabel(planet, planetData.name, planetData.description, planetData.size);
+
+        // Position planet
+        if (planetData.isSun) {
+          planet.position.set(0, 0, 0);
+        } else {
+          const angle = (index / planets.length) * Math.PI * 2;
+          planet.position.x = Math.cos(angle) * planetData.distance;
+          planet.position.z = Math.sin(angle) * planetData.distance;
+          planet.position.y = (Math.random() - 0.5) * 10;
+        }
+
+        // Generate orbital parameters with varied patterns
+        let eccentricity, semiMajorAxis, semiMinorAxis, orbitTilt, orbitRotation;
+        let orbitPattern = 'circular';
+        
+        if (!planetData.isSun) {
+          // Vary orbit patterns: major tools get circular, minor tools get elliptical/weird
+          const isImportant = index <= 5; // First few planets are important
+          
+          if (isImportant) {
+            eccentricity = Math.random() * 0.15; // Nearly circular
+            orbitPattern = 'circular';
+          } else {
+            const rand = Math.random();
+            if (rand < 0.3) {
+              eccentricity = 0.2 + Math.random() * 0.3; // Elliptical
+              orbitPattern = 'elliptical';
+            } else if (rand < 0.6) {
+              eccentricity = 0.4 + Math.random() * 0.4; // Very elliptical
+              orbitPattern = 'highly-elliptical';
+            } else {
+              eccentricity = 0.6 + Math.random() * 0.3; // Comet-like
+              orbitPattern = 'comet';
+            }
+          }
+          
+          // Add random variation to distance for each orbit
+          const distanceVariation = planetData.distance * (0.9 + Math.random() * 0.3);
+          semiMajorAxis = distanceVariation;
+          semiMinorAxis = semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity);
+          orbitTilt = (Math.random() - 0.5) * Math.PI * 0.3;
+          orbitRotation = Math.random() * Math.PI * 2;
+          
+          // Create moons for some less important planets
+          if (!isImportant && Math.random() > 0.5) {
+            const moonCount = Math.floor(Math.random() * 2) + 1;
+            for (let m = 0; m < moonCount; m++) {
+              const moonSize = planetData.size * (0.15 + Math.random() * 0.15);
+              const moonGeo = new THREE.SphereGeometry(moonSize, 16, 16);
+              const moonMat = new THREE.MeshPhongMaterial({ 
+                color: 0xaaaaaa, 
+                emissive: 0x666666, 
+                emissiveIntensity: 0.2 
+              });
+              const moon = new THREE.Mesh(moonGeo, moonMat);
+              const moonDistance = planetData.size * (2 + m * 1.5);
+              moon.userData = {
+                parentPlanet: planet,
+                moonOrbitDistance: moonDistance,
+                moonOrbitSpeed: 0.5 + Math.random() * 1,
+                moonInitialAngle: Math.random() * Math.PI * 2,
+                size: moonSize
+              };
+              scene.add(moon);
+              moonMeshes.push(moon);
+            }
+          }
+        }
+
+        // Store orbital info
+        planet.userData = { 
+          ...planetData, 
+          initialAngle: (index / planets.length) * Math.PI * 2,
+          geometryType: 'custom',
+          rotationSpeed: Math.random() * 0.02 + 0.01,
+          oscillationSpeed: Math.random() * 0.5 + 0.3,
+          oscillationAmplitude: Math.random() * 3 + 1,
+          orbitPattern: orbitPattern || 'static',
+          eccentricity: eccentricity || 0,
+          semiMajorAxis: semiMajorAxis || 0,
+          semiMinorAxis: semiMinorAxis || 0,
+          orbitTilt: orbitTilt || 0,
+          orbitRotation: orbitRotation || 0
+        };
+        
+        scene.add(planet);
+        planetMeshes.push(planet);
+
+        // Create physics body for collision detection
+        const shape = new CANNON.Sphere(planetData.size * 1.2); // Slightly larger collision sphere
+        const body = new CANNON.Body({
+          mass: 0, // Static
+          shape: shape,
+          position: new CANNON.Vec3(planet.position.x, planet.position.y, planet.position.z)
+        });
+        world.addBody(body);
+        cannonBodies.push({ mesh: planet, body: body });
+
+        // Add orbit ring for non-sun planets
+        if (!planetData.isSun) {
+          const orbitGeometry = new THREE.RingGeometry(planetData.distance - 0.5, planetData.distance + 0.5, 64);
+          const orbitMaterial = new THREE.MeshBasicMaterial({
+            color: planetData.glowColor,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.1
+          });
+          const orbitRing = new THREE.Mesh(orbitGeometry, orbitMaterial);
+          orbitRing.rotation.x = Math.PI / 2;
+          scene.add(orbitRing);
+        }
+      });
+
+      // Populate planet list
+      populatePlanetList();
+    }
+
+    // Create enhanced text label with name and description
+    function createPlanetLabel(planet, name, description, size) {
+      // Name label (larger)
+      const nameCanvas = document.createElement('canvas');
+      const nameContext = nameCanvas.getContext('2d');
+      nameCanvas.width = 1024;
+      nameCanvas.height = 256;
+
+      nameContext.fillStyle = 'rgba(0, 0, 0, 0)';
+      nameContext.fillRect(0, 0, nameCanvas.width, nameCanvas.height);
+
+      nameContext.font = 'bold 72px Orbitron';
+      nameContext.fillStyle = 'white';
+      nameContext.strokeStyle = '#4facfe';
+      nameContext.lineWidth = 4;
+      nameContext.textAlign = 'center';
+      nameContext.textBaseline = 'middle';
+      nameContext.strokeText(name, nameCanvas.width / 2, nameCanvas.height / 2);
+      nameContext.fillText(name, nameCanvas.width / 2, nameCanvas.height / 2);
+
+      const nameTexture = new THREE.CanvasTexture(nameCanvas);
+      const nameSpriteMaterial = new THREE.SpriteMaterial({ 
+        map: nameTexture,
+        transparent: true,
+        opacity: 1
+      });
+      const nameSprite = new THREE.Sprite(nameSpriteMaterial);
+      nameSprite.scale.set(size * 4, size, 1);
+      nameSprite.position.y = size + 2;
+      planet.add(nameSprite);
+
+      // Description label (smaller, below name)
+      const descCanvas = document.createElement('canvas');
+      const descContext = descCanvas.getContext('2d');
+      descCanvas.width = 1024;
+      descCanvas.height = 128;
+
+      descContext.fillStyle = 'rgba(0, 0, 0, 0)';
+      descContext.fillRect(0, 0, descCanvas.width, descCanvas.height);
+
+      descContext.font = '36px Space Grotesk';
+      descContext.fillStyle = '#f39c12';
+      descContext.textAlign = 'center';
+      descContext.textBaseline = 'middle';
+      descContext.fillText(description, descCanvas.width / 2, descCanvas.height / 2);
+
+      const descTexture = new THREE.CanvasTexture(descCanvas);
+      const descSpriteMaterial = new THREE.SpriteMaterial({ 
+        map: descTexture,
+        transparent: true,
+        opacity: 0.8
+      });
+      const descSprite = new THREE.Sprite(descSpriteMaterial);
+      descSprite.scale.set(size * 3.5, size * 0.5, 1);
+      descSprite.position.y = size + 0.5;
+      planet.add(descSprite);
+    }
+
+    // Populate planet list sidebar
+    function populatePlanetList() {
+      const container = document.getElementById('planet-items');
+      container.innerHTML = '';
+      
+      planets.forEach((planetData, index) => {
+        const item = document.createElement('div');
+        item.className = 'planet-item';
+        item.innerHTML = `
+          <div class="planet-item-name">${planetData.name}</div>
+          <div class="planet-item-desc">${planetData.description}</div>
+        `;
+        item.onclick = () => showPlanetPopup(planetData);
+        container.appendChild(item);
+      });
+    }
+
+    // Global variable to store current popup planet
+    let currentPopupPlanet = null;
+    let highlightedPlanetMesh = null;
+
+    // Show planet popup
+    function showPlanetPopup(planetData) {
+      currentPopupPlanet = planetData;
+      document.getElementById('popup-name').textContent = planetData.name;
+      document.getElementById('popup-desc').textContent = planetData.detailedDescription || planetData.description;
+      
+      const distanceElement = document.getElementById('popup-distance');
+      distanceElement.textContent = planetData.isSun ? 'Central Star' : `Distance: ${planetData.distance} AU`;
+      distanceElement.className = 'popup-detail';
+      
+      document.getElementById('planet-popup').classList.add('visible');
+    }
+
+    // Highlight planet in 3D scene
+    function highlightPlanet() {
+      console.log('[DEBUG] highlightPlanet called');
+      console.log('[DEBUG] currentPopupPlanet:', currentPopupPlanet);
+      console.log('[DEBUG] planetMeshes.length:', planetMeshes.length);
+      
+      if (!currentPopupPlanet) {
+        console.log('[DEBUG] No currentPopupPlanet');
+        return;
+      }
+      
+      // Remove previous highlight
+      removeHighlight();
+      
+      // Find the planet mesh
+      const planetMesh = planetMeshes.find(p => p.userData.name === currentPopupPlanet.name);
+      console.log('[DEBUG] Found planet mesh:', planetMesh);
+      
+      if (!planetMesh) {
+        console.log('[DEBUG] Planet mesh not found');
+        return;
+      }
+      
+      highlightedPlanetMesh = planetMesh;
+      planetMesh.userData.highlighted = true;
+      console.log('[DEBUG] Set highlighted flag on planet');
+      
+      // Point camera toward planet
+      controls.target.set(planetMesh.position.x, planetMesh.position.y, planetMesh.position.z);
+      controls.update();
+      
+      // Create RED rectangle frame around planet - make it bigger and more visible
+      const boxSize = planetMesh.userData.size * 4.5;
+      console.log('[DEBUG] Creating box with size:', boxSize);
+      const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(boxSize, boxSize, boxSize));
+      const lineMaterial = new THREE.LineBasicMaterial({ 
+        color: 0xff0000,
+        linewidth: 5
+      });
+      highlightBox = new THREE.LineSegments(edges, lineMaterial);
+      highlightBox.position.copy(planetMesh.position);
+      scene.add(highlightBox);
+      console.log('[DEBUG] Added highlight box to scene at position:', highlightBox.position);
+      
+      // Add glowing wireframe sphere for extra visibility
+      const glowBoxGeo = new THREE.SphereGeometry(boxSize * 0.7, 16, 16);
+      const glowBoxMat = new THREE.MeshBasicMaterial({ 
+        color: 0xff0000, 
+        wireframe: true,
+        transparent: true,
+        opacity: 0.5
+      });
+      const glowBox = new THREE.Mesh(glowBoxGeo, glowBoxMat);
+      highlightBox.add(glowBox);
+      
+      // Create highlight ring around planet - bigger and brighter
+      const ringGeometry = new THREE.RingGeometry(planetMesh.userData.size * 2.8, planetMesh.userData.size * 3.2, 32);
+      const ringMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.9
+      });
+      highlightRing = new THREE.Mesh(ringGeometry, ringMaterial);
+      highlightRing.position.copy(planetMesh.position);
+      highlightRing.lookAt(camera.position);
+      scene.add(highlightRing);
+      console.log('[DEBUG] Added highlight ring to scene at position:', highlightRing.position);
+      console.log('[DEBUG] Scene children count:', scene.children.length);
+      
+      // Close popup after highlighting
+      setTimeout(() => {
+        closePlanetPopup();
+      }, 500);
+    }
+
+    // Remove planet highlight
+    function removeHighlight() {
+      if (highlightedPlanetMesh) {
+        highlightedPlanetMesh.userData.highlighted = false;
+        highlightedPlanetMesh = null;
+      }
+      
+      if (highlightBox) {
+        scene.remove(highlightBox);
+        highlightBox = null;
+      }
+      
+      if (highlightRing) {
+        scene.remove(highlightRing);
+        highlightRing = null;
+      }
+    }
+
+    // Close planet popup
+    function closePlanetPopup() {
+      document.getElementById('planet-popup').classList.remove('visible');
+      removeHighlight();
+      currentPopupPlanet = null;
+    }
+
+    // Visit current planet (disabled - must use cannon)
+    function visitCurrentPlanet() {
+      // Disabled - user must hit planet with cannon
+      alert('You must hit this planet with the Cosmic Cannon to access it!');
+    }
+
+    // Instruction popup functions
+    function showInstructionPopup(popupId) {
+      document.getElementById(popupId).classList.add('visible');
+    }
+
+    function closeInstructionPopup(popupId) {
+      document.getElementById(popupId).classList.remove('visible');
+      if (popupId === 'welcome-popup') {
+        // Create arrow AFTER welcome popup closes to show user the controls
+        if (!controlsArrow) {
+          createControlsArrow();
+        }
+      }
+      if (popupId === 'missed-popup') {
+        resetCamera();
+      }
+    }
+
+    let spacePressed = false;
+    let powerInterval = null;
+
+    function onKeyDown(e) {
+      // Mark first action and hide arrow
+      if (!firstActionDone && controlsArrow) {
+        firstActionDone = true;
+        scene.remove(controlsArrow);
+        controlsArrow = null;
+        console.log('[DEBUG] Arrow removed after first action');
+      }
+      
+      if (e.code === 'Space' && !isFlying) {
+        e.preventDefault();
+        spacePressed = true;
+        powerInterval = setInterval(() => {
+          launchPower += 2;
+          if (launchPower > 100) launchPower = 100;
+          updatePowerDisplay();
+        }, 50);
+      }
+      if (e.code === 'KeyR') {
+        resetCamera();
+      }
+    }
+
+    function onKeyUp(e) {
+      if (e.code === 'Space' && spacePressed) {
+        e.preventDefault();
+        spacePressed = false;
+        clearInterval(powerInterval);
+        launchCannon();
+      }
+    }
+
+    function updatePowerDisplay() {
+      const powerBar = document.getElementById('power-bar');
+      const powerValue = document.getElementById('power-value');
+      powerBar.style.width = launchPower + '%';
+      powerValue.textContent = Math.round(launchPower) + '%';
+    }
+
+    let mouse = new THREE.Vector2();
+    let raycaster = new THREE.Raycaster();
+
+    function onMouseMove(event) {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    }
+
+    let missedTimer = null;
+
+    function launchCannon() {
+      if (isFlying) return;
+
+      isFlying = true;
+      document.getElementById('reset-btn').classList.add('visible');
+      removeHighlight(); // Remove any planet highlights
+
+      // Create cannonball (player)
+      const ballGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+      const ballMaterial = new THREE.MeshPhongMaterial({
+        color: 0xff6ec7,
+        emissive: 0xff6ec7,
+        emissiveIntensity: 0.5
+      });
+      cannonBall = new THREE.Mesh(ballGeometry, ballMaterial);
+      cannonBall.position.copy(camera.position);
+      scene.add(cannonBall);
+
+      // Add glow to cannonball
+      const glowGeometry = new THREE.SphereGeometry(0.7, 16, 16);
+      const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff6ec7,
+        transparent: true,
+        opacity: 0.4,
+        side: THREE.BackSide
+      });
+      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+      cannonBall.add(glow);
+
+      // Create physics body for cannonball
+      const ballShape = new CANNON.Sphere(0.5);
+      const ballBody = new CANNON.Body({
+        mass: 1,
+        shape: ballShape,
+        position: new CANNON.Vec3(camera.position.x, camera.position.y, camera.position.z),
+        linearDamping: 0.1
+      });
+
+      // Calculate direction
+      const direction = new THREE.Vector3();
+      raycaster.setFromCamera(mouse, camera);
+      direction.copy(raycaster.ray.direction).normalize();
+
+      // Apply velocity based on power
+      const power = launchPower * 2;
+      ballBody.velocity.set(
+        direction.x * power,
+        direction.y * power,
+        direction.z * power
+      );
+
+      world.addBody(ballBody);
+
+      // Start missed timer (10 seconds)
+      missedTimer = setTimeout(() => {
+        if (isFlying) {
+          showInstructionPopup('missed-popup');
+        }
+      }, 10000);
+
+      // Add trail effect
+      const trailGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+      const trailMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff6ec7,
+        transparent: true,
+        opacity: 0.5
+      });
+
+      let hitDetected = false;
+
+      // Collision detection with enhanced animation
+      ballBody.addEventListener('collide', (e) => {
+        if (hitDetected) return;
+        
+        // Find which planet was hit
+        cannonBodies.forEach(({ mesh, body }) => {
+          if (body === e.body && mesh.userData && mesh.userData.url) {
+            hitDetected = true;
+            clearTimeout(missedTimer);
+            
+            // Create explosion effect
+            createExplosion(cannonBall.position, mesh.userData.color);
+            
+            // Zoom camera to planet
+            const targetPos = mesh.position.clone();
+            let zoomProgress = 0;
+            const zoomDuration = 1500;
+            const startTime = Date.now();
+            
+            const zoomAnimation = () => {
+              const elapsed = Date.now() - startTime;
+              zoomProgress = Math.min(elapsed / zoomDuration, 1);
+              
+              // Smooth easing
+              const eased = 1 - Math.pow(1 - zoomProgress, 3);
+              
+              camera.position.lerp(
+                new THREE.Vector3(
+                  targetPos.x + mesh.userData.size * 5,
+                  targetPos.y + mesh.userData.size * 3,
+                  targetPos.z + mesh.userData.size * 5
+                ),
+                eased * 0.3
+              );
+              camera.lookAt(targetPos);
+              
+              if (zoomProgress < 1) {
+                requestAnimationFrame(zoomAnimation);
+              } else {
+                // Navigate to planet after animation
+                setTimeout(() => {
+                  window.location.href = mesh.userData.url;
+                }, 500);
+              }
+            };
+            
+            zoomAnimation();
+          }
+        });
+      });
+
+      // Follow cannonball with camera
+      const followCannon = () => {
+        if (!cannonBall || hitDetected) return;
+
+        // Update physics
+        world.step(timeStep);
+
+        // Update cannonball position
+        cannonBall.position.copy(ballBody.position);
+
+        // Camera follows smoothly
+        camera.position.lerp(
+          new THREE.Vector3(
+            ballBody.position.x - direction.x * 10,
+            ballBody.position.y - direction.y * 10 + 5,
+            ballBody.position.z - direction.z * 10
+          ),
+          0.1
+        );
+        camera.lookAt(cannonBall.position);
+
+        // Add trail particles
+        if (Math.random() > 0.7) {
+          const trail = new THREE.Mesh(trailGeometry, trailMaterial.clone());
+          trail.position.copy(cannonBall.position);
+          trail.position.x += (Math.random() - 0.5) * 0.5;
+          trail.position.y += (Math.random() - 0.5) * 0.5;
+          trail.position.z += (Math.random() - 0.5) * 0.5;
+          scene.add(trail);
+          
+          // Fade out trail
+          let opacity = 0.5;
+          const fadeInterval = setInterval(() => {
+            opacity -= 0.05;
+            trail.material.opacity = opacity;
+            if (opacity <= 0) {
+              clearInterval(fadeInterval);
+              scene.remove(trail);
+            }
+          }, 50);
+        }
+
+        if (isFlying) {
+          requestAnimationFrame(followCannon);
+        }
+      };
+
+      followCannon();
+    }
+
+    // Create particle explosion effect
+    function createExplosion(position, color) {
+      const particleCount = 30;
+      const particles = [];
+      
+      for (let i = 0; i < particleCount; i++) {
+        const particleGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+        const particleMaterial = new THREE.MeshBasicMaterial({
+          color: color,
+          transparent: true,
+          opacity: 1
+        });
+        const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+        particle.position.copy(position);
+        
+        // Random velocity
+        particle.userData.velocity = new THREE.Vector3(
+          (Math.random() - 0.5) * 5,
+          (Math.random() - 0.5) * 5,
+          (Math.random() - 0.5) * 5
+        );
+        
+        scene.add(particle);
+        particles.push(particle);
+      }
+      
+      // Animate particles
+      let life = 1;
+      const animateExplosion = () => {
+        life -= 0.02;
+        
+        particles.forEach(particle => {
+          particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.1));
+          particle.material.opacity = life;
+          particle.scale.multiplyScalar(0.95);
+        });
+        
+        if (life > 0) {
+          requestAnimationFrame(animateExplosion);
+        } else {
+          particles.forEach(p => scene.remove(p));
+        }
+      };
+      
+      animateExplosion();
+    }
+
+    function resetCamera() {
+      isFlying = false;
+      if (cannonBall) {
+        scene.remove(cannonBall);
+        cannonBall = null;
+      }
+      
+      // Clear missed timer
+      if (missedTimer) {
+        clearTimeout(missedTimer);
+        missedTimer = null;
+      }
+      
+      // Close instruction popups
+      document.getElementById('missed-popup').classList.remove('visible');
+      
+      // Reset camera position and controls
+      camera.position.copy(originalCameraPosition);
+      camera.lookAt(0, 0, 0);
+      if (controls) {
+        controls.target.set(0, 0, 0);
+        controls.update();
+      }
+      
+      launchPower = 50;
+      updatePowerDisplay();
+      
+      document.getElementById('reset-btn').classList.remove('visible');
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Update orbit controls
+      if (controls && !isFlying) {
+        controls.update();
+      }
+
+      const time = Date.now() * 0.0001 * timeSpeed;
+      
+      // Animate planets
+      planetMeshes.forEach((planet, index) => {
+        if (!planet.userData.isSun) {
+          const data = planet.userData;
+          
+          // Elliptical orbital movement
+          const angle = time * data.orbitSpeed + data.initialAngle;
+          const a = data.semiMajorAxis;
+          const b = data.semiMinorAxis;
+          const e = data.eccentricity;
+          
+          const r = a * (1 - e * e) / (1 + e * Math.cos(angle));
+          let x = r * Math.cos(angle);
+          let z = r * Math.sin(angle);
+          
+          const cosRot = Math.cos(data.orbitRotation);
+          const sinRot = Math.sin(data.orbitRotation);
+          const xRot = x * cosRot - z * sinRot;
+          const zRot = x * sinRot + z * cosRot;
+          
+          planet.position.x = xRot;
+          planet.position.z = zRot;
+          planet.position.y = Math.sin(time * data.oscillationSpeed) * data.oscillationAmplitude + 
+                              Math.sin(angle) * Math.sin(data.orbitTilt) * a * 0.2;
+          
+          if (cannonBodies[index]) {
+            cannonBodies[index].body.position.set(planet.position.x, planet.position.y, planet.position.z);
+          }
+        }
+        
+        // Rotate planet and animate internal elements
+        planet.rotation.y += planet.userData.rotationSpeed * timeSpeed;
+        
+        // Animate planet-specific elements
+        planet.children.forEach((child, idx) => {
+          if (child.userData.rotSpeed) {
+            child.rotation.y += child.userData.rotSpeed * timeSpeed;
+          }
+          if (child.userData.orbitSpeed) {
+            const orbitAngle = time * child.userData.orbitSpeed + child.userData.orbitAngle;
+            child.position.x = Math.cos(orbitAngle) * child.userData.orbitRadius;
+            child.position.z = Math.sin(orbitAngle) * child.userData.orbitRadius;
+            child.rotation.x += 0.02 * timeSpeed;
+          }
+          if (child.userData.pulseOffset !== undefined) {
+            const pulse = 1 + Math.sin(time * 2 + child.userData.pulseOffset) * 0.1;
+            child.scale.set(pulse, pulse, pulse);
+          }
+          if (child.userData.phaseOffset !== undefined) {
+            const scale = 1 + Math.sin(time * 3 + child.userData.phaseOffset) * 0.3;
+            child.scale.y = scale;
+          }
+        });
+        
+        // Update highlight position if this planet is highlighted
+        if (planet.userData.highlighted && highlightBox && highlightRing) {
+          highlightBox.position.copy(planet.position);
+          highlightBox.rotation.y += 0.02;
+          highlightBox.rotation.x += 0.01;
+          
+          // Pulse the glow box
+          if (highlightBox.children[0]) {
+            const glowPulse = 0.5 + Math.sin(time * 4) * 0.3;
+            highlightBox.children[0].material.opacity = glowPulse;
+          }
+          
+          highlightRing.position.copy(planet.position);
+          highlightRing.lookAt(camera.position);
+          const pulse = 1 + Math.sin(time * 3) * 0.2;
+          highlightRing.scale.set(pulse, pulse, 1);
+        }
+      });
+      
+      // Animate moons
+      moonMeshes.forEach(moon => {
+        if (moon.userData.parentPlanet) {
+          const parent = moon.userData.parentPlanet;
+          const moonAngle = time * moon.userData.moonOrbitSpeed + moon.userData.moonInitialAngle;
+          moon.position.x = parent.position.x + Math.cos(moonAngle) * moon.userData.moonOrbitDistance;
+          moon.position.z = parent.position.z + Math.sin(moonAngle) * moon.userData.moonOrbitDistance;
+          moon.position.y = parent.position.y + Math.sin(moonAngle * 2) * moon.userData.moonOrbitDistance * 0.3;
+          moon.rotation.y += 0.02 * timeSpeed;
+        }
+      });
+      
+      // Animate controls arrow - bob up and down
+      if (controlsArrow && !firstActionDone) {
+        const baseY = -30;
+        controlsArrow.position.y = baseY + Math.sin(time * 4) * 5;
+        // Also pulse the glow
+        if (controlsArrow.children[2]) {
+          const pulse = 0.3 + Math.sin(time * 5) * 0.2;
+          controlsArrow.children[2].material.opacity = pulse;
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      if (controls) {
+        controls.update();
+      }
+    }
+
+    // Start the experience
+    window.addEventListener('DOMContentLoaded', init);
+
+    // Slide navigation for welcome popup
+    let currentSlide = 1;
+    const totalSlides = 3;
+
+    function changeSlide(direction) {
+      const newSlide = currentSlide + direction;
+      if (newSlide < 1 || newSlide > totalSlides) return;
+      
+      // Hide current slide
+      document.querySelector(`.popup-slide[data-slide="${currentSlide}"]`).classList.remove('active');
+      document.querySelector(`.slide-indicator[data-indicator="${currentSlide}"]`).classList.remove('active');
+      
+      // Show new slide
+      currentSlide = newSlide;
+      document.querySelector(`.popup-slide[data-slide="${currentSlide}"]`).classList.add('active');
+      document.querySelector(`.slide-indicator[data-indicator="${currentSlide}"]`).classList.add('active');
+      
+      // Update button states
+      document.getElementById('prev-slide').disabled = currentSlide === 1;
+      document.getElementById('next-slide').disabled = currentSlide === totalSlides;
+      
+      // Change "Next" to "Got it!" on last slide
+      if (currentSlide === totalSlides) {
+        document.getElementById('next-slide').textContent = 'Got it! ✓';
+        document.getElementById('next-slide').style.background = 'rgba(52, 211, 153, 0.3)';
+        document.getElementById('next-slide').style.borderColor = 'rgba(52, 211, 153, 0.5)';
+      } else {
+        document.getElementById('next-slide').textContent = 'Next →';
+        document.getElementById('next-slide').style.background = 'rgba(79, 172, 254, 0.2)';
+        document.getElementById('next-slide').style.borderColor = 'rgba(79, 172, 254, 0.4)';
+      }
+    }
+  </script>
+</body>
+</html> 

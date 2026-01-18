@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tone.js Instrument Exhibits - Professional Edition</title>
+  
+  <!-- Tabler UI Framework -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  
+  <!-- Audio Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/tone@latest/build/Tone.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/nbrosowsky/tonejs-instruments@master/Tonejs-Instruments.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/MIDI.js/0.3.1/MIDI.min.js"></script>
+  <script src="https://unpkg.com/d3@^7.0.0/dist/d3.min.js"></script>
+  
+  <!-- Tabler JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
+  <style>
+    /* Override Tabler defaults for dark theme audio production environment */
+    :root {
+      --tblr-body-bg: #0a0e1a;
+      --tblr-border-color: #1e293b;
+      --tblr-card-bg: #111827;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0a0e1a 0%, #1a1f35 100%);
+      min-height: 100vh;
+      padding: 0;
+      margin: 0;
+    }
+
+    .navbar {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+      border-bottom: 2px solid #334155;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .navbar-brand {
+      font-weight: 700;
+      font-size: 1.4rem;
+      background: linear-gradient(135deg, #22d3ee, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .page-body {
+      padding: 2rem 0;
+    }
+
+    .card {
+      background: linear-gradient(135deg, #111827 0%, #1a1f35 100%);
+      border: 1px solid #1e293b;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 24px 70px rgba(34,211,238,0.15);
+    }
+
+    .card-header {
+      background: linear-gradient(135deg, #1e293b 0%, #111827 100%);
+      border-bottom: 1px solid #334155;
+      padding: 1rem 1.5rem;
+    }
+
+    .card-title {
+      color: #22d3ee;
+      font-weight: 600;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-control, .form-select {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #e5e7eb;
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+      background: #1a1f35;
+      border-color: #22d3ee;
+      box-shadow: 0 0 0 0.25rem rgba(34,211,238,0.15);
+      color: #e5e7eb;
+    }
+
+    .form-label {
+      color: #94a3b8;
+      font-weight: 500;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-range {
+      --tblr-form-range-track-bg: #1e293b;
+      --tblr-form-range-thumb-bg: #22d3ee;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+      border: none;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      box-shadow: 0 8px 24px rgba(34,211,238,0.25);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(34,211,238,0.35);
+      background: linear-gradient(135deg, #0ea5e9, #7c3aed);
+    }
+
+    .btn-outline-secondary {
+      border-color: #334155;
+      color: #94a3b8;
+    }
+
+    .btn-outline-secondary:hover {
+      background: #1e293b;
+      border-color: #475569;
+      color: #e5e7eb;
+    }
+
+    .btn-ghost-secondary {
+      color: #94a3b8;
+    }
+
+    .btn-ghost-secondary:hover {
+      background: #1e293b;
+      color: #e5e7eb;
+    }
+
+    .badge {
+      font-weight: 500;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .alert {
+      border: none;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+    }
+
+    .alert-info {
+      color: #22d3ee;
+      border-left: 3px solid #22d3ee;
+    }
+
+    .alert-warning {
+      color: #fbbf24;
+      border-left: 3px solid #fbbf24;
+    }
+
+    .alert-danger {
+      color: #f87171;
+      border-left: 3px solid #f87171;
+    }
+
+    /* Sequencer Grid Styles */
+    .grid-wrapper {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid #1e293b;
+      background: #0f172a;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .sequencer {
+      min-width: 960px;
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .sequencer th, .sequencer td {
+      border: 1px solid #1e293b;
+      text-align: center;
+      padding: 0;
+    }
+
+    .sequencer th {
+      background: #0a0e1a;
+      color: #64748b;
+      font-weight: 600;
+      font-size: 0.75rem;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 0.5rem;
+    }
+
+    .note-label {
+      width: 70px;
+      background: #0a0e1a;
+      color: #94a3b8;
+      font-weight: 600;
+      font-size: 0.75rem;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      border-right: 2px solid #334155;
+    }
+
+    .cell {
+      width: 32px;
+      height: 28px;
+      background: #111827;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s ease;
+    }
+
+    .cell:hover {
+      background: #1e293b;
+    }
+
+    .cell.active {
+      background: linear-gradient(135deg, rgba(34,211,238,0.2), rgba(139,92,246,0.2));
+      box-shadow: inset 0 0 0 1px rgba(34,211,238,0.4);
+    }
+
+    .cell .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22d3ee;
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: all 0.15s ease;
+      box-shadow: 0 0 12px rgba(34,211,238,0.8);
+    }
+
+    .cell.active .dot { 
+      opacity: 1; 
+      transform: scale(1);
+    }
+
+    .cell.playing { 
+      background: linear-gradient(135deg, rgba(139,92,246,0.4), rgba(34,211,238,0.3));
+      animation: pulse-cell 0.3s ease;
+    }
+
+    @keyframes pulse-cell {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Graph Styles */
+    #step-graph { 
+      width: 100%; 
+      height: 140px; 
+      background: #0a0e1a;
+      border-radius: 8px;
+      padding: 0.5rem;
+    }
+
+    /* Progress Bar */
+    .progress {
+      background: #1e293b;
+      height: 8px;
+    }
+
+    .progress-bar {
+      background: linear-gradient(90deg, #22d3ee, #8b5cf6);
+      transition: width 0.3s ease;
+    }
+
+    /* Transport Controls */
+    .transport-section {
+      background: linear-gradient(135deg, #0f172a, #1a1f35);
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    /* Icon styling */
+    .ti {
+      vertical-align: middle;
+    }
+
+    /* Rotating animation for loading icons */
+    .rotating {
+      animation: rotate 1s linear infinite;
+    }
+
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Custom scrollbar */
+    .grid-wrapper::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    .grid-wrapper::-webkit-scrollbar-track {
+      background: #0a0e1a;
+    }
+
+    .grid-wrapper::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+
+    .grid-wrapper::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body>
+  <!-- Professional Desktop Navigation Bar -->
+  <header class="navbar navbar-dark sticky-top d-print-none">
+    <div class="container-xl">
+      <h1 class="navbar-brand">
+        <i class="ti ti-music"></i>
+        Tone.js Instrument Exhibit
+      </h1>
+      <div class="navbar-nav flex-row order-md-last">
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" id="play-btn">
+            <i class="ti ti-player-play"></i>
+            Play
+          </button>
+          <button class="btn btn-outline-secondary" id="stop-btn">
+            <i class="ti ti-player-stop"></i>
+            Stop
+          </button>
+          <button class="btn btn-ghost-secondary" id="clear-btn">
+            <i class="ti ti-trash"></i>
+            Clear
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="page-body">
+    <div class="container-xl">
+      
+      <!-- Instrument & Transport Controls Card -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="ti ti-adjustments-horizontal"></i>
+            Instrument & Controls
+          </h3>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <!-- Instrument Selection -->
+            <div class="col-lg-3 col-md-6">
+              <label class="form-label" for="instrument-select">
+                <i class="ti ti-instrument"></i>
+                Instrument
+              </label>
+              <select id="instrument-select" class="form-select">
+                <option value="Synth">Synth (default)</option>
+                <option value="AMSynth">AMSynth</option>
+                <option value="FMSynth">FMSynth</option>
+                <option value="MonoSynth">MonoSynth</option>
+                <option value="DuoSynth">DuoSynth</option>
+                <option value="MembraneSynth">MembraneSynth (drums)</option>
+                <option value="PluckSynth">PluckSynth</option>
+                <optgroup label="Sample-Based Instruments">
+                  <option value="piano">Piano</option>
+                  <option value="bass-electric">Bass (Electric)</option>
+                  <option value="bassoon">Bassoon</option>
+                  <option value="cello">Cello</option>
+                  <option value="clarinet">Clarinet</option>
+                  <option value="contrabass">Contrabass</option>
+                  <option value="flute">Flute</option>
+                  <option value="french-horn">French Horn</option>
+                  <option value="guitar-acoustic">Guitar (Acoustic)</option>
+                  <option value="guitar-electric">Guitar (Electric)</option>
+                  <option value="guitar-nylon">Guitar (Nylon)</option>
+                  <option value="harmonium">Harmonium</option>
+                  <option value="harp">Harp</option>
+                  <option value="organ">Organ</option>
+                  <option value="saxophone">Saxophone</option>
+                  <option value="trombone">Trombone</option>
+                  <option value="trumpet">Trumpet</option>
+                  <option value="tuba">Tuba</option>
+                  <option value="violin">Violin</option>
+                  <option value="xylophone">Xylophone</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <!-- Tempo Control -->
+            <div class="col-lg-3 col-md-6">
+              <label class="form-label" for="tempo">
+                <i class="ti ti-metronome"></i>
+                Tempo: <span id="tempo-value" class="text-cyan">110</span> BPM
+              </label>
+              <input id="tempo" type="range" class="form-range" min="60" max="180" value="110">
+            </div>
+
+            <!-- Swing Control -->
+            <div class="col-lg-3 col-md-6">
+              <label class="form-label" for="swing">
+                <i class="ti ti-wave-sine"></i>
+                Swing: <span id="swing-value" class="text-cyan">0%</span>
+              </label>
+              <input id="swing" type="range" class="form-range" min="0" max="60" value="0">
+            </div>
+
+            <!-- Volume Control -->
+            <div class="col-lg-3 col-md-6">
+              <label class="form-label" for="volume">
+                <i class="ti ti-volume"></i>
+                Volume: <span id="volume-value" class="text-cyan">0 dB</span>
+              </label>
+              <input id="volume" type="range" class="form-range" min="-24" max="6" value="0">
+            </div>
+          </div>
+
+          <!-- Utility Buttons -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="btn-list">
+                <button id="randomize" class="btn btn-outline-secondary">
+                  <i class="ti ti-dice"></i>
+                  Random Fill
+                </button>
+                <button id="shift-left" class="btn btn-outline-secondary">
+                  <i class="ti ti-arrow-left"></i>
+                  Shift Left
+                </button>
+                <button id="shift-right" class="btn btn-outline-secondary">
+                  <i class="ti ti-arrow-right"></i>
+                  Shift Right
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status Alerts -->
+          <div class="mt-3">
+            <div id="loading-alert" class="alert alert-info d-none" role="alert">
+              <i class="ti ti-loader-2 rotating"></i>
+              <span id="loading-status">Loading samples...</span>
+            </div>
+            <div id="error-alert" class="alert alert-danger d-none" role="alert">
+              <i class="ti ti-alert-circle"></i>
+              <span id="error-status">Error loading instrument</span>
+            </div>
+            <div id="progress-container" class="d-none">
+              <div class="progress">
+                <div id="progress-fill" class="progress-bar" role="progressbar" style="width: 0%"></div>
+              </div>
+              <small class="text-muted mt-1 d-block" id="progress-text">0%</small>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div class="mt-3 d-flex gap-2 flex-wrap">
+            <span class="badge bg-info">
+              <i class="ti ti-circle-filled" style="color: #22d3ee;"></i>
+              Active Note
+            </span>
+            <span class="badge bg-purple">
+              <i class="ti ti-circle-filled" style="color: #8b5cf6;"></i>
+              Current Step
+            </span>
+            <span class="badge bg-secondary">
+              <i class="ti ti-click"></i>
+              Click cells to toggle notes
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step Sequencer Card -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="ti ti-grid-pattern"></i>
+            Step Sequencer (32 Steps)
+          </h3>
+        </div>
+        <div class="card-body">
+          <div class="grid-wrapper">
+            <table class="sequencer" aria-label="step sequencer grid">
+              <thead>
+                <tr>
+                  <th class="note-label">Note</th>
+                  <th colspan="32">Steps</th>
+                </tr>
+                <tr>
+                  <th class="note-label"></th>
+                  <th>1</th><th>2</th><th>3</th><th>4</th>
+                  <th>5</th><th>6</th><th>7</th><th>8</th>
+                  <th>9</th><th>10</th><th>11</th><th>12</th>
+                  <th>13</th><th>14</th><th>15</th><th>16</th>
+                  <th>17</th><th>18</th><th>19</th><th>20</th>
+                  <th>21</th><th>22</th><th>23</th><th>24</th>
+                  <th>25</th><th>26</th><th>27</th><th>28</th>
+                  <th>29</th><th>30</th><th>31</th><th>32</th>
+                </tr>
+              </thead>
+              <tbody id="grid-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visualization Card -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="ti ti-chart-bar"></i>
+            Step Density Visualization
+          </h3>
+        </div>
+        <div class="card-body">
+          <div id="step-graph"></div>
+        </div>
+      </div>
+
+      <!-- Footer Info -->
+      <div class="text-center text-muted small mb-4">
+        <i class="ti ti-info-circle"></i>
+        Tone.js + D3 + Tabler UI • Press <kbd>Space</kbd> to play/pause • Built for AudioVerse Universe
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const notes = ['C5','B4','A#4','A4','G#4','G4','F#4','F4','E4','D#4','D4','C#4','C4'];
+    const steps = 32;
+    const gridState = Array.from({ length: steps }, () => new Set());
+
+    let synth = null;
+    let sequence = null;
+    let isPlaying = false;
+    let loadedInstruments = {}; // Cache for loaded sample instruments
+    let isLoadingInstrument = false;
+
+    const gridBody = document.getElementById('grid-body');
+    const playBtn = document.getElementById('play-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const instrumentSelect = document.getElementById('instrument-select');
+    const tempo = document.getElementById('tempo');
+    const tempoValue = document.getElementById('tempo-value');
+    const swing = document.getElementById('swing');
+    const swingValue = document.getElementById('swing-value');
+    const volume = document.getElementById('volume');
+    const volumeValue = document.getElementById('volume-value');
+    const randomizeBtn = document.getElementById('randomize');
+    const shiftLeftBtn = document.getElementById('shift-left');
+    const shiftRightBtn = document.getElementById('shift-right');
+    const loadingAlert = document.getElementById('loading-alert');
+    const loadingStatus = document.getElementById('loading-status');
+    const errorAlert = document.getElementById('error-alert');
+    const errorStatus = document.getElementById('error-status');
+    const progressContainer = document.getElementById('progress-container');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+
+    const stepGraph = d3.select('#step-graph').append('svg').attr('width', '100%').attr('height', 120);
+
+    function buildSynth(name) {
+      console.log('=== buildSynth called with:', name);
+      
+      // Dispose old synth
+      if (synth) {
+        console.log('Disposing old synth');
+        synth.dispose();
+      }
+      
+      // Check if SampleLibrary is available
+      if (typeof SampleLibrary === 'undefined') {
+        console.error('❌ SampleLibrary is not defined! The tonejs-instruments library failed to load.');
+        errorStatus.textContent = 'Sample library not loaded';
+        errorAlert.classList.remove('d-none');
+        setTimeout(() => errorAlert.classList.add('d-none'), 5000);
+        // Fallback to default synth
+        return new Tone.Synth().toDestination();
+      }
+      
+      console.log('✅ SampleLibrary is available');
+      
+      // Sample-based instruments using SampleLibrary
+      const sampleInstruments = ['bass-electric','bassoon','cello','clarinet','contrabass',
+        'flute','french-horn','guitar-acoustic','guitar-electric','guitar-nylon',
+        'harmonium','harp','organ','piano','saxophone','trombone','trumpet','tuba',
+        'violin','xylophone'];
+      
+      if (sampleInstruments.includes(name)) {
+        // Check if already loaded
+        if (loadedInstruments[name]) {
+          console.log(`✅ Using cached ${name}`);
+          return loadedInstruments[name];
+        }
+        
+        // Load new sample instrument
+        console.log(`⏳ Starting to load ${name}...`);
+        
+        isLoadingInstrument = true;
+        playBtn.disabled = true;
+        playBtn.innerHTML = '<i class="ti ti-loader-2 rotating"></i> Loading...';
+        loadingStatus.textContent = `Loading ${name} samples...`;
+        loadingAlert.classList.remove('d-none');
+        progressContainer.classList.remove('d-none');
+        errorAlert.classList.add('d-none');
+        
+        let totalSamples = 0;
+        
+        try {
+          // Get sample definitions from SampleLibrary
+          const sampleDefs = SampleLibrary[name];
+          totalSamples = Object.keys(sampleDefs).length;
+          console.log(`Sample count: ${totalSamples}`);
+          console.log(`First 5 samples:`, Object.entries(sampleDefs).slice(0, 5));
+          
+          // Test: fetch one sample directly to verify URL works
+          const testUrl = `/samples/${name}/${Object.values(sampleDefs)[0]}`;
+          console.log('Testing local URL:', testUrl);
+          
+          fetch(testUrl)
+            .then(res => {
+              console.log('Fetch test result:', res.status, res.statusText);
+              if (res.ok) console.log('✅ Direct fetch successful!');
+            })
+            .catch(err => console.error('❌ Direct fetch failed:', err));
+          
+          // Create Tone.Sampler with Tone.js v15 API (urls property instead of first argument)
+          const instrument = new Tone.Sampler({
+            urls: sampleDefs,
+            baseUrl: `/samples/${name}/`, // Use local samples instead of CDN
+            onload: () => {
+              console.log(`✅ ${name} loaded successfully!`);
+              isLoadingInstrument = false;
+              playBtn.disabled = false;
+              playBtn.innerHTML = isPlaying ? '<i class="ti ti-player-pause"></i> Pause' : '<i class="ti ti-player-play"></i> Play';
+              loadingAlert.classList.add('d-none');
+              progressContainer.classList.add('d-none');
+              progressFill.style.width = '100%';
+              progressText.textContent = '100%';
+            },
+            onerror: (err) => {
+              console.error(`❌ Error loading ${name}:`, err);
+              errorStatus.textContent = `Error loading ${name}`;
+              errorAlert.classList.remove('d-none');
+            }
+          }).toDestination();
+          
+          console.log('Instrument created with v15 API:', instrument);
+          console.log('Buffers:', instrument._buffers);
+          console.log('Buffers baseUrl:', instrument._buffers?.baseUrl);
+          console.log('Buffers _loadingCount:', instrument._buffers?._loadingCount);
+          
+          // Monitor loading progress
+          if (instrument._buffers) {
+            const progressInterval = setInterval(() => {
+              if (instrument._buffers) {
+                const isLoaded = instrument._buffers.loaded;
+                const remainingCount = instrument._buffers._loadingCount || 0;
+                const currentLoaded = totalSamples - remainingCount;
+                
+                console.log(`Progress: ${currentLoaded}/${totalSamples} samples loaded (${remainingCount} remaining, complete: ${isLoaded})`);
+                
+                if (totalSamples > 0) {
+                  const percent = Math.round((currentLoaded / totalSamples) * 100);
+                  progressFill.style.width = percent + '%';
+                  progressText.textContent = `${percent}% (${currentLoaded}/${totalSamples} samples)`;
+                }
+                
+                // Check if loading is complete
+                if (isLoaded || remainingCount === 0) {
+                  console.log('✅ All samples loaded! Clearing interval');
+                  clearInterval(progressInterval);
+                  progressFill.style.width = '100%';
+                  progressText.textContent = '100%';
+                  
+                  // If onload didn't fire, trigger it manually
+                  if (isLoadingInstrument) {
+                    console.log('⚠️ onload callback did not fire, triggering manually');
+                    isLoadingInstrument = false;
+                    playBtn.disabled = false;
+                    playBtn.innerHTML = isPlaying ? '<i class="ti ti-player-pause"></i> Pause' : '<i class="ti ti-player-play"></i> Play';
+                    loadingAlert.classList.add('d-none');
+                    progressContainer.classList.add('d-none');
+                  }
+                }
+                
+                if (!isLoadingInstrument) {
+                  clearInterval(progressInterval);
+                }
+              }
+            }, 500);
+            
+            // Timeout after 60 seconds
+            setTimeout(() => {
+              if (isLoadingInstrument) {
+                const remainingCount = instrument._buffers?._loadingCount || 0;
+                console.error(`❌ Loading timeout for ${name} - ${remainingCount} samples still pending`);
+                clearInterval(progressInterval);
+                isLoadingInstrument = false;
+                playBtn.disabled = false;
+                playBtn.innerHTML = '<i class="ti ti-player-play"></i> Play';
+                loadingAlert.classList.add('d-none');
+                progressContainer.classList.add('d-none');
+                errorStatus.textContent = `Timeout: ${remainingCount} samples failed`;
+                errorAlert.classList.remove('d-none');
+                setTimeout(() => errorAlert.classList.add('d-none'), 5000);
+              }
+            }, 60000);
+          }
+          
+          loadedInstruments[name] = instrument;
+          console.log('Instrument stored in cache');
+          return instrument;
+          
+        } catch (error) {
+          console.error('❌ Error loading instrument:', error);
+          console.error('Error stack:', error.stack);
+          isLoadingInstrument = false;
+          playBtn.disabled = false;
+          playBtn.innerHTML = '<i class="ti ti-player-play"></i> Play';
+          loadingAlert.classList.add('d-none');
+          progressContainer.classList.add('d-none');
+          errorStatus.textContent = `Error: ${error.message}`;
+          errorAlert.classList.remove('d-none');
+          setTimeout(() => errorAlert.classList.add('d-none'), 5000);
+          
+          // Fallback to default synth
+          return new Tone.Synth().toDestination();
+        }
+      }
+      
+      // Built-in synths
+      console.log(`Creating built-in synth: ${name}`);
+      switch (name) {
+        case 'AMSynth': return new Tone.AMSynth().toDestination();
+        case 'FMSynth': return new Tone.FMSynth().toDestination();
+        case 'MonoSynth': return new Tone.MonoSynth({ oscillator: { type: 'square' }, filter: { Q: 2 } }).toDestination();
+        case 'DuoSynth': return new Tone.DuoSynth().toDestination();
+        case 'MembraneSynth': return new Tone.MembraneSynth().toDestination();
+        case 'PluckSynth': return new Tone.PluckSynth().toDestination();
+        default: return new Tone.Synth().toDestination();
+      }
+    }
+
+    function renderGrid() {
+      const rows = notes.map(note => {
+        const tds = Array.from({ length: steps }, (_, step) => `<td class="cell" data-step="${step}" data-note="${note}"><div class="dot"></div></td>`).join('');
+        return `<tr><th class="note-label">${note}</th>${tds}</tr>`;
+      }).join('');
+      gridBody.innerHTML = rows;
+    }
+
+    function redrawActiveCells() {
+      document.querySelectorAll('.cell').forEach(cell => {
+        const step = Number(cell.dataset.step);
+        const note = cell.dataset.note;
+        const active = gridState[step].has(note);
+        cell.classList.toggle('active', active);
+      });
+    }
+
+    function updateGraph(playIndex = null) {
+      const data = gridState.map(s => s.size);
+      const width = stepGraph.node().getBoundingClientRect().width || 960;
+      const barWidth = width / steps;
+      const height = 120;
+      const y = d3.scaleLinear().domain([0, Math.max(1, d3.max(data))]).range([height - 20, 10]);
+
+      const bars = stepGraph.selectAll('rect').data(data);
+      bars.enter().append('rect')
+        .merge(bars)
+        .attr('x', (_, i) => i * barWidth + 4)
+        .attr('y', d => y(d))
+        .attr('width', barWidth - 8)
+        .attr('height', d => height - 20 - y(d))
+        .attr('rx', 4)
+        .attr('fill', '#22d3ee44');
+      bars.exit().remove();
+
+      const markers = stepGraph.selectAll('line').data([playIndex]);
+      markers.enter().append('line')
+        .merge(markers)
+        .attr('x1', playIndex === null ? -10 : playIndex * barWidth + barWidth / 2)
+        .attr('x2', playIndex === null ? -10 : playIndex * barWidth + barWidth / 2)
+        .attr('y1', 0)
+        .attr('y2', height)
+        .attr('stroke', '#8b5cf6')
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '4 3');
+      markers.exit().remove();
+    }
+
+    function toggleCell(step, note) {
+      if (gridState[step].has(note)) gridState[step].delete(note);
+      else gridState[step].add(note);
+      redrawActiveCells();
+      updateGraph();
+    }
+
+    function setupGridListeners() {
+      gridBody.addEventListener('click', (e) => {
+        const cell = e.target.closest('.cell');
+        if (!cell) return;
+        toggleCell(Number(cell.dataset.step), cell.dataset.note);
+      });
+    }
+
+    function setTransportOptions() {
+      Tone.Transport.bpm.value = Number(tempo.value);
+      tempoValue.textContent = tempo.value;
+      Tone.Transport.swing = Number(swing.value) / 100;
+      swingValue.textContent = `${swing.value}%`;
+      const vol = Number(volume.value);
+      volumeValue.textContent = `${vol} dB`;
+      synth.volume.value = vol;
+    }
+
+    function makeSequence() {
+      if (sequence) sequence.dispose();
+      sequence = new Tone.Sequence((time, step) => {
+        const notesNow = Array.from(gridState[step]);
+        const cells = document.querySelectorAll(`.cell[data-step='${step}']`);
+        document.querySelectorAll('.cell').forEach(c => c.classList.remove('playing'));
+        cells.forEach(c => c.classList.add('playing'));
+        updateGraph(step);
+        notesNow.forEach(n => synth.triggerAttackRelease(n, '32n', time));
+      }, [...Array(steps).keys()], '32n');
+      sequence.start(0);
+    }
+
+    async function startAudio() {
+      if (Tone.context.state !== 'running') {
+        await Tone.start();
+      }
+    }
+
+    async function handlePlay() {
+      await startAudio();
+      setTransportOptions();
+      if (!sequence) makeSequence();
+      Tone.Transport.start('+0.1');
+      isPlaying = true;
+      playBtn.innerHTML = '<i class="ti ti-player-pause"></i> Pause';
+    }
+
+    function handlePause() {
+      Tone.Transport.pause();
+      isPlaying = false;
+      playBtn.innerHTML = '<i class="ti ti-player-play"></i> Play';
+      document.querySelectorAll('.cell').forEach(c => c.classList.remove('playing'));
+      updateGraph(null);
+    }
+
+    function handleStop() {
+      Tone.Transport.stop();
+      if (sequence) sequence.dispose();
+      sequence = null;
+      isPlaying = false;
+      playBtn.innerHTML = '<i class="ti ti-player-play"></i> Play';
+      document.querySelectorAll('.cell').forEach(c => c.classList.remove('playing'));
+      updateGraph(null);
+    }
+
+    function clearGrid() {
+      gridState.forEach(set => set.clear());
+      redrawActiveCells();
+      updateGraph();
+    }
+
+    function randomFill() {
+      clearGrid();
+      gridState.forEach((set, idx) => {
+        if (Math.random() > 0.6) {
+          const note = notes[Math.floor(Math.random() * notes.length)];
+          set.add(note);
+        }
+      });
+      redrawActiveCells();
+      updateGraph();
+    }
+
+    function shift(direction) {
+      if (direction === 'left') {
+        const first = gridState.shift();
+        gridState.push(first);
+      } else {
+        const last = gridState.pop();
+        gridState.unshift(last);
+      }
+      redrawActiveCells();
+      updateGraph();
+    }
+
+    function wireControls() {
+      playBtn.addEventListener('click', () => isPlaying ? handlePause() : handlePlay());
+      stopBtn.addEventListener('click', handleStop);
+      clearBtn.addEventListener('click', clearGrid);
+      randomizeBtn.addEventListener('click', randomFill);
+      shiftLeftBtn.addEventListener('click', () => shift('left'));
+      shiftRightBtn.addEventListener('click', () => shift('right'));
+      tempo.addEventListener('input', setTransportOptions);
+      swing.addEventListener('input', setTransportOptions);
+      volume.addEventListener('input', setTransportOptions);
+      instrumentSelect.addEventListener('change', () => {
+        synth = buildSynth(instrumentSelect.value);
+        setTransportOptions();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          isPlaying ? handlePause() : handlePlay();
+        }
+      });
+    }
+
+    function init() {
+      console.log('=== Initializing Exhibit ===');
+      console.log('Tone.js loaded:', typeof Tone !== 'undefined');
+      console.log('Tone version:', Tone?.version);
+      console.log('SampleLibrary loaded:', typeof SampleLibrary !== 'undefined');
+      if (typeof SampleLibrary !== 'undefined') {
+        console.log('SampleLibrary.list:', SampleLibrary.list);
+        console.log('SampleLibrary.baseUrl:', SampleLibrary.baseUrl);
+        console.log('SampleLibrary.ext (before):', SampleLibrary.ext);
+        
+        // Set the file extension to .mp3 (replace the [mp3|ogg] placeholder)
+        SampleLibrary.setExt('.mp3');
+        console.log('SampleLibrary.ext (after setExt):', SampleLibrary.ext);
+        
+        // Test if a sample file exists by checking one instrument's data
+        console.log('Sample piano data (first few):', Object.keys(SampleLibrary.piano).slice(0, 5));
+        console.log('Sample piano A4 value:', SampleLibrary.piano['A4']);
+      }
+      console.log('D3 loaded:', typeof d3 !== 'undefined');
+      
+      // Monitor network errors
+      window.addEventListener('error', (e) => {
+        if (e.target.tagName === 'AUDIO' || e.target.tagName === 'SOURCE') {
+          console.error('🔴 Audio loading error:', e.target.src || e.target.currentSrc);
+        }
+      }, true);
+      
+      synth = buildSynth(instrumentSelect.value);
+      renderGrid();
+      setupGridListeners();
+      setTransportOptions();
+      makeSequence();
+      updateGraph();
+      wireControls();
+      
+      console.log('=== Initialization complete ===');
+    }
+
+    init();
+  </script>
+</body>
+</html>

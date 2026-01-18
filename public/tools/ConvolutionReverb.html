@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Audio Convolution Reverb</title>
+    <!-- Font Awesome for player icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <!-- Embedded CSS -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+
+        :root {
+            --bg-color: #282c34;
+            --panel-color: #3a3f4b;
+            --text-color: #abb2bf;
+            --accent-color: #61afef;
+            --highlight-color: #c678dd;
+            --knob-color: #98c379;
+            --ir-color: #e5c07b;
+        }
+
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .plugin-container {
+            width: 100%;
+            max-width: 750px;
+            background-color: var(--panel-color);
+            border: 1px solid #1c1e24;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 1px solid #4a505e;
+            padding-bottom: 15px;
+        }
+        header h1 {
+            margin: 0;
+            color: var(--accent-color);
+            font-size: 1.5em;
+        }
+        header p {
+            margin-top: 5px;
+            font-size: 0.8em;
+            opacity: 0.7;
+        }
+
+        .io-section {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .transport-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-grow: 1;
+        }
+        .transport-controls input[type="file"] {
+            display: none;
+        }
+        .file-label {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .file-label:hover {
+            background-color: #82c0ff;
+        }
+        .file-label.ir-label {
+            background-color: var(--ir-color);
+        }
+        .file-label.ir-label:hover {
+            background-color: #ffd58f;
+        }
+
+        .file-info {
+             font-size: 0.9em;
+             opacity: 0.8;
+             white-space: nowrap;
+             overflow: hidden;
+             text-overflow: ellipsis;
+             flex: 1;
+             min-width: 100px;
+        }
+
+        .player-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #play-pause-btn {
+            background: none;
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        #play-pause-btn:hover {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
+        #seek-bar, #volume-bar {
+            flex-grow: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #2c313a;
+            height: 5px;
+            border-radius: 5px;
+            outline: none;
+        }
+        #seek-bar::-webkit-slider-thumb, #volume-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            background: var(--highlight-color);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        #volume-bar { flex-grow: 0.3; }
+
+        .dial-section {
+            display: flex;
+            flex-grow: 1;
+            justify-content: space-around;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 20px;
+            background-color: #2c313a;
+            border-radius: 6px;
+        }
+        .dial-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            flex-basis: 100px;
+        }
+        .dial-group label {
+            font-size: 0.9em;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .knob-value-input {
+            width: 60px;
+            text-align: center;
+            background-color: #21252b;
+            border: 1px solid #4a505e;
+            color: var(--knob-color);
+            border-radius: 3px;
+            font-size: 0.8em;
+            padding: 3px;
+        }
+
+        footer {
+            border-top: 1px solid #4a505e;
+            padding-top: 15px;
+        }
+        #analyser-canvas {
+            width: 100%;
+            height: 100px;
+            background-color: #21252b;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="plugin-container">
+        <header>
+            <h1>Convolution Reverb Processor</h1>
+            <p>Load your audio and an Impulse Response (.wav) to begin</p>
+        </header>
+
+        <div class="io-section">
+            <div class="transport-controls">
+                <input type="file" id="audio-file-input" accept="audio/*">
+                <label for="audio-file-input" class="file-label">Load Audio</label>
+                <span id="file-name" class="file-info">No audio file</span>
+            </div>
+            <div class="transport-controls">
+                <input type="file" id="ir-file-input" accept=".wav, .wave, audio/wav">
+                <label for="ir-file-input" class="file-label ir-label">Load IR</label>
+                <span id="ir-name" class="file-info">No IR file</span>
+            </div>
+        </div>
+
+        <div class="player-controls">
+            <button id="play-pause-btn" disabled><i class="fas fa-play"></i></button>
+            <span id="current-time">0:00</span>
+            <input type="range" id="seek-bar" value="0" step="0.1">
+            <span id="duration">0:00</span>
+            <i class="fas fa-volume-down"></i>
+            <input type="range" id="volume-bar" min="0" max="1" value="0.8" step="0.01">
+        </div>
+        
+        <div class="dial-section">
+            <div class="dial-group">
+                <input type="text" class="dial" id="mix-dial" value="35">
+                <label for="mix-dial">Mix (%)</label>
+            </div>
+            <div class="dial-group">
+                <input type="text" class="dial" id="predelay-dial" value="0">
+                <label for="predelay-dial">Pre-Delay (ms)</label>
+            </div>
+            <div class="dial-group">
+                <input type="text" class="dial" id="hp-dial" value="20">
+                <label for="hp-dial">High-Pass (Hz)</label>
+            </div>
+            <div class="dial-group">
+                <input type="text" class="dial" id="lp-dial" value="20000">
+                <label for="lp-dial">Low-Pass (Hz)</label>
+            </div>
+        </div>
+
+        <footer>
+            <canvas id="analyser-canvas" width="600" height="100"></canvas>
+        </footer>
+    </div>
+
+    <!-- Embedded JavaScript -->
+    <script>
+        // --- START EMBEDDED knob.js LIBRARY ---
+        // Source: https://github.com/ansimovo/knob.js
+        const Knob = (elem, opt) => {
+            const wrap = document.createElement('div');
+            wrap.classList.add('knob-wrap');
+            elem.parentNode.insertBefore(wrap, elem);
+            elem.style.display = 'none';
+            wrap.appendChild(elem);
+
+            const div = document.createElement('div');
+            div.classList.add('knob');
+            wrap.appendChild(div);
+
+            const input = document.createElement('input');
+            input.setAttribute('type', 'text');
+            input.setAttribute('value', elem.value);
+            input.classList.add('knob-value-input');
+            wrap.appendChild(input);
+
+            const min = opt.min || 0;
+            const max = opt.max || 100;
+            const step = opt.step || 1;
+            const angleOffset = (opt.angleOffset === undefined) ? -125 : opt.angleOffset;
+            const angleArc = (opt.angleArc === undefined) ? 250 : opt.angleArc;
+            const width = opt.width || 100;
+            const height = opt.height || 100;
+            const fgColor = opt.fgColor || '#87CEEB';
+            const bgColor = opt.bgColor || '#d3d3d3';
+
+            div.style.width = width + 'px';
+            div.style.height = height + 'px';
+            div.style.borderRadius = '50%';
+            div.style.position = 'relative';
+            div.style.cursor = 'pointer';
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            div.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+
+            const draw = (val) => {
+                ctx.clearRect(0, 0, width, height);
+                const angle = angleOffset + ((val - min) / (max - min)) * angleArc;
+                
+                ctx.beginPath();
+                ctx.arc(width / 2, height / 2, width / 2 * 0.8, (angleOffset - 5) * Math.PI / 180, (angleOffset + angleArc + 5) * Math.PI / 180);
+                ctx.lineWidth = width * 0.2;
+                ctx.strokeStyle = bgColor;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(width / 2, height / 2, width / 2 * 0.8, angleOffset * Math.PI / 180, angle * Math.PI / 180);
+                ctx.lineWidth = width * 0.2;
+                ctx.strokeStyle = fgColor;
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(width / 2, height / 2);
+                ctx.rotate(angle * Math.PI / 180);
+                ctx.beginPath();
+                ctx.moveTo(0, -width / 2 * 0.65);
+                ctx.lineTo(0, -width / 2 * 0.95);
+                ctx.lineWidth = width * 0.05;
+                ctx.strokeStyle = '#FFF';
+                ctx.stroke();
+                ctx.restore();
+            };
+
+            const updateValue = (val) => {
+                val = Math.round(val / step) * step;
+                val = Math.max(min, Math.min(max, val));
+                val = Number.isInteger(step) ? parseInt(val) : parseFloat(val.toFixed(2));
+                elem.value = val;
+                input.value = val;
+                draw(val);
+                if (opt.fn) {
+                    opt.fn(val);
+                }
+            };
+            
+            input.addEventListener('change', () => updateValue(parseFloat(input.value)));
+
+            let isDragging = false;
+            let startY, startVal;
+
+            const handleDrag = (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const deltaY = startY - clientY;
+                const range = max - min;
+                const newVal = startVal + (deltaY / 150) * range; // Slower sensitivity
+                updateValue(newVal);
+            };
+            
+            const stopDrag = () => {
+                isDragging = false;
+                document.removeEventListener('mousemove', handleDrag);
+                document.removeEventListener('touchmove', handleDrag);
+                document.removeEventListener('mouseup', stopDrag);
+                document.removeEventListener('touchend', stopDrag);
+            };
+
+            div.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startY = e.clientY;
+                startVal = parseFloat(elem.value);
+                document.addEventListener('mousemove', handleDrag);
+                document.addEventListener('mouseup', stopDrag);
+            });
+
+            div.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                startY = e.touches[0].clientY;
+                startVal = parseFloat(elem.value);
+                document.addEventListener('touchmove', handleDrag);
+                document.addEventListener('touchend', stopDrag);
+            });
+
+            updateValue(parseFloat(elem.value));
+            return { setValue: updateValue };
+        };
+        // --- END EMBEDDED knob.js LIBRARY ---
+
+
+        // --- START APPLICATION LOGIC ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            let audioBuffer = null;
+            let sourceNode = null;
+
+            // Audio Graph Nodes
+            const masterGain = audioContext.createGain();
+            const wetGain = audioContext.createGain();
+            const dryGain = audioContext.createGain();
+            const convolverNode = audioContext.createConvolver();
+            const preDelayNode = audioContext.createDelay(1.0); // Max 1 sec predelay
+            const lowPassFilter = audioContext.createBiquadFilter();
+            const highPassFilter = audioContext.createBiquadFilter();
+            const analyserNode = audioContext.createAnalyser();
+            
+            // Connect the graph
+            // DRY PATH: source -> dryGain -> masterGain
+            // WET PATH: source -> preDelay -> convolver -> highPass -> lowPass -> wetGain -> masterGain
+            dryGain.connect(masterGain);
+            preDelayNode.connect(convolverNode);
+            convolverNode.connect(highPassFilter);
+            highPassFilter.connect(lowPassFilter);
+            lowPassFilter.connect(wetGain);
+            wetGain.connect(masterGain);
+            masterGain.connect(analyserNode);
+            analyserNode.connect(audioContext.destination);
+
+            const fileInput = document.getElementById('audio-file-input');
+            const irInput = document.getElementById('ir-file-input');
+            const fileNameSpan = document.getElementById('file-name');
+            const irNameSpan = document.getElementById('ir-name');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const seekBar = document.getElementById('seek-bar');
+            const currentTimeSpan = document.getElementById('current-time');
+            const durationSpan = document.getElementById('duration');
+            const volumeBar = document.getElementById('volume-bar');
+            const canvas = document.getElementById('analyser-canvas');
+            const canvasCtx = canvas.getContext('2d');
+            
+            let isPlaying = false;
+            let startTime = 0;
+            let pausedAt = 0;
+            let animationFrameId = null;
+
+            // --- Parameter Setup ---
+            lowPassFilter.type = 'lowpass';
+            highPassFilter.type = 'highpass';
+
+            const mixDial = Knob(document.getElementById('mix-dial'), {
+                min: 0, max: 100, step: 1, width: 80, height: 80,
+                fgColor: 'var(--knob-color)', bgColor: '#444',
+                fn: (val) => {
+                    const mix = val / 100;
+                    const dryVal = Math.cos(mix * 0.5 * Math.PI);
+                    const wetVal = Math.sin(mix * 0.5 * Math.PI);
+                    dryGain.gain.setTargetAtTime(dryVal, audioContext.currentTime, 0.01);
+                    wetGain.gain.setTargetAtTime(wetVal, audioContext.currentTime, 0.01);
+                }
+            });
+
+            const predelayDial = Knob(document.getElementById('predelay-dial'), {
+                min: 0, max: 500, step: 1, width: 80, height: 80,
+                fgColor: 'var(--knob-color)', bgColor: '#444',
+                fn: (val) => {
+                    preDelayNode.delayTime.setTargetAtTime(val / 1000, audioContext.currentTime, 0.01);
+                }
+            });
+
+            const hpDial = Knob(document.getElementById('hp-dial'), {
+                min: 20, max: 1000, step: 1, width: 80, height: 80,
+                fgColor: 'var(--knob-color)', bgColor: '#444',
+                fn: (val) => {
+                    highPassFilter.frequency.setTargetAtTime(val, audioContext.currentTime, 0.01);
+                }
+            });
+
+            const lpDial = Knob(document.getElementById('lp-dial'), {
+                min: 1000, max: 22000, step: 100, width: 80, height: 80,
+                fgColor: 'var(--knob-color)', bgColor: '#444',
+                fn: (val) => {
+                    lowPassFilter.frequency.setTargetAtTime(val, audioContext.currentTime, 0.01);
+                }
+            });
+
+            // --- File Loaders ---
+            fileInput.addEventListener('change', (e) => handleFile(e, 'audio'));
+            irInput.addEventListener('change', (e) => handleFile(e, 'ir'));
+
+            function handleFile(event, type) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const nameSpan = type === 'audio' ? fileNameSpan : irNameSpan;
+                nameSpan.textContent = file.name;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    audioContext.decodeAudioData(e.target.result, (buffer) => {
+                        if (type === 'audio') {
+                            if (isPlaying) pauseAudio();
+                            audioBuffer = buffer;
+                            durationSpan.textContent = formatTime(buffer.duration);
+                            seekBar.max = buffer.duration;
+                            playPauseBtn.disabled = false;
+                            pausedAt = 0;
+                            updateSeekBar();
+                        } else {
+                            convolverNode.buffer = buffer;
+                        }
+                    }, (err) => {
+                        nameSpan.textContent = `Error loading ${type}`;
+                        console.error(`Error decoding ${type} file:`, err);
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+            
+            // --- Transport & UI ---
+            playPauseBtn.addEventListener('click', () => {
+                if (audioContext.state === 'suspended') audioContext.resume();
+                if (!audioBuffer) return;
+                isPlaying ? pauseAudio() : playAudio();
+            });
+
+            volumeBar.addEventListener('input', (e) => masterGain.gain.value = e.target.value);
+
+            seekBar.addEventListener('input', () => {
+                if (!audioBuffer) return;
+                const seekTime = parseFloat(seekBar.value);
+                currentTimeSpan.textContent = formatTime(seekTime);
+                if (isPlaying) {
+                    pauseAudio();
+                    playAudio(seekTime);
+                } else {
+                    pausedAt = seekTime;
+                }
+            });
+
+            function playAudio(startTimeOffset = pausedAt) {
+                if (sourceNode) sourceNode.disconnect();
+                
+                sourceNode = audioContext.createBufferSource();
+                sourceNode.buffer = audioBuffer;
+
+                sourceNode.connect(dryGain);
+                sourceNode.connect(preDelayNode);
+                
+                sourceNode.onended = () => {
+                    if (isPlaying) {
+                        isPlaying = false;
+                        pausedAt = 0;
+                        seekBar.value = 0;
+                        playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                        cancelAnimationFrame(animationFrameId);
+                        updateSeekBar();
+                    }
+                };
+
+                sourceNode.start(0, startTimeOffset);
+                startTime = audioContext.currentTime - startTimeOffset;
+                pausedAt = 0;
+                isPlaying = true;
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                updateSeekBar();
+            }
+
+            function pauseAudio() {
+                if (sourceNode) sourceNode.stop();
+                pausedAt = audioContext.currentTime - startTime;
+                isPlaying = false;
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                cancelAnimationFrame(animationFrameId);
+            }
+            
+            function formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+            }
+
+            function updateSeekBar() {
+                if (isPlaying) {
+                    const currentTime = audioContext.currentTime - startTime;
+                    if(currentTime <= audioBuffer.duration) {
+                        seekBar.value = currentTime;
+                        currentTimeSpan.textContent = formatTime(currentTime);
+                    }
+                    animationFrameId = requestAnimationFrame(updateSeekBar);
+                } else {
+                     currentTimeSpan.textContent = formatTime(pausedAt);
+                     seekBar.value = pausedAt;
+                }
+            }
+
+            analyserNode.fftSize = 1024;
+            const bufferLength = analyserNode.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            function drawAnalyser() {
+                requestAnimationFrame(drawAnalyser);
+                analyserNode.getByteTimeDomainData(dataArray);
+
+                canvasCtx.fillStyle = '#21252b';
+                canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+                canvasCtx.lineWidth = 2;
+                canvasCtx.strokeStyle = 'var(--accent-color)';
+                canvasCtx.beginPath();
+                
+                const sliceWidth = canvas.width * 1.0 / bufferLength;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    const v = dataArray[i] / 128.0;
+                    const y = v * canvas.height / 2;
+                    if (i === 0) canvasCtx.moveTo(x, y);
+                    else canvasCtx.lineTo(x, y);
+                    x += sliceWidth;
+                }
+                canvasCtx.lineTo(canvas.width, canvas.height / 2);
+                canvasCtx.stroke();
+            }
+
+            // --- Initial State Setup ---
+            function initializeParameters() {
+                document.getElementById('mix-dial').value = 35;
+                document.getElementById('predelay-dial').value = 0;
+                document.getElementById('hp-dial').value = 20;
+                document.getElementById('lp-dial').value = 22000;
+                
+                mixDial.setValue(35);
+                predelayDial.setValue(0);
+                hpDial.setValue(20);
+                lpDial.setValue(22000);
+
+                masterGain.gain.value = volumeBar.value;
+                highPassFilter.Q.value = 1;
+                lowPassFilter.Q.value = 1;
+
+                // Create a silent buffer for the convolver initially
+                const silentBuffer = audioContext.createBuffer(2, 1, audioContext.sampleRate);
+                convolverNode.buffer = silentBuffer;
+            }
+            
+            initializeParameters();
+            drawAnalyser();
+        });
+        // --- END APPLICATION LOGIC ---
+    </script>
+</body>
+</html>

@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Web Browser DAW</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="AudioVerse: advanced DAW web app for audio editing and recording.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- P5.js for high-resolution waveform visualization -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+  <link rel="stylesheet" href="DAWstyling.css">
+</head>
+<body class="min-w-0 bg-gray-900 text-white overflow-hidden">
+  <!-- REAPER-Style Menu Bar -->
+  <div class="menu-bar">
+    <div class="menu-items">
+      <div class="menu-item" data-menu="file">File</div>
+      <div class="menu-item" data-menu="edit">Edit</div>
+      <div class="menu-item" data-menu="view">View</div>
+      <div class="menu-item" data-menu="insert">Insert</div>
+      <div class="menu-item" data-menu="track">Track</div>
+      <div class="menu-item" data-menu="item">Item</div>
+      <div class="menu-item" data-menu="options">Options</div>
+      <div class="menu-item" data-menu="help">Help</div>
+    </div>
+  </div>
+
+  <!-- REAPER-Style Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-section">
+      <button class="toolbar-btn" id="newProjectBtn" title="New Project">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M2 2h12v12H2V2zm1 1v10h10V3H3z" fill="currentColor"/>
+          <path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </button>
+      <button class="toolbar-btn" id="openProjectBtn" title="Open Project">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M2 3v10h12V5H8L6 3H2z" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="toolbar-btn" id="saveProjectBtn" title="Save Project">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M2 2v12h12V4.5L11.5 2H2z" fill="currentColor"/>
+          <path d="M3 3h7v3H3V3z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="toolbar-separator"></div>
+    
+    <div class="toolbar-section">
+      <button class="toolbar-btn" id="undoBtn" title="Undo (Ctrl+Z)">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M3 8l4-4v2h5c1.1 0 2 .9 2 2s-.9 2-2 2H7v2L3 8z" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="toolbar-btn" id="redoBtn" title="Redo (Ctrl+Y)">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M13 8l-4-4v2H4c-1.1 0-2 .9-2 2s.9 2 2 2h5v2l4-4z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="toolbar-separator"></div>
+    
+    <div class="toolbar-section">
+      <button class="toolbar-btn" id="addTrackBtn" title="Add Track">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Transport Controls - Always Visible -->
+  <div id="toolbar" class="transport-bar">
+    <div class="flex gap-4 items-center justify-between">
+      <div class="transport-controls flex gap-2">
+        <button id="recordBtn" title="Record (R)" class="p-2 bg-gray-700 rounded hover:bg-red-600 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="stopBtn" title="Stop (S)" disabled class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-50">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <rect x="3" y="3" width="10" height="10" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="playBtn" title="Play (Space)" class="p-2 bg-green-700 rounded hover:bg-green-600 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <polygon points="4,2 4,14 13,8" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="pauseBtn" title="Pause" disabled class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-50">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <rect x="4" y="2" width="3" height="12" fill="currentColor"/>
+            <rect x="9" y="2" width="3" height="12" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="goToStartBtn" title="Go to Beginning (Home)" class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <rect x="2" y="2" width="2" height="12" fill="currentColor"/>
+            <polygon points="6,8 12,3 12,13" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="skipBackBtn" title="Skip Back 1 Measure (Left Arrow)" class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <polygon points="10,3 4,8 10,13" fill="currentColor"/>
+            <rect x="11" y="3" width="2" height="10" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="skipForwardBtn" title="Skip Forward 1 Measure (Right Arrow)" class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <polygon points="6,3 12,8 6,13" fill="currentColor"/>
+            <rect x="3" y="3" width="2" height="10" fill="currentColor"/>
+          </svg>
+        </button>
+        
+        <!-- Undo/Redo Controls -->
+        <div class="undo-redo-controls flex gap-1 ml-4 pl-4 border-l border-gray-600">
+          <button id="undoBtn" title="Undo (Ctrl+Z)" disabled class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-30">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <path d="M3 8l4-4v2h5c1.1 0 2 .9 2 2s-.9 2-2 2H7v2L3 8z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button id="redoBtn" title="Redo (Ctrl+Y)" disabled class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-30">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <path d="M13 8l-4-4v2H4c-1.1 0-2 .9-2 2s.9 2 2 2h5v2l4-4z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- REAPER Enhancements -->
+        <div class="reaper-controls flex gap-1 ml-4 pl-4 border-l border-gray-600">
+          <button id="reaperEnhancementsBtn" title="REAPER Enhancements" class="p-2 bg-gray-700 rounded hover:bg-orange-600 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <path d="M2 2h12v2H2zM2 6h8v2H2zM2 10h10v2H2zM13 6l2 2-2 2z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- View Toggle Buttons -->
+        <div class="view-controls flex gap-1 ml-4 pl-4 border-l border-gray-600">
+          <button id="arrangeViewBtn" title="Arrangement View" class="p-1.5 bg-orange-500 text-black rounded text-xs font-semibold active w-8 h-8 flex items-center justify-center">
+            <svg width="12" height="12" viewBox="0 0 16 16">
+              <rect x="1" y="3" width="14" height="2" fill="currentColor"/>
+              <rect x="1" y="7" width="14" height="2" fill="currentColor"/>
+              <rect x="1" y="11" width="14" height="2" fill="currentColor"/>
+              <rect x="3" y="1" width="4" height="6" fill="currentColor" opacity="0.6"/>
+              <rect x="9" y="5" width="6" height="6" fill="currentColor" opacity="0.6"/>
+            </svg>
+          </button>
+          <button id="mixerViewBtn" title="Mixer View" class="p-1.5 bg-gray-600 text-white rounded text-xs font-semibold w-8 h-8 flex items-center justify-center">
+            <svg width="12" height="12" viewBox="0 0 16 16">
+              <rect x="2" y="2" width="2" height="12" fill="currentColor"/>
+              <rect x="7" y="2" width="2" height="12" fill="currentColor"/>
+              <rect x="12" y="2" width="2" height="12" fill="currentColor"/>
+              <circle cx="3" cy="5" r="1.5" fill="currentColor"/>
+              <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+              <circle cx="13" cy="6" r="1.5" fill="currentColor"/>
+            </svg>
+          </button>
+          <!-- FX Plugins View Button -->
+          <button id="fxViewBtn" title="FX Plugins" class="p-1.5 bg-gray-600 text-white rounded text-xs font-semibold w-8 h-8 flex items-center justify-center">
+            <svg width="12" height="12" viewBox="0 0 16 16">
+              <rect x="2" y="2" width="12" height="12" rx="2" fill="currentColor"/>
+              <circle cx="6" cy="6" r="1.5" fill="#111"/>
+              <rect x="8.5" y="5.25" width="4" height="1.5" rx="0.75" fill="#111"/>
+              <circle cx="6" cy="10" r="1.5" fill="#111"/>
+              <rect x="8.5" y="9.25" width="4" height="1.5" rx="0.75" fill="#111"/>
+            </svg>
+          </button>
+          <!-- Audio Editor View Button -->
+          <button id="editorViewBtn" title="Audio Editor" class="p-1.5 bg-gray-600 text-white rounded text-xs font-semibold w-8 h-8 flex items-center justify-center hidden">
+            <svg width="12" height="12" viewBox="0 0 16 16">
+              <path d="M2 8 L14 8" stroke="currentColor" stroke-width="1"/>
+              <path d="M1 4 L15 4 L15 12 L1 12 Z" fill="none" stroke="currentColor" stroke-width="1"/>
+              <path d="M3 6 L5 10 L7 4 L9 12 L11 6 L13 10" stroke="currentColor" stroke-width="1" fill="none"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <div class="file-controls flex gap-2">
+        <label class="upload-btn p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors cursor-pointer" title="Upload audio">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <path d="M8 2L5 5h2v6h2V5h2L8 2z" fill="currentColor"/>
+            <path d="M2 12h12v2H2z" fill="currentColor"/>
+          </svg>
+          <input type="file" id="fileInput" accept="audio/*" multiple class="hidden">
+        </label>
+        <button id="addTrackBtn" title="Add a new track" class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        
+        <!-- AudioVerse Universe Logo -->
+        <div class="audioverse-logo-container ml-4" title="AudioVerse - Universe of Sound" style="cursor: pointer;">
+          <svg class="audioverse-logo" width="80" height="40" viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg">
+            <!-- Background cosmic gradient -->
+            <defs>
+              <radialGradient id="cosmicGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ff9500" stop-opacity="0.2"/>
+                <stop offset="50%" stop-color="#1de9b6" stop-opacity="0.1"/>
+                <stop offset="100%" stop-color="#000" stop-opacity="0.05"/>
+              </radialGradient>
+              <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#1de9b6"/>
+                <stop offset="50%" stop-color="#ff9500"/>
+                <stop offset="100%" stop-color="#ff5050"/>
+              </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                <feMerge> 
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            
+            <!-- Cosmic background -->
+            <circle cx="40" cy="20" r="35" fill="url(#cosmicGlow)" opacity="0.6"/>
+            
+            <!-- Stars -->
+            <circle cx="15" cy="8" r="0.8" fill="#1de9b6" opacity="0.8">
+              <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="65" cy="12" r="0.6" fill="#ff9500" opacity="0.7">
+              <animate attributeName="opacity" values="0.4;1;0.4" dur="3s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="70" cy="30" r="0.5" fill="#ff5050" opacity="0.6">
+              <animate attributeName="opacity" values="0.5;1;0.5" dur="2.5s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="8" cy="32" r="0.4" fill="#1de9b6" opacity="0.9">
+              <animate attributeName="opacity" values="0.2;1;0.2" dur="1.8s" repeatCount="indefinite"/>
+            </circle>
+            
+            <!-- Central planet/orb -->
+            <circle cx="40" cy="20" r="8" fill="none" stroke="#ff9500" stroke-width="1" opacity="0.6">
+              <animateTransform attributeName="transform" type="rotate" values="0 40 20;360 40 20" dur="20s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="40" cy="20" r="5" fill="#1de9b6" opacity="0.3"/>
+            <circle cx="42" cy="18" r="2" fill="#ff9500" opacity="0.8"/>
+            
+            <!-- Audio waveform integrated into cosmic design -->
+            <path d="M5 20 L10 18 L15 22 L20 16 L25 24 L30 14 L35 26 L40 20 L45 14 L50 26 L55 16 L60 22 L65 18 L70 20 L75 22" 
+                  stroke="url(#waveGradient)" stroke-width="1.5" fill="none" filter="url(#glow)" opacity="0.7">
+              <animate attributeName="d" 
+                       values="M5 20 L10 18 L15 22 L20 16 L25 24 L30 14 L35 26 L40 20 L45 14 L50 26 L55 16 L60 22 L65 18 L70 20 L75 22;
+                               M5 20 L10 22 L15 18 L20 24 L25 16 L30 26 L35 14 L40 20 L45 26 L50 14 L55 24 L60 16 L65 22 L70 20 L75 18;
+                               M5 20 L10 18 L15 22 L20 16 L25 24 L30 14 L35 26 L40 20 L45 14 L50 26 L55 16 L60 22 L65 18 L70 20 L75 22" 
+                       dur="4s" repeatCount="indefinite"/>
+            </path>
+            
+            <!-- Orbiting elements -->
+            <g transform-origin="40 20">
+              <circle cx="52" cy="20" r="1.5" fill="#1de9b6" opacity="0.8"/>
+              <animateTransform attributeName="transform" type="rotate" values="0 40 20;360 40 20" dur="8s" repeatCount="indefinite"/>
+            </g>
+            
+            <g transform-origin="40 20">
+              <circle cx="28" cy="20" r="1" fill="#ff5050" opacity="0.7"/>
+              <animateTransform attributeName="transform" type="rotate" values="0 40 20;-360 40 20" dur="12s" repeatCount="indefinite"/>
+            </g>
+            
+            <!-- AudioVerse text -->
+            <text x="40" y="36" text-anchor="middle" fill="#ff9500" font-family="Arial, sans-serif" font-size="6" font-weight="bold" opacity="0.9">
+              AudioVerse
+            </text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Recording Visualization -->
+  <div id="recordingVisualization" style="display: none; position: fixed; bottom: 80px; right: 20px; background: rgba(42, 42, 42, 0.95); border: 2px solid #f5a623; border-radius: 8px; padding: 12px; z-index: 1000; box-shadow: 0 4px 20px rgba(245, 166, 35, 0.3);">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+      <div style="width: 10px; height: 10px; background: #d0021b; border-radius: 50%; animation: pulse 1s infinite;"></div>
+      <span style="color: #f5a623; font-weight: bold; font-size: 14px;">RECORDING</span>
+      <span id="recordingTime" style="color: #7ed321; font-family: monospace; font-size: 13px;">00:00.0</span>
+    </div>
+    <div id="waveformCanvas" style="width: 400px; height: 120px; background: #2a2a2a; border: 1px solid #4a4a4a; border-radius: 4px;"></div>
+  </div>
+
+  <!-- Arrangement View Window -->
+  <div id="arrangementWindow" class="window active">
+    <div class="settings-bar bg-gray-800 p-3 border-b border-gray-700 flex items-center gap-6 text-sm">
+      <div class="tempo-section flex items-center gap-2">
+        <label for="bpm" class="text-orange-400 font-semibold">BPM:</label>
+        <input type="number" id="bpm" min="20" max="300" value="120" class="w-16 px-2 py-1 bg-gray-700 border border-orange-400 rounded">
+      </div>
+      <div class="time-sig-section flex items-center gap-2">
+        <label for="timeSigNum" class="text-orange-400 font-semibold">Time Sig:</label>
+        <select id="timeSigNum" class="px-2 py-1 bg-gray-700 border border-red-400 rounded">
+          <option value="4">4</option>
+          <option value="3">3</option>
+          <option value="6">6</option>
+          <option value="5">5</option>
+          <option value="7">7</option>
+        </select>
+        <span>/</span>
+        <select id="timeSigDen" class="px-2 py-1 bg-gray-700 border border-red-400 rounded">
+          <option value="4">4</option>
+          <option value="8">8</option>
+          <option value="16">16</option>
+        </select>
+      </div>
+      <button class="metronome-btn bg-red-500 text-white px-4 py-1 rounded font-semibold hover:bg-orange-500 transition-colors" id="metronomeBtn">
+        <svg width="14" height="14" viewBox="0 0 16 16" class="inline mr-1">
+          <path d="M8 1L6 4h4L8 1zM7 5v8l-2 2h6l-2-2V5H7z" fill="currentColor"/>
+          <circle cx="8" cy="9" r="1" fill="currentColor"/>
+        </svg>
+        <span>METRO</span>
+      </button>
+      <button id="snapGridBtn" title="Toggle snap to grid">
+        <svg width="14" height="14" viewBox="0 0 16 16" class="inline mr-1">
+          <defs>
+            <pattern id="grid" width="4" height="4" patternUnits="userSpaceOnUse">
+              <path d="M 4 0 L 0 0 0 4" fill="none" stroke="currentColor" stroke-width="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="16" height="16" fill="url(#grid)" opacity="0.7"/>
+          <rect x="6" y="6" width="4" height="4" fill="currentColor" opacity="0.8"/>
+        </svg>
+        <span>SNAP</span>
+      </button>
+      <div class="zoom-section flex gap-1">
+        <button class="zoom-btn px-3 py-1 bg-gray-700 border border-red-400 text-red-400 rounded hover:bg-red-600 hover:text-white transition-colors" id="zoomInBtn" title="Zoom in">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="zoom-btn px-3 py-1 bg-gray-700 border border-red-400 text-red-400 rounded hover:bg-red-600 hover:text-white transition-colors" id="zoomOutBtn" title="Zoom out">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M5 8h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <!-- CPU Monitor -->
+      <div id="cpuMonitor">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="4" y="4" width="8" height="8" rx="0.5" fill="currentColor" opacity="0.3"/>
+          <rect x="5" y="5" width="2" height="2" fill="currentColor"/>
+          <rect x="9" y="5" width="2" height="2" fill="currentColor"/>
+          <rect x="5" y="9" width="2" height="2" fill="currentColor"/>
+          <rect x="9" y="9" width="2" height="2" fill="currentColor"/>
+        </svg>
+        <span id="cpuUsage">CPU: 0%</span>
+        <div id="cpuMeter">
+          <div id="cpuBar" style="width: 0%"></div>
+        </div>
+      </div>
+      
+      <!-- Spacer and Settings Button on the right -->
+      <div class="flex-1"></div>
+      <button id="settingsBtn" class="px-3 py-1 bg-gray-700 border border-gray-600 text-gray-300 rounded hover:bg-gray-600 transition-colors flex items-center gap-2" title="Settings (Shift+/)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0A1.65 1.65 0 0 0 9 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0A1.65 1.65 0 0 0 20.91 11H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span class="hidden md:inline">Settings</span>
+      </button>
+    </div>
+
+    <div id="workspace" class="flex-1 overflow-auto bg-gray-900 flex flex-col">
+      <div class="workspace-main flex-1 overflow-auto">
+        <div id="timeline" class="sticky top-0 z-10"></div>
+        <div id="tracks">
+          <!-- Tracks will be created dynamically by JavaScript -->
+        </div>
+      </div>
+      
+      <!-- Plugin Strip (Ableton Style) -->
+      <div id="pluginStrip" class="plugin-strip bg-gray-800 border-t border-gray-600 h-48 min-h-48 resize-y overflow-hidden">
+        <!-- Plugin Strip Header -->
+        <div class="plugin-strip-header bg-gray-900 p-2 border-b border-gray-700 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="text-sm font-semibold text-gray-300">
+              Track <span id="currentTrackName">1</span> - Plugins
+            </span>
+            <button id="addPluginBtn" class="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white text-xs rounded font-semibold transition-colors">
+              + Add Plugin
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="togglePluginStrip" class="p-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors" title="Toggle Plugin Strip">
+              <svg width="14" height="14" viewBox="0 0 16 16">
+                <path d="M2 6L8 12L14 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Plugin Strip Content -->
+        <div class="plugin-strip-content flex-1 overflow-auto p-2">
+          <!-- Plugin Chain -->
+          <div class="plugin-chain flex gap-2 h-full">
+            <!-- Empty State -->
+            <div id="pluginEmptyState" class="flex-1 flex items-center justify-center text-gray-500 text-sm">
+              <div class="text-center">
+                <svg width="48" height="48" viewBox="0 0 16 16" class="mx-auto mb-2 opacity-50">
+                  <rect x="2" y="2" width="12" height="12" rx="2" fill="currentColor"/>
+                  <circle cx="6" cy="6" r="1.5" fill="#111"/>
+                  <rect x="8.5" y="5.25" width="4" height="1.5" rx="0.75" fill="#111"/>
+                  <circle cx="6" cy="10" r="1.5" fill="#111"/>
+                  <rect x="8.5" y="9.25" width="4" height="1.5" rx="0.75" fill="#111"/>
+                </svg>
+                <p>No plugins loaded</p>
+                <p class="text-xs mt-1">Click "Add Plugin" to get started</p>
+              </div>
+            </div>
+            
+            <!-- Plugin Slots will be dynamically inserted here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Analysis Dialog -->
+  <div id="analysisOverlay" class="modal-overlay hidden">
+    <div id="analysisDialog" class="modal-dialog modal-wide">
+      <div class="modal-header">
+        <div class="flex items-center gap-2">
+          <svg width="16" height="16" viewBox="0 0 16 16" class="text-orange-500">
+            <path d="M2 2h12v2H2V2zm0 4h12v2H2V6zm0 4h12v2H2v-2z" fill="currentColor"/>
+          </svg>
+          <h3>Audio Analysis</h3>
+          <span id="analysisClipName" class="text-sm text-gray-400 ml-2">No clip selected</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="refreshAnalysis" class="p-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors text-xs" title="Refresh Analysis">
+            ↻
+          </button>
+          <button id="analysisClose" class="modal-close" title="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-content analysis-content">
+        <div class="analysis-grid grid grid-cols-3 gap-4 h-full">
+          <!-- Spectrum Analyzer -->
+          <div class="analysis-section bg-gray-900 rounded p-3">
+            <h4 class="text-xs font-semibold mb-2 text-gray-300">Spectrum Analyzer</h4>
+            <canvas id="spectrumCanvas" class="w-full h-32 bg-black rounded"></canvas>
+            <div class="spectrum-controls mt-2 flex gap-2 text-xs">
+              <button id="spectrumLinear" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs">Linear</button>
+              <button id="spectrumLog" class="px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs">Log</button>
+              <button id="spectrumPeakHold" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs">Peak Hold</button>
+            </div>
+          </div>
+
+          <!-- Level Meters -->
+          <div class="analysis-section bg-gray-900 rounded p-3">
+            <h4 class="text-xs font-semibold mb-2 text-gray-300">Level Meters</h4>
+            <div class="meters-container">
+              <canvas id="levelMetersCanvas" class="w-full h-32 bg-black rounded"></canvas>
+              <div class="meter-values mt-2 text-xs text-gray-400">
+                <div class="flex justify-between">
+                  <span>Peak: <span id="peakValue">-∞ dB</span></span>
+                  <span>RMS: <span id="rmsValue">-∞ dB</span></span>
+                </div>
+                <div class="flex justify-between mt-1">
+                  <span>LUFS: <span id="lufsValue">-∞</span></span>
+                  <span>Range: <span id="rangeValue">-- LU</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Phase & Music Analysis -->
+          <div class="analysis-section bg-gray-900 rounded p-3">
+            <h4 class="text-xs font-semibold mb-2 text-gray-300">Music Analysis</h4>
+            <canvas id="phaseCorrelationCanvas" class="w-full h-16 bg-black rounded mb-2"></canvas>
+            <div class="music-info text-xs text-gray-400">
+              <div class="flex justify-between">
+                <span>Tempo:</span>
+                <span id="tempoValue">-- BPM</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Key:</span>
+                <span id="keyValue">--</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Phase:</span>
+                <span id="phaseValue">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="analysisCloseFooter" class="modal-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mixer View Window -->
+  <div id="mixerWindow" class="window hidden">
+    <div id="mixerContainer" class="flex-1 overflow-auto bg-gradient-to-b from-gray-900 to-gray-800 p-4">
+      <div id="mixerChannels" class="flex gap-4 min-h-full">
+        <!-- Mixer channels will be dynamically generated -->
+      </div>
+    </div>
+  </div>
+
+  <!-- FX Plugins Modal Overlay -->
+  <div id="fxOverlay" class="modal-overlay hidden">
+    <div id="fxDialog" class="modal-dialog modal-wide">
+      <div class="modal-header">
+        <h3>FX Plugins</h3>
+        <button id="fxClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div id="fxView" class="modal-content">
+        <!-- Populated dynamically -->
+        <div id="scriptedFxSection" style="margin-top: 1.5em;">
+          <h4 style="margin-bottom: 0.5em;">Scripted FX (JSFX-style)</h4>
+          <div id="scriptedFxList"></div>
+          <button id="addScriptedFxBtn" class="modal-btn" style="margin-top: 0.5em;">Add Scripted FX</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="fxCloseFooter" class="modal-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Editor View Window -->
+  <div id="editorWindow" class="window hidden">
+    <!-- Editor Header with Back Button and Clip Info -->
+    <div class="editor-header bg-gray-800 p-4 border-b border-gray-700 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <button id="backButton" class="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors" title="Back to Arrangement">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <path d="M8 2 L2 8 L8 14 M2 8 L14 8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="clip-info">
+          <h2 id="editorClipName" class="text-xl font-bold text-white">Audio Editor</h2>
+          <p id="editorClipDetails" class="text-sm text-gray-400">No clip selected</p>
+        </div>
+      </div>
+      
+        <!-- Editor Tools -->
+        <div class="editor-tools flex gap-2">
+          <!-- Pitch Shift Button -->
+          <button id="pitchShiftBtn" class="px-3 py-1 bg-purple-700 border border-purple-500 text-white rounded hover:bg-purple-600 transition-colors" title="Pitch Shift Selected Audio" disabled>
+            <svg width="12" height="12" viewBox="0 0 16 16">
+              <path d="M8 2 L12 6 L10 6 L10 10 L6 10 L6 6 L4 6 L8 2 Z" fill="currentColor"/>
+              <path d="M2 14 L14 14" stroke="currentColor" stroke-width="1"/>
+            </svg>
+            <span class="ml-1 text-xs">Pitch</span>
+          </button>
+          
+          <!-- Volume Automation Label -->
+          <span class="px-2 py-1 bg-gray-800 border border-gray-600 text-gray-300 rounded text-xs">Volume Automation</span>
+          
+          <!-- Automation Toggle Button -->
+          <button id="editorAutomationBtn" class="px-3 py-1 bg-gray-700 border border-gray-500 text-gray-300 rounded hover:bg-orange-600 transition-colors" title="Toggle Automation">
+            <svg width="12" height="12" viewBox="0 0 16 16">
+              <path d="M2 12 L6 8 L10 10 L14 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="6" cy="8" r="1.5" fill="currentColor"/>
+              <circle cx="10" cy="10" r="1.5" fill="currentColor"/>
+            </svg>
+            <span class="ml-1 text-xs">Auto</span>
+          </button>        <!-- Curve Mode Toggle -->
+        <button id="editorCurveModeBtn" class="px-2 py-1 bg-gray-700 border border-gray-500 text-gray-300 rounded hover:bg-blue-600 transition-colors text-xs" title="Toggle Curved/Straight Lines">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <path id="curveModeIcon" d="M2 12 C 6 8, 10 10, 14 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+          </svg>
+          <span class="ml-1 text-xs">Curve</span>
+        </button>
+        
+        <!-- Volume Range Controls (shown only for volume automation) -->
+        <div id="volumeRangeControls" class="flex gap-1 items-center">
+          <label class="text-xs text-gray-400">Range:</label>
+          <input type="number" id="volumeMinRange" value="-100" min="-100" max="24" step="1" class="w-12 px-1 py-1 bg-gray-700 border border-gray-600 rounded text-xs text-center" title="Min dB">
+          <span class="text-xs text-gray-400">to</span>
+          <input type="number" id="volumeMaxRange" value="12" min="-100" max="24" step="1" class="w-12 px-1 py-1 bg-gray-700 border border-gray-600 rounded text-xs text-center" title="Max dB">
+          <span class="text-xs text-gray-400">dB</span>
+        </div>
+        <button id="editorZoomFit" class="px-3 py-1 bg-gray-700 border border-gray-500 text-gray-300 rounded hover:bg-gray-600 transition-colors" title="Zoom to Fit">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <rect x="1" y="1" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1"/>
+            <path d="M4 4 L12 12 M4 12 L12 4" stroke="currentColor" stroke-width="1"/>
+          </svg>
+        </button>
+        <button id="editorZoomIn" class="px-3 py-1 bg-gray-700 border border-gray-500 text-gray-300 rounded hover:bg-gray-600 transition-colors" title="Zoom In">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button id="editorZoomOut" class="px-3 py-1 bg-gray-700 border border-gray-500 text-gray-300 rounded hover:bg-gray-600 transition-colors" title="Zoom Out">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M5 8h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Editor Main Content Area -->
+    <div class="editor-content flex-1 overflow-hidden bg-gray-900">
+      <!-- Waveform Display Area -->
+      <div id="editorWaveformContainer" class="h-full p-4">
+        <div id="editorWaveformDisplay" class="w-full h-full bg-gray-800 rounded-lg border border-gray-700 relative overflow-hidden">
+          <!-- Large waveform canvas will be inserted here -->
+          <canvas id="editorWaveformCanvas" class="w-full h-full"></canvas>
+          
+          <!-- Editor playhead -->
+          <div id="editorPlayhead" class="absolute top-0 w-0.5 h-full bg-red-500 z-10 hidden"></div>
+          
+          <!-- Selection overlay -->
+          <div id="editorSelection" class="absolute top-0 h-full bg-blue-500 bg-opacity-30 z-5 hidden"></div>
+        </div>
+        
+        <!-- Editor Timeline -->
+        <div id="editorTimeline" class="mt-2 h-8 bg-gray-800 rounded border border-gray-700 relative">
+          <!-- Timeline markers will be inserted here -->
+        </div>
+        
+        <!-- Editor Controls Panel -->
+        <div class="editor-controls-panel mt-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- Clip Properties -->
+            <div class="clip-properties">
+              <h4 class="text-sm font-semibold text-gray-300 mb-2">Clip Properties</h4>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <label class="text-xs text-gray-400 w-16">Start:</label>
+                  <input type="number" id="editorClipStart" step="0.01" class="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs">
+                </div>
+                <div class="flex items-center gap-2">
+                  <label class="text-xs text-gray-400 w-16">Length:</label>
+                  <input type="number" id="editorClipLength" step="0.01" class="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs">
+                </div>
+                <div class="flex items-center gap-2">
+                  <label class="text-xs text-gray-400 w-16">Offset:</label>
+                  <input type="number" id="editorClipOffset" step="0.01" class="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs">
+                </div>
+              </div>
+            </div>
+            
+            <!-- Audio Processing -->
+            <div class="audio-processing">
+              <h4 class="text-sm font-semibold text-gray-300 mb-2">Processing</h4>
+              <div class="space-y-2">
+                <button id="editorNormalize" class="w-full px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs transition-colors">Normalize</button>
+                <button id="editorReverse" class="w-full px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs transition-colors">Reverse</button>
+                <button id="editorFadeIn" class="w-full px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs transition-colors">Fade In</button>
+                <button id="editorFadeOut" class="w-full px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs transition-colors">Fade Out</button>
+              </div>
+            </div>
+            
+            <!-- Selection Tools -->
+            <div class="selection-tools">
+              <h4 class="text-sm font-semibold text-gray-300 mb-2">Selection</h4>
+              <div class="space-y-2">
+                <button id="editorSelectAll" class="w-full px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs transition-colors">Select All</button>
+                <button id="editorClearSelection" class="w-full px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs transition-colors">Clear Selection</button>
+                <button id="editorCrop" class="w-full px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs transition-colors">Crop to Selection</button>
+              </div>
+            </div>
+            
+            <!-- Playback Control -->
+            <div class="playback-control">
+              <h4 class="text-sm font-semibold text-gray-300 mb-2">Playback</h4>
+              <div class="space-y-2">
+                <button id="editorPlaySelection" class="w-full px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs transition-colors">Play Selection</button>
+                <button id="editorLoop" class="w-full px-2 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-xs transition-colors">Loop</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsOverlay" class="modal-overlay hidden">
+    <div id="settingsDialog" class="modal-dialog">
+      <div class="modal-header">
+        <h3>Settings & Shortcuts</h3>
+        <button id="settingsClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-content">
+        <section class="modal-section">
+          <h4>General</h4>
+          <div class="setting-item">
+            <label><input type="checkbox" id="setAutoScroll"> Auto-scroll during playback</label>
+          </div>
+          <div class="setting-item">
+            <label><input type="checkbox" id="setSnapToGrid"> Snap to grid on timeline click</label>
+          </div>
+          <div class="setting-item">
+            <label><input type="checkbox" id="setTripletGuides"> Show triplet guides when zoomed in</label>
+          </div>
+          <div class="setting-item">
+            <label><input type="checkbox" id="setConfirmDelete"> Confirm before deleting clips</label>
+          </div>
+        </section>
+        <section class="modal-section">
+          <h4>Keyboard Shortcuts</h4>
+          <div id="shortcutsList" class="shortcuts-list"></div>
+        </section>
+      </div>
+      <div class="modal-footer">
+        <button id="settingsSave" class="modal-btn primary">Save</button>
+        <button id="settingsCancel" class="modal-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Volume Automation Apply Dialog Modal -->
+  <div id="volumeAutomationOverlay" class="modal-overlay hidden">
+    <div id="volumeAutomationDialog" class="modal-dialog">
+      <div class="modal-header">
+        <h3>Apply Volume Automation</h3>
+        <button id="volumeAutomationClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-content">
+        <div class="volume-automation-content p-6">
+          <!-- Selected Audio Info -->
+          <div class="selection-info mb-6 p-4 bg-gray-800 rounded-lg">
+            <h4 class="text-sm font-semibold text-gray-300 mb-2">Volume Automation</h4>
+            <div class="text-sm text-gray-400">
+              <div>Clip: <span id="volumeAutomationClipName">Audio Clip</span></div>
+              <div>Duration: <span id="volumeAutomationDuration">0.00s</span></div>
+              <div>Automation Points: <span id="volumeAutomationPointCount">0</span></div>
+            </div>
+          </div>
+          
+          <!-- Automation Preview -->
+          <div class="automation-preview mb-6 p-4 bg-gray-800 rounded-lg">
+            <h4 class="text-sm font-semibold text-gray-300 mb-3">Automation Preview</h4>
+            <div class="automation-curve-preview bg-gray-900 rounded h-32 p-2 relative">
+              <canvas id="volumeAutomationPreviewCanvas" class="w-full h-full"></canvas>
+            </div>
+          </div>
+          
+          <!-- Processing Options -->
+          <div class="processing-options mb-6">
+            <h4 class="text-sm font-semibold text-gray-300 mb-3">Processing Options</h4>
+            <div class="space-y-2">
+              <label class="flex items-center">
+                <input type="checkbox" id="volumeAutomationSmooth" checked class="mr-2">
+                <span class="text-sm text-gray-300">Smooth transitions between points</span>
+              </label>
+              <label class="flex items-center">
+                <input type="checkbox" id="volumeAutomationPreserveClips" class="mr-2">
+                <span class="text-sm text-gray-300">Keep original clip as backup</span>
+              </label>
+            </div>
+          </div>
+          
+          <!-- Preview Controls -->
+          <div class="preview-controls mb-6 p-4 bg-gray-800 rounded-lg">
+            <h4 class="text-sm font-semibold text-gray-300 mb-3">Preview</h4>
+            <div class="flex gap-2">
+              <button id="previewVolumeOriginal" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm">Play Original</button>
+              <button id="previewVolumeAutomated" class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">Play with Automation</button>
+              <button id="stopVolumePreview" class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm">Stop</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="volumeAutomationApply" class="modal-btn primary">Apply Automation</button>
+        <button id="volumeAutomationCancel" class="modal-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pitch Shift Dialog Modal -->
+  <div id="pitchShiftOverlay" class="modal-overlay hidden">
+    <div id="pitchShiftDialog" class="modal-dialog">
+      <div class="modal-header">
+        <h3>Pitch Shift Audio</h3>
+        <button id="pitchShiftClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-content">
+        <div class="pitch-shift-content p-6">
+          <!-- Selected Audio Info -->
+          <div class="selection-info mb-6 p-4 bg-gray-800 rounded-lg">
+            <h4 class="text-sm font-semibold text-gray-300 mb-2">Selected Audio</h4>
+            <div class="text-sm text-gray-400">
+              <div>Start: <span id="pitchShiftSelStart">0.00s</span></div>
+              <div>Duration: <span id="pitchShiftSelDuration">0.00s</span></div>
+              <div>Track: <span id="pitchShiftSelTrack">Track 1</span></div>
+            </div>
+          </div>
+          
+          <!-- Pitch Control -->
+          <div class="pitch-controls mb-6">
+            <label class="block text-sm font-semibold text-gray-300 mb-3">Pitch Shift (Semitones)</label>
+            <div class="pitch-slider-container">
+              <!-- Slider Track with Visual Markers -->
+              <div class="slider-track relative mb-2">
+                <input type="range" id="pitchShiftSlider" min="-12" max="12" value="0" step="0.1" 
+                       class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                <!-- Semitone markers -->
+                <div class="semitone-markers flex justify-between text-xs text-gray-500 mt-1">
+                  <span>-12</span><span>-6</span><span>0</span><span>+6</span><span>+12</span>
+                </div>
+              </div>
+              
+              <!-- Value Display and Fine Controls -->
+              <div class="pitch-value-controls flex items-center justify-center gap-4 mt-4">
+                <button id="pitchDownFine" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm" title="Down 0.1 semitones">-</button>
+                <div class="pitch-display text-center">
+                  <div class="text-2xl font-bold text-white" id="pitchShiftValue">0.0</div>
+                  <div class="text-xs text-gray-400">semitones</div>
+                </div>
+                <button id="pitchUpFine" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm" title="Up 0.1 semitones">+</button>
+              </div>
+              
+              <!-- Preset Buttons -->
+              <div class="pitch-presets mt-4 grid grid-cols-4 gap-2">
+                <button class="pitch-preset-btn px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs" data-semitones="-12">-1 Oct</button>
+                <button class="pitch-preset-btn px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs" data-semitones="-7">-5th</button>
+                <button class="pitch-preset-btn px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs" data-semitones="7">+5th</button>
+                <button class="pitch-preset-btn px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs" data-semitones="12">+1 Oct</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Processing Options -->
+          <div class="processing-options mb-6">
+            <h4 class="text-sm font-semibold text-gray-300 mb-3">Processing Options</h4>
+            <div class="space-y-2">
+              <label class="flex items-center">
+                <input type="checkbox" id="pitchShiftPreserveFormants" class="mr-2">
+                <span class="text-sm text-gray-300">Preserve formants (better for vocals)</span>
+              </label>
+              <label class="flex items-center">
+                <input type="checkbox" id="pitchShiftHighQuality" checked class="mr-2">
+                <span class="text-sm text-gray-300">High quality processing (slower)</span>
+              </label>
+            </div>
+          </div>
+          
+          <!-- Preview Controls -->
+          <div class="preview-controls mb-6 p-4 bg-gray-800 rounded-lg">
+            <h4 class="text-sm font-semibold text-gray-300 mb-3">Preview</h4>
+            <div class="flex gap-2">
+              <button id="previewOriginal" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm">Play Original</button>
+              <button id="previewPitchShifted" class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">Play Pitch Shifted</button>
+              <button id="stopPreview" class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm">Stop</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="pitchShiftApply" class="modal-btn primary">Apply Pitch Shift</button>
+        <button id="pitchShiftCancel" class="modal-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tone@15.0.4/build/Tone.js"></script>
+  <!-- Audio Analysis Libraries -->
+  <script src="https://unpkg.com/meyda/dist/web/meyda.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/@tonaljs/tonal/browser/tonal.min.js"></script>
+  <!-- VexWarp Time Stretching Libraries -->
+  <script src="dsp.js"></script>
+  <script src="VexWarpTimeStretcher.js"></script>
+  <script>
+    // Ensure VexWarp is properly initialized before loading other scripts
+    console.log('VexWarp loaded check:', {
+      DSP: typeof DSP,
+      VexWarpTimeStretcher: typeof VexWarpTimeStretcher,
+      VexWarp: typeof VexWarp,
+      TimeStretcher: VexWarp && typeof VexWarp.TimeStretcher
+    });
+    
+    // Test VexWarp instantiation
+    try {
+      const testStretcher = new VexWarp.TimeStretcher(44100, 1, {});
+      console.log('VexWarp TimeStretcher test instantiation successful');
+    } catch (error) {
+      console.error('VexWarp TimeStretcher test instantiation failed:', error);
+    }
+  </script>
+  <script src="FXPlugins.js"></script>
+  <script src="DAW.js"></script>
+  <script src="ReaperEnhancements.js"></script>
+  <!-- AudioVerse Features Showcase Dialog -->
+  <div id="audioverseFeaturesOverlay" class="modal-overlay hidden">
+    <div id="audioverseFeaturesDialog" class="modal-dialog features-dialog modal-wide">
+      <div class="modal-header features-header">
+        <div class="features-title-section">
+          <div class="features-cosmic-icon">
+            <svg width="32" height="32" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="featuresCosmicGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#ff9500" stop-opacity="0.8"/>
+                  <stop offset="100%" stop-color="#1de9b6" stop-opacity="0.3"/>
+                </radialGradient>
+              </defs>
+              <circle cx="20" cy="20" r="18" fill="url(#featuresCosmicGlow)"/>
+              <circle cx="20" cy="20" r="8" fill="none" stroke="#ff9500" stroke-width="1">
+                <animateTransform attributeName="transform" type="rotate" values="0 20 20;360 20 20" dur="10s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="20" cy="20" r="3" fill="#1de9b6" opacity="0.8"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="features-main-title">AudioVerse</h3>
+            <p class="features-subtitle">Universe of Sound • Advanced Web DAW</p>
+          </div>
+        </div>
+        <button id="audioverseFeaturesClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="modal-content features-content">
+        <!-- Welcome Message -->
+        <div class="features-welcome">
+          <div class="animated-text-container">
+            <p class="animated-text intro-text">Welcome to AudioVerse - where professional audio production meets cutting-edge web technology!</p>
+            <p class="animated-text intro-subtext">Discover powerful features that might be hidden in plain sight...</p>
+          </div>
+        </div>
+
+        <!-- Features Categories -->
+        <div class="features-categories">
+          <!-- Core Production -->
+          <div class="feature-category">
+            <div class="category-header">
+              <svg class="category-icon" width="24" height="24" viewBox="0 0 16 16">
+                <rect x="2" y="2" width="12" height="12" rx="2" fill="currentColor" opacity="0.3"/>
+                <path d="M4 6h8M4 8h6M4 10h8" stroke="currentColor" stroke-width="1"/>
+              </svg>
+              <h4 class="animated-text category-title">Core Production Features</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎵 Multi-track audio recording and playback</li>
+              <li class="animated-text feature-item">✂️ Non-destructive audio editing with waveform display</li>
+              <li class="animated-text feature-item">🎚️ Professional mixer with per-channel EQ and effects</li>
+              <li class="animated-text feature-item">📊 Real-time spectrum analyzer and level meters</li>
+              <li class="animated-text feature-item">⏱️ Precise timeline with snap-to-grid functionality</li>
+              <li class="animated-text feature-item">🔄 Unlimited undo/redo system</li>
+            </ul>
+          </div>
+
+          <!-- Advanced Effects -->
+          <div class="feature-category">
+            <div class="category-header">
+              <svg class="category-icon" width="24" height="24" viewBox="0 0 16 16">
+                <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1"/>
+                <path d="M8 4v8M4 8h8" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+              <h4 class="animated-text category-title">Advanced Audio Effects</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎛️ 6-band Parametric EQ with frequency response visualization</li>
+              <li class="animated-text feature-item">🌌 Lexicon 480L-style reverb with multiple algorithms</li>
+              <li class="animated-text feature-item">🔧 Custom scripted effects (JSFX-style)</li>
+              <li class="animated-text feature-item">⚡ Real-time audio processing with Web Audio API</li>
+              <li class="animated-text feature-item">📈 Visual feedback for all parameters</li>
+              <li class="animated-text feature-item">🎨 Plugin chain with drag-and-drop reordering</li>
+            </ul>
+          </div>
+
+          <!-- Time Manipulation -->
+          <div class="feature-category">
+            <div class="category-header">
+              <svg class="category-icon" width="24" height="24" viewBox="0 0 16 16">
+                <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1"/>
+                <path d="M8 8L12 4" stroke="currentColor" stroke-width="1"/>
+                <path d="M8 8L8 4" stroke="currentColor" stroke-width="1"/>
+              </svg>
+              <h4 class="animated-text category-title">Time & Pitch Control</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎼 Advanced pitch shifting (-12 to +12 semitones)</li>
+              <li class="animated-text feature-item">⏩ VexWarp time stretching without pitch change</li>
+              <li class="animated-text feature-item">🔄 Audio reversal and normalization</li>
+              <li class="animated-text feature-item">📐 Phase vocoder for precise time manipulation</li>
+              <li class="animated-text feature-item">🎯 Formant preservation for vocal processing</li>
+              <li class="animated-text feature-item">⚡ Real-time preview of all modifications</li>
+            </ul>
+          </div>
+
+          <!-- Professional Workflow -->
+          <div class="feature-category">
+            <div class="category-header">
+              <svg class="category-icon" width="24" height="24" viewBox="0 0 16 16">
+                <rect x="2" y="3" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1"/>
+                <path d="M5 7h6M5 9h4" stroke="currentColor" stroke-width="1"/>
+              </svg>
+              <h4 class="animated-text category-title">Professional Workflow</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">📊 Volume automation with visual curve editing</li>
+              <li class="animated-text feature-item">🎚️ Resizable interface elements for custom layouts</li>
+              <li class="animated-text feature-item">🔍 Multiple zoom levels and view modes</li>
+              <li class="animated-text feature-item">⌨️ Comprehensive keyboard shortcuts</li>
+              <li class="animated-text feature-item">💾 Project save/load functionality</li>
+              <li class="animated-text feature-item">🎯 CPU usage monitoring</li>
+            </ul>
+          </div>
+
+          <!-- Hidden Gems -->
+          <div class="feature-category highlight-category">
+            <div class="category-header">
+              <svg class="category-icon" width="24" height="24" viewBox="0 0 16 16">
+                <path d="M8 1L10 6H15L11 9L13 14L8 11L3 14L5 9L1 6H6L8 1Z" fill="currentColor"/>
+              </svg>
+              <h4 class="animated-text category-title">Hidden Gems & Power Features</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🌟 Triple-click any empty track area to add audio clip</li>
+              <li class="animated-text feature-item">🎛️ Right-click plugin slots for quick bypass/remove</li>
+              <li class="animated-text feature-item">🎹 Hold Shift while dragging for fine parameter control</li>
+              <li class="animated-text feature-item">⚡ Press 'M' to quickly mute/unmute selected tracks</li>
+              <li class="animated-text feature-item">🔍 Double-click waveforms to enter detailed editor</li>
+              <li class="animated-text feature-item">🎯 Use Ctrl+Z/Y for unlimited undo/redo operations</li>
+              <li class="animated-text feature-item">📱 Mobile-responsive interface works on tablets</li>
+              <li class="animated-text feature-item">🌌 Cosmic-themed visualizations throughout the interface</li>
+            </ul>
+          </div>
+
+          <!-- Technical Innovation -->
+          <div class="feature-category">
+            <div class="category-header">
+              <svg class="category-icon" width="24" height="24" viewBox="0 0 16 16">
+                <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1"/>
+                <circle cx="6" cy="6" r="1" fill="currentColor"/>
+                <circle cx="10" cy="6" r="1" fill="currentColor"/>
+                <circle cx="6" cy="10" r="1" fill="currentColor"/>
+                <circle cx="10" cy="10" r="1" fill="currentColor"/>
+              </svg>
+              <h4 class="animated-text category-title">Technical Innovation</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🌐 100% browser-based - no downloads required</li>
+              <li class="animated-text feature-item">⚡ Web Audio API with low-latency processing</li>
+              <li class="animated-text feature-item">🎛️ Custom DSP algorithms written in JavaScript</li>
+              <li class="animated-text feature-item">📊 Real-time audio analysis and visualization</li>
+              <li class="animated-text feature-item">🔧 Modular plugin architecture</li>
+              <li class="animated-text feature-item">🎨 Hardware-accelerated graphics rendering</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Call to Action -->
+        <div class="features-cta">
+          <div class="animated-text-container">
+            <p class="animated-text cta-text">Ready to explore the universe of sound?</p>
+            <p class="animated-text cta-subtext">Click anywhere outside this dialog to start creating!</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer features-footer">
+        <div class="footer-cosmic-elements">
+          <div class="cosmic-particle"></div>
+          <div class="cosmic-particle"></div>
+          <div class="cosmic-particle"></div>
+        </div>
+        <button id="audioverseFeaturesStart" class="modal-btn primary features-start-btn">Start Creating Music</button>
+        <button id="audioverseFeaturesCloseFooter" class="modal-btn">Explore Interface</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AudioVerse Features Guide Dialog -->
+  <div id="featuresOverlay" class="modal-overlay hidden">
+    <div id="featuresDialog" class="modal-dialog features-dialog modal-wide">
+      <div class="modal-header features-header">
+        <div class="features-title-section">
+          <div class="cosmic-icon">
+            <svg width="28" height="28" viewBox="0 0 40 40">
+              <circle cx="20" cy="20" r="15" fill="none" stroke="#ff9500" stroke-width="2" opacity="0.8">
+                <animate attributeName="r" values="15;18;15" dur="2s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="20" cy="20" r="6" fill="#1de9b6" opacity="0.6"/>
+              <circle cx="22" cy="18" r="2" fill="#ff9500"/>
+            </svg>
+          </div>
+          <div>
+            <h3>AudioVerse Quick Guide</h3>
+            <p class="subtitle">Click anywhere to try these features!</p>
+          </div>
+        </div>
+        <button id="featuresClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="modal-content features-content">
+        <!-- Welcome Message -->
+        <div class="welcome-section">
+          <p class="animated-text welcome-text">👋 Hey there! Want to know what you can actually DO in AudioVerse?</p>
+          <p class="animated-text welcome-subtext">Here's how to access all the cool stuff...</p>
+        </div>
+
+        <!-- Feature Categories -->
+        <div class="features-grid">
+          
+          <!-- Getting Started -->
+          <div class="feature-category">
+            <div class="category-header">
+              <span class="category-icon">🚀</span>
+              <h4 class="animated-text category-title">Getting Started (Easy!)</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">📁 <strong>Add music:</strong> Click the upload button (📤) in the top toolbar</li>
+              <li class="animated-text feature-item">➕ <strong>New track:</strong> Hit the + button next to upload</li>
+              <li class="animated-text feature-item">▶️ <strong>Play/pause:</strong> Press SPACEBAR or click the play button</li>
+              <li class="animated-text feature-item">⏹️ <strong>Stop:</strong> Press S or click the stop button</li>
+              <li class="animated-text feature-item">🔴 <strong>Record:</strong> Press R or click the record button</li>
+            </ul>
+          </div>
+
+          <!-- Quick Shortcuts -->
+          <div class="feature-category highlight-category">
+            <div class="category-header">
+              <span class="category-icon">⌨️</span>
+              <h4 class="animated-text category-title">Quick Shortcuts (Time Savers!)</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎵 <strong>SPACEBAR:</strong> Play/pause (works anywhere!)</li>
+              <li class="animated-text feature-item">🏠 <strong>HOME:</strong> Jump to beginning</li>
+              <li class="animated-text feature-item">⬅️➡️ <strong>Arrow keys:</strong> Skip forward/back</li>
+              <li class="animated-text feature-item">↩️ <strong>Ctrl+Z:</strong> Undo (unlimited!)</li>
+              <li class="animated-text feature-item">🔄 <strong>Ctrl+Y:</strong> Redo</li>
+              <li class="animated-text feature-item">🔇 <strong>M:</strong> Mute selected track</li>
+            </ul>
+          </div>
+
+          <!-- Cool Effects -->
+          <div class="feature-category">
+            <div class="category-header">
+              <span class="category-icon">🎛️</span>
+              <h4 class="animated-text category-title">Add Cool Effects</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎚️ <strong>EQ (shape your sound):</strong> Click the track's plugin area, then "Add Plugin"</li>
+              <li class="animated-text feature-item">🌌 <strong>Reverb (space echo):</strong> Same place, choose "Lexicon Reverb"</li>
+              <li class="animated-text feature-item">🎛️ <strong>Open mixer:</strong> Click "Mixer View" button in toolbar</li>
+              <li class="animated-text feature-item">🔊 <strong>Adjust levels:</strong> Drag the sliders in mixer view</li>
+              <li class="animated-text feature-item">🎨 <strong>Visual feedback:</strong> Watch the spectrum analyzer dance!</li>
+            </ul>
+          </div>
+
+          <!-- Editing Magic -->
+          <div class="feature-category">
+            <div class="category-header">
+              <span class="category-icon">✂️</span>
+              <h4 class="animated-text category-title">Edit Like a Pro</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🖱️ <strong>Select audio:</strong> Click and drag on any waveform</li>
+              <li class="animated-text feature-item">🔍 <strong>Zoom in/out:</strong> Use the +/- buttons or mouse wheel</li>
+              <li class="animated-text feature-item">📏 <strong>Snap to grid:</strong> Click "SNAP" to line things up perfectly</li>
+              <li class="animated-text feature-item">✂️ <strong>Cut/copy/paste:</strong> Right-click any audio clip</li>
+              <li class="animated-text feature-item">🎵 <strong>Double-click:</strong> Opens detailed audio editor</li>
+            </ul>
+          </div>
+
+          <!-- Advanced Stuff -->
+          <div class="feature-category">
+            <div class="category-header">
+              <span class="category-icon">🧙‍♂️</span>
+              <h4 class="animated-text category-title">Advanced Tricks</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎼 <strong>Change pitch:</strong> Audio editor → select audio → click "Pitch" button</li>
+              <li class="animated-text feature-item">⏩ <strong>Time stretch:</strong> Make audio faster/slower without changing pitch</li>
+              <li class="animated-text feature-item">📊 <strong>Volume automation:</strong> Audio editor → "Auto" button → draw curves</li>
+              <li class="animated-text feature-item">🔄 <strong>Reverse audio:</strong> Audio editor → select → "Reverse" button</li>
+              <li class="animated-text feature-item">📈 <strong>Normalize:</strong> Makes quiet audio louder automatically</li>
+            </ul>
+          </div>
+
+          <!-- Hidden Gems -->
+          <div class="feature-category secret-category">
+            <div class="category-header">
+              <span class="category-icon">💎</span>
+              <h4 class="animated-text category-title">Secret Features (Shh! 🤫)</h4>
+            </div>
+            <ul class="feature-list">
+              <li class="animated-text feature-item">🎯 <strong>Triple-click:</strong> On empty track area to quick-add audio</li>
+              <li class="animated-text feature-item">🖱️ <strong>Right-click plugins:</strong> Quick bypass or remove</li>
+              <li class="animated-text feature-item">⬆️ <strong>Hold Shift:</strong> While dragging for super-precise control</li>
+              <li class="animated-text feature-item">📱 <strong>Works on phones:</strong> Yes, really! AudioVerse is mobile-friendly</li>
+              <li class="animated-text feature-item">🌌 <strong>Easter egg:</strong> Try clicking this logo when music is playing!</li>
+              <li class="animated-text feature-item">💾 <strong>Auto-save:</strong> Your work is saved automatically</li>
+            </ul>
+          </div>
+
+        </div>
+
+        <!-- Call to Action -->
+        <div class="cta-section">
+          <p class="animated-text cta-text">Ready to make some music? 🎵</p>
+          <p class="animated-text cta-subtext">Close this dialog and start clicking around!</p>
+        </div>
+      </div>
+
+      <div class="modal-footer features-footer">
+        <div class="footer-note">
+          <span class="animated-text">💡 Tip: This dialog will remember what you've seen!</span>
+        </div>
+        <div class="footer-buttons">
+          <button id="featuresStart" class="modal-btn primary">Let's Go! 🚀</button>
+          <button id="featuresCloseFooter" class="modal-btn">I Got It ✨</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Track Volume Automation Dialog -->
+  <div id="trackAutomationOverlay" class="modal-overlay hidden">
+    <div id="trackAutomationDialog" class="modal-dialog automation-dialog modal-wide">
+      <div class="modal-header automation-header">
+        <div class="automation-title-section">
+          <div class="automation-icon">
+            <svg width="24" height="24" viewBox="0 0 16 16">
+              <path d="M2 8 L6 6 L10 10 L14 4" stroke="#ff9500" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="6" cy="6" r="2" fill="#ff9500"/>
+              <circle cx="10" cy="10" r="2" fill="#ff9500"/>
+            </svg>
+          </div>
+          <div>
+            <h3 id="automationTrackTitle">Track 1 - Volume Automation</h3>
+            <p class="automation-subtitle">Draw automation points to control track volume over time</p>
+          </div>
+        </div>
+        <button id="trackAutomationClose" class="modal-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="modal-content automation-content">
+        <div class="automation-controls">
+          <div class="control-group">
+            <label>Volume Range:</label>
+            <input type="range" id="automationMinVolume" min="0" max="100" value="0" class="range-slider">
+            <span id="minVolumeLabel">0%</span>
+            <span class="range-separator">to</span>
+            <input type="range" id="automationMaxVolume" min="0" max="100" value="100" class="range-slider">
+            <span id="maxVolumeLabel">100%</span>
+          </div>
+          <div class="control-group">
+            <button id="automationAddPoint" class="automation-btn" title="Add Automation Point">
+              <svg width="14" height="14" viewBox="0 0 16 16">
+                <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              Add Point
+            </button>
+            <button id="automationDeletePoint" class="automation-btn danger" title="Delete Selected Point" disabled>
+              <svg width="14" height="14" viewBox="0 0 16 16">
+                <path d="M3 6h10l-1 8H4L3 6zM5 3V2a1 1 0 011-1h4a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.5" fill="none"/>
+              </svg>
+              Delete
+            </button>
+            <button id="automationClearAll" class="automation-btn danger" title="Clear All Points">
+              <svg width="14" height="14" viewBox="0 0 16 16">
+                <path d="M2 2l12 12M2 14L14 2" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              Clear All
+            </button>
+          </div>
+        </div>
+
+        <div class="automation-workspace">
+          <div class="automation-timeline" id="automationTimeline">
+            <!-- Timeline markers will be generated here -->
+          </div>
+          <div class="automation-editor" id="automationEditor">
+            <canvas id="automationCanvas" class="automation-canvas"></canvas>
+            <div class="automation-overlay" id="automationOverlay">
+              <!-- Automation points will be created here -->
+            </div>
+          </div>
+        </div>
+
+        <div class="automation-info">
+          <div class="info-group">
+            <span class="info-label">Selected Point:</span>
+            <span id="selectedPointInfo">None</span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">Track Duration:</span>
+            <span id="trackDurationInfo">0:00</span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">Automation Points:</span>
+            <span id="automationPointCount">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer automation-footer">
+        <div class="footer-info">
+          <span class="tip-text">💡 Click to add points, drag to move them, double-click to delete</span>
+        </div>
+        <div class="footer-buttons">
+          <button id="automationPreview" class="modal-btn secondary">
+            <svg width="14" height="14" viewBox="0 0 16 16">
+              <polygon points="4,2 4,14 13,8" fill="currentColor"/>
+            </svg>
+            Preview
+          </button>
+          <button id="automationSave" class="modal-btn primary">Save Automation</button>
+          <button id="automationCancel" class="modal-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tutorial System -->
+  <button id="tutorial-btn" class="tutorial-launch-btn">🎸 Meet Riff</button>
+  <div id="tutorial-overlay" class="tutorial-overlay">
+    <div id="tutorial-character" class="tutorial-character">🎸</div>
+    <div id="tutorial-dialogue" class="tutorial-dialogue">
+      <div id="tutorial-text" class="tutorial-text"></div>
+      <div id="tutorial-controls" class="tutorial-controls">
+        <button id="tutorial-next" class="tutorial-btn-small">Next</button>
+        <button id="tutorial-skip" class="tutorial-btn-small skip">Skip Tutorial</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+  
+  <!-- Load tutorial system (DAW.js already loaded earlier) -->
+  <script src="tutorial.js"></script>
+</body>
+</html>
