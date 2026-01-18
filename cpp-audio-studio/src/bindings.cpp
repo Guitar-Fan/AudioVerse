@@ -2,6 +2,7 @@
 #include <emscripten/val.h>
 #include "AudioAnalyzer.h"
 #include "AudioEditor.h"
+#include "PluginUI.h"
 #include <vector>
 
 using namespace emscripten;
@@ -234,5 +235,18 @@ EMSCRIPTEN_BINDINGS(audio_studio) {
         .function("clearClipboard", &AudioEditorWrapper::clearClipboard)
         .function("getSampleRate", &AudioEditorWrapper::getSampleRate)
         ;
+    
+    // Plugin UI bindings - using simple wrapper methods
+    class_<PluginUI>("PluginUI")
+        .constructor<int, int>()
+        .function("createDrawCommands", &PluginUI::createDrawCommands)
+        .function("drawUI", &PluginUI::drawUI)
+        .function("drawKnobAt", &PluginUI::drawKnobAt)
+        .function("drawFaderAt", &PluginUI::drawFaderAt)
+        .function("drawButtonAt", &PluginUI::drawButtonAt)
+        .function("drawVUMeterAt", &PluginUI::drawVUMeterAt)
+        .function("drawWaveformAt", &PluginUI::drawWaveformAt)
+        .function("drawSpectrumAt", &PluginUI::drawSpectrumAt)
+        .function("drawPanelAt", &PluginUI::drawPanelAt)
+        ;
 }
-

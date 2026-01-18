@@ -177,6 +177,30 @@ src/AudioEditor.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/audio-studio.dir/build.make CMakeFiles/audio-studio.dir/src/AudioEditor.cpp.s
 .PHONY : src/AudioEditor.cpp.s
 
+src/PluginUI.o: src/PluginUI.cpp.o
+.PHONY : src/PluginUI.o
+
+# target to build an object file
+src/PluginUI.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/audio-studio.dir/build.make CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o
+.PHONY : src/PluginUI.cpp.o
+
+src/PluginUI.i: src/PluginUI.cpp.i
+.PHONY : src/PluginUI.i
+
+# target to preprocess a source file
+src/PluginUI.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/audio-studio.dir/build.make CMakeFiles/audio-studio.dir/src/PluginUI.cpp.i
+.PHONY : src/PluginUI.cpp.i
+
+src/PluginUI.s: src/PluginUI.cpp.s
+.PHONY : src/PluginUI.s
+
+# target to generate assembly for a file
+src/PluginUI.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/audio-studio.dir/build.make CMakeFiles/audio-studio.dir/src/PluginUI.cpp.s
+.PHONY : src/PluginUI.cpp.s
+
 src/bindings.o: src/bindings.cpp.o
 .PHONY : src/bindings.o
 
@@ -216,6 +240,9 @@ help:
 	@echo "... src/AudioEditor.o"
 	@echo "... src/AudioEditor.i"
 	@echo "... src/AudioEditor.s"
+	@echo "... src/PluginUI.o"
+	@echo "... src/PluginUI.i"
+	@echo "... src/PluginUI.s"
 	@echo "... src/bindings.o"
 	@echo "... src/bindings.i"
 	@echo "... src/bindings.s"

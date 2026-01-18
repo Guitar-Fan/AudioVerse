@@ -99,11 +99,26 @@ CMakeFiles/audio-studio.dir/src/AudioEditor.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/audio-studio.dir/src/AudioEditor.cpp.s"
 	/workspaces/AudioVerse/emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /workspaces/AudioVerse/cpp-audio-studio/src/AudioEditor.cpp -o CMakeFiles/audio-studio.dir/src/AudioEditor.cpp.s
 
+CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o: CMakeFiles/audio-studio.dir/flags.make
+CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o: CMakeFiles/audio-studio.dir/includes_CXX.rsp
+CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o: /workspaces/AudioVerse/cpp-audio-studio/src/PluginUI.cpp
+CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o: CMakeFiles/audio-studio.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o"
+	/workspaces/AudioVerse/emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o -MF CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o.d -o CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o -c /workspaces/AudioVerse/cpp-audio-studio/src/PluginUI.cpp
+
+CMakeFiles/audio-studio.dir/src/PluginUI.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/audio-studio.dir/src/PluginUI.cpp.i"
+	/workspaces/AudioVerse/emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /workspaces/AudioVerse/cpp-audio-studio/src/PluginUI.cpp > CMakeFiles/audio-studio.dir/src/PluginUI.cpp.i
+
+CMakeFiles/audio-studio.dir/src/PluginUI.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/audio-studio.dir/src/PluginUI.cpp.s"
+	/workspaces/AudioVerse/emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /workspaces/AudioVerse/cpp-audio-studio/src/PluginUI.cpp -o CMakeFiles/audio-studio.dir/src/PluginUI.cpp.s
+
 CMakeFiles/audio-studio.dir/src/bindings.cpp.o: CMakeFiles/audio-studio.dir/flags.make
 CMakeFiles/audio-studio.dir/src/bindings.cpp.o: CMakeFiles/audio-studio.dir/includes_CXX.rsp
 CMakeFiles/audio-studio.dir/src/bindings.cpp.o: /workspaces/AudioVerse/cpp-audio-studio/src/bindings.cpp
 CMakeFiles/audio-studio.dir/src/bindings.cpp.o: CMakeFiles/audio-studio.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/audio-studio.dir/src/bindings.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/audio-studio.dir/src/bindings.cpp.o"
 	/workspaces/AudioVerse/emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/audio-studio.dir/src/bindings.cpp.o -MF CMakeFiles/audio-studio.dir/src/bindings.cpp.o.d -o CMakeFiles/audio-studio.dir/src/bindings.cpp.o -c /workspaces/AudioVerse/cpp-audio-studio/src/bindings.cpp
 
 CMakeFiles/audio-studio.dir/src/bindings.cpp.i: cmake_force
@@ -118,6 +133,7 @@ CMakeFiles/audio-studio.dir/src/bindings.cpp.s: cmake_force
 audio__studio_OBJECTS = \
 "CMakeFiles/audio-studio.dir/src/AudioAnalyzer.cpp.o" \
 "CMakeFiles/audio-studio.dir/src/AudioEditor.cpp.o" \
+"CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o" \
 "CMakeFiles/audio-studio.dir/src/bindings.cpp.o"
 
 # External object files for target audio-studio
@@ -125,11 +141,12 @@ audio__studio_EXTERNAL_OBJECTS =
 
 /workspaces/AudioVerse/cpp-audio-studio/web/audio-studio.js: CMakeFiles/audio-studio.dir/src/AudioAnalyzer.cpp.o
 /workspaces/AudioVerse/cpp-audio-studio/web/audio-studio.js: CMakeFiles/audio-studio.dir/src/AudioEditor.cpp.o
+/workspaces/AudioVerse/cpp-audio-studio/web/audio-studio.js: CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o
 /workspaces/AudioVerse/cpp-audio-studio/web/audio-studio.js: CMakeFiles/audio-studio.dir/src/bindings.cpp.o
 /workspaces/AudioVerse/cpp-audio-studio/web/audio-studio.js: CMakeFiles/audio-studio.dir/build.make
 /workspaces/AudioVerse/cpp-audio-studio/web/audio-studio.js: CMakeFiles/audio-studio.dir/objects1.rsp
 /workspaces/AudioVerse/cpp-audio-studio/web/audio-studio.js: CMakeFiles/audio-studio.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable /workspaces/AudioVerse/cpp-audio-studio/web/audio-studio.js"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/workspaces/AudioVerse/cpp-audio-studio/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX executable /workspaces/AudioVerse/cpp-audio-studio/web/audio-studio.js"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/audio-studio.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

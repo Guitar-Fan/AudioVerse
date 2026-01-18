@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(SOURCES
     src/AudioAnalyzer.cpp
     src/AudioEditor.cpp
+    src/PluginUI.cpp
     src/bindings.cpp
 )
 

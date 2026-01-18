@@ -48,4 +48,41 @@ Pervasive DSP utilities: The module includes various other utilities and buildin
 
 Now instead of audio analysis, make it low level polyphonic audio editing studio. Use JUCE framework to make application look like a projessional plugin. Edit and add the new features in C++ Audio Studio.
 
-help me with this
+install iPlug2 and use it for the C++ app
+
+I mean the outside UI, not just the graphs (the surrounding UI still looks like html, with the google font and stuff).
+also make the visualizations live, so user can play audio file and see the graphs change.
+
+Update accurate links in index.html containing "planets" to my audio tools.
+
+for editor.html in cpp audio studio, add smooth mouse interactive low level editing features, that are super low level, like dragging the harmonics points, draggin waveform peaks of different graphs, like amplitude, frequency.
+This requires adding detailed audio analysis features. using cpp for backend
+
+In index.html with all the planets: make planets midi daw with ideas and CraftySound at least twice as big as normal planets.
+Make Midi daw noticebly bigger than CraftySound, and make Audioverse Sun bigger than midi daw.
+when user clicks highlight planet; draw a red rectangle around it.
+Also the controls info box at bottom right corner and the list of planets overlap. Move list up to top right corner to make sure they don't overlap.
+Changes colors of welcome screen and dialogue box that appears if you click on item in list to darker background colors to accommedate the text colors.
+
+The highlighting planet feature doesn't show any rectangle or anything. It just shifts the zooming focus to the planet highlighted. Fix this.
+The planets appearance looks bad (spheres with random 3d shapes inside). Be proactive with coming up with the new unique design for each individual planet.
+Make the orbit patterns less repetitive (right now all orbit paths are circles around the sun), making some of my no so important tools, like moons orbiting a planet, oval orbit, random distance for each full orbit.
+Keep in mind throughout the whole thing, that I want a music/universe theme.
+Also have an animated 3d red arrow pointing at "controls" info box at bottom right corner, until user does first action after clicking "start exploring".
+
+For AudioVerse, create a tutorial similar to Midi DAW with Ideas "Riff" character tutorial. Point out placeholders and pretty much all features, like an interactive game tutorial. In tutorial, have user click to switch views.j
+
+Don't require user to do any action for tutorial, except for switching views, so the red rectangles and arrows can point out the controls on every view
+
+whenever tutorial moves, the outside darkens and user can't switch views.
+
+don't darken anything for tutorial, it makes it impossible to switch views
+
+the waiting of tutorial waits forever, also make riff button glow, after tutorial is skipped or done, make button is gone.
+make metronome strip controls (has metronome, tempo, settings button) be on same strip as transport controls and delete metronome strip. because transport strip is blocking metronome strip.
+
+on second thought, just make sure the 2 strips don't 
+
+that didn't solve it, the problem is that I expanded the transport strip vertically, so it now covers the metronome strip. so move the metronome stip down out of overlap
+
+@ create a open pull request in a branch called secondary

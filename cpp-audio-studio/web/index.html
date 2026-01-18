@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C++ Audio Analysis Studio</title>
+    <title>AudioVerse Pro - Professional C++ Audio Plugin</title>
     <style>
         * {
             margin: 0;
@@ -13,219 +13,237 @@
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3e 100%);
-            color: #e0e0e0;
+            background: linear-gradient(135deg, #1a1a1f 0%, #0f0f13 100%);
+            color: #e8e8ea;
+            overflow: hidden;
+        }
+        
+        #plugin-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Top Bar */
+        #top-bar {
+            background: linear-gradient(180deg, #1f1f24 0%, #18181c 100%);
+            padding: 15px 25px;
+            border-bottom: 1px solid #2a2a30;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        
+        #top-bar h1 {
+            font-size: 20px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #00d4ff, #7000ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        #top-bar .status {
+            font-size: 11px;
+            color: #00ff66;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+        
+        /* Main Content */
+        #main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        /* Plugin Canvas Area */
+        #plugin-canvas-area {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 20px;
         }
         
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
+        #pluginCanvas {
+            background: #0d0d10;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8),
+                        inset 0 1px 0 rgba(255,255,255,0.05);
+            max-width: 100%;
+            max-height: 100%;
         }
         
-        h1 {
-            text-align: center;
-            color: #00d4ff;
-            margin-bottom: 10px;
-            font-size: 2.5em;
-            text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
-        }
-        
-        .subtitle {
-            text-align: center;
-            color: #888;
-            margin-bottom: 30px;
-            font-size: 0.9em;
-        }
-        
-        .controls {
-            background: rgba(255, 255, 255, 0.05);
+        /* File Upload Area */
+        #file-upload-area {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(31, 31, 36, 0.95);
             padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 8px;
+            border: 1px solid #2a2a30;
+            backdrop-filter: blur(10px);
         }
         
         .file-input-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
         }
         
-        input[type="file"] {
-            padding: 10px;
-            background: rgba(0, 212, 255, 0.1);
-            border: 2px solid #00d4ff;
-            border-radius: 5px;
-            color: #e0e0e0;
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
             cursor: pointer;
-            flex: 1;
         }
         
-        input[type="file"]::-webkit-file-upload-button {
-            background: #00d4ff;
-            color: #1e1e2e;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 3px;
+        .file-input-label {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #00d4ff, #0088cc);
+            color: white;
+            border-radius: 6px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
         }
         
-        .metrics {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+        .file-input-label:hover {
+            background: linear-gradient(135deg, #00e5ff, #0099dd);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.4);
         }
         
-        .metric {
-            background: rgba(0, 212, 255, 0.1);
-            padding: 15px;
+        /* Info Panel */
+        #info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(31, 31, 36, 0.95);
+            padding: 15px 20px;
             border-radius: 8px;
-            border-left: 4px solid #00d4ff;
+            border: 1px solid #2a2a30;
+            backdrop-filter: blur(10px);
+            min-width: 300px;
+        }
+        
+        #info-panel h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #00d4ff;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 13px;
         }
         
         .metric-label {
-            font-size: 0.85em;
             color: #888;
-            margin-bottom: 5px;
         }
         
         .metric-value {
-            font-size: 1.5em;
-            font-weight: bold;
             color: #00d4ff;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
         }
         
-        .visualizations {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
-            gap: 20px;
-        }
-        
-        .viz-panel {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid rgba(0, 212, 255, 0.2);
-        }
-        
-        .viz-title {
-            color: #00d4ff;
-            margin-bottom: 15px;
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-        
-        canvas {
-            width: 100%;
-            height: 300px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 5px;
-            display: block;
-        }
-        
-        .status {
+        /* Loading State */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             text-align: center;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
-            font-weight: bold;
         }
         
-        .status.loading {
-            background: rgba(255, 165, 0, 0.2);
-            color: #ffa500;
-            border: 1px solid #ffa500;
+        .spinner {
+            border: 3px solid rgba(0, 212, 255, 0.1);
+            border-top: 3px solid #00d4ff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
         }
         
-        .status.ready {
-            background: rgba(0, 255, 0, 0.2);
-            color: #00ff00;
-            border: 1px solid #00ff00;
-        }
-        
-        .status.error {
-            background: rgba(255, 0, 0, 0.2);
-            color: #ff0000;
-            border: 1px solid #ff0000;
-        }
-        
-        @media (max-width: 768px) {
-            .visualizations {
-                grid-template-columns: 1fr;
-            }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎵 C++ Audio Analysis Studio</h1>
-        <p class="subtitle">High-performance WASM-powered audio analysis • Built with C++ & Emscripten</p>
-        
-        <div id="status" class="status loading">Loading C++ engine...</div>
-        
-        <div class="controls">
-            <div class="file-input-wrapper">
-                <input type="file" id="audioFile" accept="audio/*" disabled>
-            </div>
+    <div id="plugin-container">
+        <div id="top-bar">
+            <h1>AUDIOVERSE PRO</h1>
+            <div class="status" id="engine-status">🔴 Engine Initializing...</div>
         </div>
         
-        <div class="metrics">
-            <div class="metric">
-                <div class="metric-label">Peak Level</div>
-                <div class="metric-value" id="peakLevel">-∞ dB</div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">RMS Level</div>
-                <div class="metric-value" id="rmsLevel">-∞ dB</div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">Dominant Frequency</div>
-                <div class="metric-value" id="dominantFreq">-- Hz</div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">Spectral Centroid</div>
-                <div class="metric-value" id="spectralCentroid">-- Hz</div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">Spectral Rolloff</div>
-                <div class="metric-value" id="spectralRolloff">-- Hz</div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">Sample Rate</div>
-                <div class="metric-value" id="sampleRate">-- Hz</div>
-            </div>
-        </div>
-        
-        <div class="visualizations">
-            <div class="viz-panel">
-                <div class="viz-title">Waveform Analysis</div>
-                <canvas id="waveformCanvas"></canvas>
-            </div>
-            
-            <div class="viz-panel">
-                <div class="viz-title">Frequency Spectrum (FFT)</div>
-                <canvas id="spectrumCanvas"></canvas>
-            </div>
-            
-            <div class="viz-panel">
-                <div class="viz-title">Phase Spectrum</div>
-                <canvas id="phaseCanvas"></canvas>
-            </div>
-            
-            <div class="viz-panel">
-                <div class="viz-title">Spectrogram (Time-Frequency)</div>
-                <canvas id="spectrogramCanvas"></canvas>
+        <div id="main-content">
+            <div id="plugin-canvas-area">
+                <canvas id="pluginCanvas" width="1200" height="700"></canvas>
+                
+                <div id="file-upload-area">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="audioFile" accept="audio/*" disabled>
+                        <label for="audioFile" class="file-input-label">
+                            📁 Load Audio
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="info-panel">
+                    <h3>📊 Audio Metrics</h3>
+                    <div class="metric-row">
+                        <span class="metric-label">Peak Level:</span>
+                        <span class="metric-value" id="peakLevel">-∞ dB</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">RMS Level:</span>
+                        <span class="metric-value" id="rmsLevel">-∞ dB</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Sample Rate:</span>
+                        <span class="metric-value" id="sampleRate">-- Hz</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Duration:</span>
+                        <span class="metric-value" id="duration">--</span>
+                    </div>
+                </div>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <div>Loading C++ Plugin Engine...</div>
+                </div>
             </div>
         </div>
     </div>
     
+    <!-- WASM and JavaScript Dependencies -->
     <script src="audio-studio.js"></script>
-    <script src="app.js"></script>
+    <script src="plugin-pro-app.js"></script>
+    
+    <!-- Eruda Mobile Console for Debugging -->
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
+    <script>eruda.init();</script>
 </body>
 </html>

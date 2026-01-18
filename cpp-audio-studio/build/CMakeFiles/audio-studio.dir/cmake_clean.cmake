@@ -5,6 +5,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/audio-studio.dir/src/AudioAnalyzer.cpp.o.d"
   "CMakeFiles/audio-studio.dir/src/AudioEditor.cpp.o"
   "CMakeFiles/audio-studio.dir/src/AudioEditor.cpp.o.d"
+  "CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o"
+  "CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o.d"
   "CMakeFiles/audio-studio.dir/src/bindings.cpp.o"
   "CMakeFiles/audio-studio.dir/src/bindings.cpp.o.d"
 )

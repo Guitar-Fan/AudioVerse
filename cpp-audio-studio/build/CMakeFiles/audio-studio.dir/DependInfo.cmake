@@ -10,6 +10,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/workspaces/AudioVerse/cpp-audio-studio/src/AudioAnalyzer.cpp" "CMakeFiles/audio-studio.dir/src/AudioAnalyzer.cpp.o" "gcc" "CMakeFiles/audio-studio.dir/src/AudioAnalyzer.cpp.o.d"
   "/workspaces/AudioVerse/cpp-audio-studio/src/AudioEditor.cpp" "CMakeFiles/audio-studio.dir/src/AudioEditor.cpp.o" "gcc" "CMakeFiles/audio-studio.dir/src/AudioEditor.cpp.o.d"
+  "/workspaces/AudioVerse/cpp-audio-studio/src/PluginUI.cpp" "CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o" "gcc" "CMakeFiles/audio-studio.dir/src/PluginUI.cpp.o.d"
   "/workspaces/AudioVerse/cpp-audio-studio/src/bindings.cpp" "CMakeFiles/audio-studio.dir/src/bindings.cpp.o" "gcc" "CMakeFiles/audio-studio.dir/src/bindings.cpp.o.d"
   )
 
