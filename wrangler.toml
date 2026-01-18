@@ -1,4 +1,9 @@
 name = "audioverse"
 compatibility_date = "2024-01-01"
 
+# Deploy from root directory (contains index.html and all your tools)
 pages_build_output_dir = "."
+
+[build]
+# No build needed - deploying pre-built static files
+command = ""
