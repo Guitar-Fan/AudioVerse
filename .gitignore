@@ -5,3 +5,29 @@
 *.md
 # Except README.md
 !README.md
+
+To be absolutely clear, we are improving MIDI_DAW_With_Ideas using code from PianoRollUX.html. So the only file being modified is Midi_DAW_With_Ideas.
+assimulate the entire UX of of Midi_DAW_With_Ideas.html with PianoRollUX.html, BUT DO NOT DELETE THESE ORIGINAL FUNCTIONALITY:
+-The functionality to look not to delete is pressing a piano key and it lets you load a sound sample, in which
+the website will pitch the sound sample up or down so it is now a sampler piano.
+-the ability to load and parse a multi track midi file
+as visible midi notes on the website. 
+-tone.js instruments engine
+-Don't delete buttons (replace some of them)
+Be careful when touching these functinality codes and any other functionality for that matter.
+The things functionality wise I WANT ADDED or REPLACED are:
+-from PianoRollUX.html to MIDI_DAW_With_Ideas.html is the velocity bar automation UX and functionality.
+-piano roll writing notes experience
+-snap to controls (change the controls and functionality for this)
+-playback, tempo system
+-top 2 panels of controls (modify the UI of them) 
+-General UI/UX
+-If any functionality that is in the PianoRollUX that doesn contradict or erase, add it (like when user writes notes, it triggers the instrument sample currently loaded)
+
+Code multi-track midi workflow. Implement:
+-Uploaded midi files get parsed and different tracks are split up and automatically create a new "track"
+-DAW styled window with track looking page like fl studio
+
+
+Make the the keys nice and straight 2d, but have a 3d shadow depth effect. and play the sound the midi trigger in falling keys mode.
+And the notes animation is funky. Make sure the sound is in sync with visuals. notes should intersect the keys and turn to smoke right when the actual midi sound is triggered by the note.

@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MIDI Sequencer - DAW Piano Roll</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-dark: #12131a;
+      --bg-mid: #1a1c25;
+      --bg-light: #252833;
+      --accent: #00d4aa;
+      --accent-dim: #00a080;
+      --accent-glow: rgba(0, 212, 170, 0.3);
+      --text-primary: #e8eaed;
+      --text-secondary: #8b8fa3;
+      --text-dim: #5a5e70;
+      --border: #2a2d3a;
+      --note-color: #00d4aa;
+      --note-selected: #ff6b4a;
+      --grid-line: rgba(255,255,255,0.03);
+      --grid-beat: rgba(255,255,255,0.08);
+      --playhead: #ff6b4a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      margin: 0;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-dark); }
+    ::-webkit-scrollbar-thumb { background: var(--bg-light); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+    /* Piano Roll */
+    .piano-container {
+      display: flex;
+      height: 100%;
+      background: var(--bg-deep);
+    }
+
+    .piano-keys {
+      width: 60px;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, var(--bg-mid) 0%, var(--bg-dark) 100%);
+      border-right: 1px solid var(--border);
+      overflow-y: hidden;
+      position: relative;
+      z-index: 10;
+    }
+
+    .piano-key {
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 6px;
+      font-size: 9px;
+      cursor: pointer;
+      transition: all 0.1s ease;
+      border-bottom: 1px solid rgba(0,0,0,0.2);
+      position: relative;
+    }
+
+    .piano-key.white {
+      background: linear-gradient(90deg, #e8eaed 0%, #d4d6dc 100%);
+      color: var(--bg-deep);
+    }
+
+    .piano-key.black {
+      background: linear-gradient(90deg, #2a2c35 0%, #1a1c22 100%);
+      color: var(--text-secondary);
+      margin-left: 30px;
+      width: 30px;
+      z-index: 5;
+    }
+
+    .piano-key:hover { filter: brightness(1.2); }
+    .piano-key.playing { 
+      background: var(--accent) !important; 
+      color: var(--bg-deep) !important;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .piano-key.white.playing { background: var(--accent) !important; }
+
+    .grid-container {
+      flex: 1;
+      overflow: auto;
+      position: relative;
+      background: var(--bg-deep);
+    }
+
+    .piano-grid {
+      position: relative;
+      min-width: 2000px;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 24px,
+        var(--grid-line) 24px,
+        var(--grid-line) 25px
+      );
+    }
+
+    .grid-row {
+      height: 20px;
+      position: relative;
+      border-bottom: 1px solid var(--grid-line);
+    }
+
+    .grid-row.black-key {
+      background: rgba(0,0,0,0.15);
+    }
+
+    .beat-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--grid-beat);
+      pointer-events: none;
+    }
+
+    .bar-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: rgba(255,255,255,0.15);
+      pointer-events: none;
+    }
+
+    .note {
+      position: absolute;
+      height: 16px;
+      top: 2px;
+      background: linear-gradient(180deg, var(--note-color) 0%, var(--accent-dim) 100%);
+      border-radius: 3px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,212,170,0.3);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      min-width: 25px;
+    }
+
+    .note:hover {
+      transform: scaleY(1.1);
+      box-shadow: 0 4px 16px rgba(0,212,170,0.5);
+    }
+
+    .note.selected {
+      background: linear-gradient(180deg, var(--note-selected) 0%, #cc4030 100%);
+      box-shadow: 0 2px 8px rgba(255,107,74,0.5);
+    }
+
+    .note-handle {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      cursor: ew-resize;
+      background: rgba(255,255,255,0.2);
+      border-radius: 0 3px 3px 0;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .note:hover .note-handle { opacity: 1; }
+
+    .playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--playhead);
+      z-index: 100;
+      pointer-events: none;
+      box-shadow: 0 0 10px var(--playhead);
+    }
+
+    .playhead::before {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: -4px;
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 8px solid var(--playhead);
+    }
+
+    /* Timeline */
+    .timeline {
+      height: 30px;
+      background: var(--bg-dark);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .timeline-marker {
+      position: absolute;
+      top: 0;
+      font-size: 10px;
+      color: var(--text-dim);
+      padding-left: 4px;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--bg-dark);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tool-btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-mid);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .tool-btn:hover {
+      background: var(--bg-light);
+      color: var(--text-primary);
+    }
+
+    .tool-btn.active {
+      background: var(--accent);
+      color: var(--bg-deep);
+      border-color: var(--accent);
+    }
+
+    .transport-btn {
+      width: 44px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-mid);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .transport-btn:hover {
+      background: var(--bg-light);
+      color: var(--text-primary);
+    }
+
+    .transport-btn.playing {
+      background: var(--accent);
+      color: var(--bg-deep);
+      border-color: var(--accent);
+    }
+
+    .divider {
+      width: 1px;
+      height: 28px;
+      background: var(--border);
+      margin: 0 8px;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .control-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .control-value {
+      background: var(--bg-deep);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: 13px;
+      color: var(--text-primary);
+      width: 60px;
+      text-align: center;
+    }
+
+    .control-value:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    select.control-select {
+      background: var(--bg-deep);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    select.control-select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    /* Velocity Panel */
+    .velocity-panel {
+      height: 80px;
+      background: var(--bg-dark);
+      border-top: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .velocity-bar {
+      position: absolute;
+      bottom: 0;
+      width: 4px;
+      background: var(--accent);
+      border-radius: 2px 2px 0 0;
+      transition: height 0.1s ease;
+      cursor: ns-resize;
+    }
+
+    .velocity-bar:hover {
+      background: var(--note-selected);
+    }
+
+    /* Context Menu */
+    .context-menu {
+      position: fixed;
+      background: var(--bg-mid);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 0;
+      min-width: 160px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      z-index: 1000;
+      display: none;
+    }
+
+    .context-menu.visible { display: block; }
+
+    .context-item {
+      padding: 8px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-secondary);
+    }
+
+    .context-item:hover {
+      background: var(--bg-light);
+      color: var(--text-primary);
+    }
+
+    .context-item svg {
+      width: 16px;
+      height: 16px;
+      opacity: 0.7;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 16px;
+      background: var(--bg-dark);
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    /* Animations */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .recording { animation: pulse 1s infinite; }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="flex flex-col h-screen">
+    <!-- Top Toolbar -->
+    <div class="toolbar">
+      <!-- Transport Controls -->
+      <div class="control-group">
+        <button class="transport-btn" id="stopBtn" title="Stop">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <rect x="3" y="3" width="10" height="10" rx="1"/>
+          </svg>
+        </button>
+        <button class="transport-btn" id="playBtn" title="Play/Pause">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="playIcon">
+            <path d="M4 2L14 8L4 14V2Z"/>
+          </svg>
+        </button>
+        <button class="transport-btn" id="recordBtn" title="Record">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <circle cx="8" cy="8" r="5"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Tools -->
+      <div class="control-group">
+        <button class="tool-btn active" id="drawTool" title="Draw Tool (D)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+            <path d="M2 2l7.586 7.586"/>
+          </svg>
+        </button>
+        <button class="tool-btn" id="eraseTool" title="Erase Tool (E)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 20H7L3 16l9-9 8 8-4 4"/>
+            <path d="M6.5 13.5L3 10"/>
+          </svg>
+        </button>
+        <button class="tool-btn" id="selectTool" title="Select Tool (V)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Grid Snap -->
+      <div class="control-group">
+        <span class="control-label">Snap</span>
+        <select class="control-select" id="snapSelect">
+          <option value="0.25">1/16</option>
+          <option value="0.5">1/8</option>
+          <option value="1" selected>1/4</option>
+          <option value="2">1/2</option>
+          <option value="4">1 Bar</option>
+        </select>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- BPM -->
+      <div class="control-group">
+        <span class="control-label">BPM</span>
+        <input type="number" class="control-value mono" id="bpmInput" value="120" min="20" max="300">
+      </div>
+
+      <!-- Time Signature -->
+      <div class="control-group">
+        <span class="control-label">Time</span>
+        <select class="control-select" id="timeSelect">
+          <option value="4/4">4/4</option>
+          <option value="3/4">3/4</option>
+          <option value="6/8">6/8</option>
+        </select>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Instrument -->
+      <div class="control-group">
+        <span class="control-label">Instrument</span>
+        <select class="control-select" id="instrumentSelect">
+          <option value="synth">Synth</option>
+          <option value="piano">Piano</option>
+          <option value="bass">Bass</option>
+          <option value="pad">Pad</option>
+          <option value="pluck">Pluck</option>
+        </select>
+      </div>
+
+      <div class="flex-1"></div>
+
+      <!-- Zoom -->
+      <div class="control-group">
+        <button class="tool-btn" id="zoomOut" title="Zoom Out">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <line x1="8" y1="11" x2="14" y2="11"/>
+          </svg>
+        </button>
+        <span class="mono text-xs text-gray-400" id="zoomLevel">100%</span>
+        <button class="tool-btn" id="zoomIn" title="Zoom In">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <line x1="11" y1="8" x2="11" y2="14"/>
+            <line x1="8" y1="11" x2="14" y2="11"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline" id="timeline">
+      <div class="timeline-content" id="timelineContent"></div>
+    </div>
+
+    <!-- Main Piano Roll Area -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Piano Keys -->
+      <div class="piano-keys" id="pianoKeys"></div>
+
+      <!-- Grid Area -->
+      <div class="grid-container" id="gridContainer">
+        <div class="piano-grid" id="pianoGrid">
+          <div class="playhead" id="playhead" style="left: 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Velocity Panel -->
+    <div class="velocity-panel" id="velocityPanel">
+      <div class="velocity-content" id="velocityContent"></div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="flex items-center gap-4">
+        <span id="positionDisplay">Position: 1.1.1</span>
+        <span id="notesCount">Notes: 0</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span>Press Delete to remove selected notes</span>
+        <span>Ctrl+A to select all</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div class="context-menu" id="contextMenu">
+    <div class="context-item" data-action="cut">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
+        <line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/>
+      </svg>
+      Cut
+    </div>
+    <div class="context-item" data-action="copy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+      Copy
+    </div>
+    <div class="context-item" data-action="paste">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+        <rect x="8" y="2" width="8" height="4" rx="1"/>
+      </svg>
+      Paste
+    </div>
+    <div class="context-item" data-action="delete">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      </svg>
+      Delete
+    </div>
+    <div class="context-item" data-action="selectall">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+      </svg>
+      Select All
+    </div>
+  </div>
+
+  <script>
+    // Initialize Tone.js
+    const synths = {
+      synth: new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'sawtooth' },
+        envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.3 }
+      }).toDestination(),
+      piano: new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'triangle' },
+        envelope: { attack: 0.005, decay: 0.3, sustain: 0.4, release: 0.8 }
+      }).toDestination(),
+      bass: new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'square' },
+        envelope: { attack: 0.01, decay: 0.1, sustain: 0.6, release: 0.2 }
+      }).toDestination(),
+      pad: new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'sine' },
+        envelope: { attack: 0.3, decay: 0.5, sustain: 0.8, release: 1.5 }
+      }).toDestination(),
+      pluck: new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'sine' },
+        envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.2 }
+      }).toDestination()
+    };
+
+    // State
+    let notes = [];
+    let selectedNotes = new Set();
+    let currentTool = 'draw';
+    let isPlaying = false;
+    let isRecording = false;
+    let bpm = 120;
+    let snapValue = 1;
+    let pixelsPerBeat = 100;
+    let currentInstrument = 'synth';
+    let clipboard = [];
+    let isDragging = false;
+    let isResizing = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let resizeNote = null;
+    let resizeStartWidth = 0;
+    let playheadPosition = 0;
+    let lastDrawNote = null;
+
+    // Note names
+    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const totalNotes = 88; // Standard piano range
+    const startOctave = 0;
+    const startNote = 9; // A0
+
+    // Get note name from index
+    function getNoteName(index) {
+      const actualNote = startNote + index;
+      const octave = Math.floor(actualNote / 12) + startOctave;
+      const noteIndex = actualNote % 12;
+      return noteNames[noteIndex] + octave;
+    }
+
+    // Check if black key
+    function isBlackKey(noteName) {
+      return noteName.includes('#');
+    }
+
+    // Convert time to pixels
+    function timeToPixels(beats) {
+      return beats * pixelsPerBeat;
+    }
+
+    // Convert pixels to time (snapped)
+    function pixelsToTime(pixels) {
+      const beats = pixels / pixelsPerBeat;
+      return Math.round(beats / snapValue) * snapValue;
+    }
+
+    // Initialize piano keys
+    function initPianoKeys() {
+      const container = document.getElementById('pianoKeys');
+      container.innerHTML = '';
+      
+      for (let i = totalNotes - 1; i >= 0; i--) {
+        const noteName = getNoteName(i);
+        const key = document.createElement('div');
+        key.className = `piano-key ${isBlackKey(noteName) ? 'black' : 'white'}`;
+        key.dataset.note = noteName;
+        key.dataset.index = i;
+        key.textContent = noteName;
+        
+        // Click to play note
+        key.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          playNote(noteName);
+        });
+        key.addEventListener('mouseup', () => stopNote(noteName));
+        key.addEventListener('mouseleave', () => stopNote(noteName));
+        
+        container.appendChild(key);
+      }
+    }
+
+    // Initialize grid
+    function initGrid() {
+      const grid = document.getElementById('pianoGrid');
+      grid.innerHTML = '<div class="playhead" id="playhead" style="left: 0;"></div>';
+      grid.style.width = (32 * pixelsPerBeat) + 'px';
+      grid.style.height = (totalNotes * 20) + 'px';
+      
+      // Create rows
+      for (let i = totalNotes - 1; i >= 0; i--) {
+        const noteName = getNoteName(i);
+        const row = document.createElement('div');
+        row.className = `grid-row ${isBlackKey(noteName) ? 'black-key' : ''}`;
+        row.dataset.note = noteName;
+        row.dataset.index = i;
+        
+        // Beat markers
+        for (let beat = 0; beat < 32; beat++) {
+          if (beat % 4 === 0) {
+            const marker = document.createElement('div');
+            marker.className = 'bar-marker';
+            marker.style.left = timeToPixels(beat) + 'px';
+            row.appendChild(marker);
+          } else if (beat % 1 === 0) {
+            const marker = document.createElement('div');
+            marker.className = 'beat-marker';
+            marker.style.left = timeToPixels(beat) + 'px';
+            row.appendChild(marker);
+          }
+        }
+        
+        // Row click handler
+        row.addEventListener('mousedown', (e) => handleGridMouseDown(e, row));
+        row.addEventListener('mousemove', (e) => handleGridMouseMove(e, row));
+        row.addEventListener('mouseup', (e) => handleGridMouseUp(e, row));
+        
+        grid.appendChild(row);
+      }
+      
+      // Timeline
+      initTimeline();
+      renderNotes();
+    }
+
+    // Initialize timeline
+    function initTimeline() {
+      const timeline = document.getElementById('timeline');
+      timeline.innerHTML = '';
+      timeline.style.width = (32 * pixelsPerBeat) + 'px';
+      
+      for (let bar = 0; bar < 8; bar++) {
+        const marker = document.createElement('div');
+        marker.className = 'timeline-marker mono';
+        marker.style.left = (bar * 4 * pixelsPerBeat) + 'px';
+        marker.textContent = (bar + 1);
+        timeline.appendChild(marker);
+      }
+    }
+
+    // Render notes
+    function renderNotes() {
+      // Remove existing note elements
+      document.querySelectorAll('.note').forEach(el => el.remove());
+      
+      notes.forEach((note, index) => {
+        const row = document.querySelector(`.grid-row[data-note="${note.pitch}"]`);
+        if (!row) return;
+        
+        const noteEl = document.createElement('div');
+        noteEl.className = 'note';
+        if (selectedNotes.has(index)) noteEl.classList.add('selected');
+        
+        noteEl.style.left = timeToPixels(note.time) + 'px';
+        noteEl.style.width = Math.max(25, timeToPixels(note.duration)) + 'px';
+        noteEl.dataset.index = index;
+        
+        // Resize handle
+        const handle = document.createElement('div');
+        handle.className = 'note-handle';
+        noteEl.appendChild(handle);
+        
+        // Note events
+        noteEl.addEventListener('mousedown', (e) => handleNoteMouseDown(e, index));
+        handle.addEventListener('mousedown', (e) => handleResizeStart(e, index));
+        
+        row.appendChild(noteEl);
+      });
+      
+      updateVelocityPanel();
+      document.getElementById('notesCount').textContent = `Notes: ${notes.length}`;
+    }
+
+    // Update velocity panel
+    function updateVelocityPanel() {
+      const panel = document.getElementById('velocityPanel');
+      panel.innerHTML = '';
+      panel.style.width = (32 * pixelsPerBeat) + 'px';
+      
+      notes.forEach((note, index) => {
+        const bar = document.createElement('div');
+        bar.className = 'velocity-bar';
+        bar.style.left = (timeToPixels(note.time) + 2) + 'px';
+        bar.style.height = (note.velocity * 70) + 'px';
+        bar.dataset.index = index;
+        
+        bar.addEventListener('mousedown', (e) => handleVelocityDrag(e, index));
+        
+        panel.appendChild(bar);
+      });
+    }
+
+    // Handle velocity drag
+    function handleVelocityDrag(e, index) {
+      e.preventDefault();
+      const startY = e.clientY;
+      const startVel = notes[index].velocity;
+      
+      const onMouseMove = (e) => {
+        const delta = (startY - e.clientY) / 70;
+        notes[index].velocity = Math.max(0.1, Math.min(1, startVel + delta));
+        updateVelocityPanel();
+      };
+      
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    }
+
+    // Handle grid mouse down
+    function handleGridMouseDown(e, row) {
+      if (e.target.classList.contains('note') || e.target.classList.contains('note-handle')) return;
+      
+      const rect = row.getBoundingClientRect();
+      const x = e.clientX - rect.left + document.getElementById('gridContainer').scrollLeft;
+      const noteName = row.dataset.note;
+      const time = pixelsToTime(x);
+      
+      if (currentTool === 'draw') {
+        // Check if note already exists at this position
+        const existingIndex = notes.findIndex(n => 
+          n.pitch === noteName && 
+          n.time <= time && 
+          n.time + n.duration > time
+        );
+        
+        if (existingIndex === -1) {
+          const note = {
+            pitch: noteName,
+            time: time,
+            duration: snapValue,
+            velocity: 0.8
+          };
+          notes.push(note);
+          lastDrawNote = note;
+          playNote(noteName);
+          renderNotes();
+        }
+      } else if (currentTool === 'erase') {
+        // Erase notes at this position
+        notes = notes.filter(n => !(n.pitch === noteName && n.time === time));
+        renderNotes();
+      } else if (currentTool === 'select') {
+        // Start selection box
+        selectedNotes.clear();
+        renderNotes();
+      }
+    }
+
+    // Handle grid mouse move
+    function handleGridMouseMove(e, row) {
+      if (e.buttons !== 1) return;
+      
+      const rect = row.getBoundingClientRect();
+      const x = e.clientX - rect.left + document.getElementById('gridContainer').scrollLeft;
+      const noteName = row.dataset.note;
+      
+      if (currentTool === 'draw' && lastDrawNote) {
+        const time = pixelsToTime(x);
+        const newDuration = Math.max(snapValue, time - lastDrawNote.time + snapValue);
+        lastDrawNote.duration = newDuration;
+        renderNotes();
+      }
+    }
+
+    // Handle grid mouse up
+    function handleGridMouseUp(e, row) {
+      if (lastDrawNote) {
+        stopNote(lastDrawNote.pitch);
+        lastDrawNote = null;
+      }
+    }
+
+    // Handle note mouse down
+    function handleNoteMouseDown(e, index) {
+      e.stopPropagation();
+      
+      if (currentTool === 'erase') {
+        notes.splice(index, 1);
+        selectedNotes.delete(index);
+        renderNotes();
+        return;
+      }
+      
+      if (currentTool === 'select' || currentTool === 'draw') {
+        if (e.ctrlKey || e.metaKey) {
+          if (selectedNotes.has(index)) {
+            selectedNotes.delete(index);
+          } else {
+            selectedNotes.add(index);
+          }
+        } else if (!selectedNotes.has(index)) {
+          selectedNotes.clear();
+          selectedNotes.add(index);
+        }
+        
+        // Start drag
+        isDragging = true;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        
+        renderNotes();
+      }
+    }
+
+    // Handle resize start
+    function handleResizeStart(e, index) {
+      e.stopPropagation();
+      isResizing = true;
+      resizeNote = index;
+      resizeStartWidth = notes[index].duration;
+      dragStartX = e.clientX;
+    }
+
+    // Global mouse move handler
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging && selectedNotes.size > 0) {
+        const deltaX = e.clientX - dragStartX;
+        const deltaTime = pixelsToTime(deltaX);
+        
+        selectedNotes.forEach(index => {
+          if (notes[index]) {
+            notes[index].time = Math.max(0, notes[index].time + deltaTime);
+          }
+        });
+        
+        dragStartX = e.clientX;
+        renderNotes();
+      }
+      
+      if (isResizing && resizeNote !== null) {
+        const deltaX = e.clientX - dragStartX;
+        const deltaTime = pixelsToTime(deltaX);
+        
+        if (notes[resizeNote]) {
+          notes[resizeNote].duration = Math.max(snapValue, resizeStartWidth + deltaTime);
+          renderNotes();
+        }
+      }
+    });
+
+    // Global mouse up handler
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+      isResizing = false;
+      resizeNote = null;
+    });
+
+    // Play note
+    function playNote(noteName) {
+      synths[currentInstrument].triggerAttack(noteName);
+      
+      // Highlight piano key
+      const key = document.querySelector(`.piano-key[data-note="${noteName}"]`);
+      if (key) key.classList.add('playing');
+    }
+
+    // Stop note
+    function stopNote(noteName) {
+      synths[currentInstrument].triggerRelease(noteName);
+      
+      const key = document.querySelector(`.piano-key[data-note="${noteName}"]`);
+      if (key) key.classList.remove('playing');
+    }
+
+    // Playback system
+    let playbackInterval = null;
+    let lastTime = 0;
+
+    function startPlayback() {
+      if (Tone.context.state !== 'running') {
+        Tone.start();
+      }
+      
+      isPlaying = true;
+      document.getElementById('playBtn').classList.add('playing');
+      
+      const scheduleNotes = () => {
+        notes.forEach(note => {
+          const time = Tone.Time(note.time + 'n').toSeconds() * (60 / bpm);
+          const duration = Tone.Time(note.duration + 'n').toSeconds() * (60 / bpm);
+          
+          Tone.Transport.scheduleOnce((t) => {
+            playNote(note.pitch);
+            synths[currentInstrument].triggerRelease(note.pitch, t + duration - 0.05);
+          }, time);
+        });
+      };
+      
+      scheduleNotes();
+      
+      // Playhead animation
+      Tone.Transport.bpm.value = bpm;
+      Tone.Transport.start();
+      
+      lastTime = Tone.Transport.seconds;
+      playbackInterval = setInterval(() => {
+        const current = Tone.Transport.seconds;
+        const beats = (current * bpm / 60);
+        playheadPosition = beats;
+        
+        const playhead = document.getElementById('playhead');
+        playhead.style.left = timeToPixels(beats) + 'px';
+        
+        // Update position display
+        const bar = Math.floor(beats / 4) + 1;
+        const beat = Math.floor(beats % 4) + 1;
+        const sub = Math.floor((beats % 1) * 4) + 1;
+        document.getElementById('positionDisplay').textContent = `Position: ${bar}.${beat}.${sub}`;
+        
+        // Highlight playing notes
+        notes.forEach(note => {
+          const noteStart = note.time;
+          const noteEnd = note.time + note.duration;
+          const key = document.querySelector(`.piano-key[data-note="${note.pitch}"]`);
+          
+          if (beats >= noteStart && beats < noteEnd && key) {
+            key.classList.add('playing');
+          } else if (key) {
+            key.classList.remove('playing');
+          }
+        });
+        
+        // Loop or stop
+        if (beats >= 32) {
+          stopPlayback();
+        }
+      }, 16);
+    }
+
+    function stopPlayback() {
+      isPlaying = false;
+      Tone.Transport.stop();
+      Tone.Transport.cancel();
+      
+      if (playbackInterval) {
+        clearInterval(playbackInterval);
+        playbackInterval = null;
+      }
+      
+      document.getElementById('playBtn').classList.remove('playing');
+      
+      // Remove all playing highlights
+      document.querySelectorAll('.piano-key.playing').forEach(k => k.classList.remove('playing'));
+      
+      // Reset playhead
+      const playhead = document.getElementById('playhead');
+      playhead.style.left = '0px';
+      playheadPosition = 0;
+      document.getElementById('positionDisplay').textContent = 'Position: 1.1.1';
+    }
+
+    function togglePlayback() {
+      if (isPlaying) {
+        stopPlayback();
+      } else {
+        startPlayback();
+      }
+    }
+
+    // Event Listeners
+    document.getElementById('playBtn').addEventListener('click', togglePlayback);
+    document.getElementById('stopBtn').addEventListener('click', stopPlayback);
+
+    document.getElementById('recordBtn').addEventListener('click', () => {
+      isRecording = !isRecording;
+      document.getElementById('recordBtn').classList.toggle('recording', isRecording);
+    });
+
+    // Tool selection
+    ['drawTool', 'eraseTool', 'selectTool'].forEach(id => {
+      document.getElementById(id).addEventListener('click', () => {
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        currentTool = id.replace('Tool', '');
+      });
+    });
+
+    // BPM change
+    document.getElementById('bpmInput').addEventListener('change', (e) => {
+      bpm = Math.max(20, Math.min(300, parseInt(e.target.value) || 120));
+      e.target.value = bpm;
+      Tone.Transport.bpm.value = bpm;
+    });
+
+    // Snap change
+    document.getElementById('snapSelect').addEventListener('change', (e) => {
+      snapValue = parseFloat(e.target.value);
+    });
+
+    // Instrument change
+    document.getElementById('instrumentSelect').addEventListener('change', (e) => {
+      currentInstrument = e.target.value;
+    });
+
+    // Zoom controls
+    document.getElementById('zoomIn').addEventListener('click', () => {
+      pixelsPerBeat = Math.min(200, pixelsPerBeat + 20);
+      document.getElementById('zoomLevel').textContent = Math.round(pixelsPerBeat) + '%';
+      initGrid();
+    });
+
+    document.getElementById('zoomOut').addEventListener('click', () => {
+      pixelsPerBeat = Math.max(50, pixelsPerBeat - 20);
+      document.getElementById('zoomLevel').textContent = Math.round(pixelsPerBeat) + '%';
+      initGrid();
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      // Tool shortcuts
+      if (e.key === 'd' || e.key === 'D') {
+        document.getElementById('drawTool').click();
+      } else if (e.key === 'e' || e.key === 'E') {
+        document.getElementById('eraseTool').click();
+      } else if (e.key === 'v' || e.key === 'V') {
+        document.getElementById('selectTool').click();
+      }
+      
+      // Delete selected notes
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const toDelete = Array.from(selectedNotes).sort((a, b) => b - a);
+        toDelete.forEach(index => notes.splice(index, 1));
+        selectedNotes.clear();
+        renderNotes();
+      }
+      
+      // Select all
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        notes.forEach((_, i) => selectedNotes.add(i));
+        renderNotes();
+      }
+      
+      // Copy
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        clipboard = notes.filter((_, i) => selectedNotes.has(i)).map(n => ({...n}));
+      }
+      
+      // Paste
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        clipboard.forEach(n => {
+          notes.push({...n, time: n.time + snapValue});
+        });
+        renderNotes();
+      }
+      
+      // Space to play/pause
+      if (e.key === ' ' && document.activeElement.tagName !== 'INPUT') {
+        e.preventDefault();
+        togglePlayback();
+      }
+    });
+
+    // Context menu
+    const contextMenu = document.getElementById('contextMenu');
+
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      contextMenu.style.left = e.clientX + 'px';
+      contextMenu.style.top = e.clientY + 'px';
+      contextMenu.classList.add('visible');
+    });
+
+    document.addEventListener('click', () => {
+      contextMenu.classList.remove('visible');
+    });
+
+    contextMenu.querySelectorAll('.context-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const action = item.dataset.action;
+        
+        switch (action) {
+          case 'cut':
+            clipboard = notes.filter((_, i) => selectedNotes.has(i)).map(n => ({...n}));
+            notes = notes.filter((_, i) => !selectedNotes.has(i));
+            selectedNotes.clear();
+            break;
+          case 'copy':
+            clipboard = notes.filter((_, i) => selectedNotes.has(i)).map(n => ({...n}));
+            break;
+          case 'paste':
+            clipboard.forEach(n => notes.push({...n}));
+            break;
+          case 'delete':
+            notes = notes.filter((_, i) => !selectedNotes.has(i));
+            selectedNotes.clear();
+            break;
+          case 'selectall':
+            notes.forEach((_, i) => selectedNotes.add(i));
+            break;
+        }
+        
+        renderNotes();
+      });
+    });
+
+    // Sync scroll between grid and timeline
+    const gridContainer = document.getElementById('gridContainer');
+    const timeline = document.getElementById('timeline');
+
+    gridContainer.addEventListener('scroll', () => {
+      timeline.parentElement.scrollLeft = gridContainer.scrollLeft;
+      document.getElementById('velocityPanel').parentElement.scrollLeft = gridContainer.scrollLeft;
+    });
+
+    // Sync piano keys scroll
+    gridContainer.addEventListener('scroll', () => {
+      document.getElementById('pianoKeys').scrollTop = gridContainer.scrollTop;
+    });
+
+    // Initialize
+    initPianoKeys();
+    initGrid();
+
+    // Add some demo notes
+    const demoNotes = [
+      { pitch: 'C4', time: 0, duration: 1, velocity: 0.8 },
+      { pitch: 'E4', time: 0, duration: 1, velocity: 0.7 },
+      { pitch: 'G4', time: 0, duration: 1, velocity: 0.9 },
+      { pitch: 'C4', time: 1, duration: 1, velocity: 0.6 },
+      { pitch: 'D4', time: 2, duration: 1, velocity: 0.8 },
+      { pitch: 'E4', time: 3, duration: 1, velocity: 0.7 },
+      { pitch: 'F4', time: 4, duration: 0.5, velocity: 0.9 },
+      { pitch: 'E4', time: 4.5, duration: 0.5, velocity: 0.8 },
+      { pitch: 'D4', time: 5, duration: 0.5, velocity: 0.7 },
+      { pitch: 'C4', time: 5.5, duration: 0.5, velocity: 0.9 },
+      { pitch: 'G4', time: 6, duration: 2, velocity: 0.8 },
+      { pitch: 'A4', time: 8, duration: 1, velocity: 0.7 },
+      { pitch: 'B4', time: 9, duration: 1, velocity: 0.8 },
+      { pitch: 'C5', time: 10, duration: 2, velocity: 0.9 },
+    ];
+
+    demoNotes.forEach(n => notes.push(n));
+    renderNotes();
+  </script>
+</body>
+</html>

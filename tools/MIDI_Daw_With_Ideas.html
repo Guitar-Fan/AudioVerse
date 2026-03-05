@@ -3,20 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upgraded MIDI DAW</title>
+    <title>MIDI DAW With Ideas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@tonejs/midi"></script>
     <script src="https://cdn.jsdelivr.net/npm/tone@latest/build/Tone.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js"></script>
      <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-deep: #0a0a0f;
+            --bg-dark: #12131a;
+            --bg-mid: #1a1c25;
+            --bg-light: #252833;
+            --accent: #00d4aa;
+            --accent-dim: #00a080;
+            --accent-glow: rgba(0, 212, 170, 0.3);
+            --text-primary: #e8eaed;
+            --text-secondary: #8b8fa3;
+            --text-dim: #5a5e70;
+            --border: #2a2d3a;
+            --note-selected: #ff6b4a;
+            --playhead-color: #ff6b4a;
+        }
+        * { box-sizing: border-box; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--bg-light); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
         body {
             font-family: 'Inter', sans-serif;
             overscroll-behavior: none;
-            background: #18181b; /* zinc-900 */
-            color: #e4e4e7; /* zinc-200 */
+            background: var(--bg-deep);
+            color: var(--text-primary);
         }
+        /* Velocity Panel */
+        .velocity-panel {
+            height: 80px;
+            background: var(--bg-dark);
+            border-top: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .velocity-bar {
+            position: absolute;
+            bottom: 0;
+            width: 4px;
+            background: var(--accent);
+            border-radius: 2px 2px 0 0;
+            transition: height 0.1s ease;
+            cursor: ns-resize;
+        }
+        .velocity-bar:hover {
+            background: var(--note-selected);
+        }
+        /* Note resize handle */
+        .note-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 8px;
+            cursor: ew-resize;
+            background: rgba(255,255,255,0.2);
+            border-radius: 0 3px 3px 0;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .note:hover .note-handle { opacity: 1; }
+        /* Status Bar */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 16px;
+            background: var(--bg-dark);
+            border-top: 1px solid var(--border);
+            font-size: 11px;
+            color: var(--text-dim);
+            flex-shrink: 0;
+        }
+        /* Divider for toolbar groups */
+        .toolbar-divider {
+            width: 1px;
+            height: 28px;
+            background: var(--border);
+            margin: 0 8px;
+            flex-shrink: 0;
+        }
+        .control-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 6px;
+        }
+        /* Snap dropdown (PianoRollUX style) */
+        .snap-select {
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+        .snap-select:focus { outline: none; border-color: var(--accent); }
         .piano-key {
             stroke: #3f3f46; /* zinc-700 */
             stroke-width: 1;
@@ -24,15 +120,25 @@
         .piano-key.white { fill: #f4f4f5; } /* zinc-100 */
         .piano-key.black { fill: #27272a; } /* zinc-800 */
         .piano-key:hover {
-            fill: #60a5fa; /* blue-400 */
+            fill: #00d4aa;
+        }
+        .piano-key.playing {
+            fill: #00d4aa !important;
+            filter: drop-shadow(0 0 6px rgba(0, 212, 170, 0.5));
         }
         .note {
-            border-radius: 4px;
-            border: 1px solid rgba(0,0,0,0.7);
+            border-radius: 3px;
+            border: none;
             position: absolute;
             box-sizing: border-box;
             min-width: 4px;
+            box-shadow: 0 2px 8px rgba(0,212,170,0.3);
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
             /* background-color is set dynamically */
+        }
+        .note:hover {
+            transform: scaleY(1.1);
+            box-shadow: 0 4px 16px rgba(0,212,170,0.5);
         }
         .piano-label {
             font-size: 10px;
@@ -42,19 +148,20 @@
             pointer-events: none;
         }
         .top-bar {
-            background: #27272a; /* zinc-800 */
-            border-bottom: 1px solid #3f3f46; /* zinc-700 */
+            background: var(--bg-dark);
+            border-bottom: 1px solid var(--border);
             position: relative;
             z-index: 40;
             display: flex;
             align-items: center;
-            padding: 0 16px;
-            height: 50px;
+            padding: 0 12px;
+            height: 46px;
             flex-shrink: 0;
+            gap: 4px;
         }
         #timeline-header {
-            background: #27272a; /* zinc-800 */
-            border-bottom: 1px solid #3f3f46; /* zinc-700 */
+            background: var(--bg-dark);
+            border-bottom: 1px solid var(--border);
             position: relative;
             z-index: 100; /* Increased to be above everything */
             height: 30px;
@@ -82,29 +189,36 @@
         .control-group {
             display: flex;
             align-items: center;
-            padding: 0 12px;
-            border-left: 1px solid #3f3f46; /* zinc-700 */
+            padding: 0 6px;
             height: 100%;
+            gap: 4px;
         }
         .transport-btn, #toolbar button {
-            background: transparent;
-            border: none;
-            color: #e4e4e7;
+            background: var(--bg-mid);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
             border-radius: 6px;
-            padding: 8px;
-            margin: 0 2px;
+            padding: 6px;
+            margin: 0 1px;
             cursor: pointer;
-            transition: background 0.2s, color 0.2s;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .transport-btn:hover, #toolbar button:hover {
-            background: #3f3f46; /* zinc-700 */
+            background: var(--bg-light);
+            color: var(--text-primary);
         }
         #toolbar button[data-active='true'] {
-             background-color: #3b82f6; /* blue-500 */
-             color: white;
+             background: var(--accent);
+             color: var(--bg-deep);
+             border-color: var(--accent);
         }
-        .transport-btn.active {
-            color: #3b82f6;
+        .transport-btn.active, .transport-btn.playing {
+            background: var(--accent);
+            color: var(--bg-deep);
+            border-color: var(--accent);
         }
         .transport-btn svg, #toolbar svg {
             width: 20px;
@@ -129,7 +243,8 @@
             left:0;
             width:2px;
             height:100%;
-            background:#facc15; /* yellow-400 */
+            background: var(--playhead-color);
+            box-shadow: 0 0 10px var(--playhead-color);
             z-index:25;
             pointer-events: none;
             display:none;
@@ -140,7 +255,8 @@
             left: 0;
             width: 2px;
             height: 100%;
-            background: #facc15;
+            background: var(--playhead-color);
+            box-shadow: 0 0 10px var(--playhead-color);
             z-index: 50;
             pointer-events: none;
             display: none;
@@ -149,12 +265,12 @@
             content: '';
             position: absolute;
             top: -8px;
-            left: -6px;
+            left: -4px;
             width: 0;
             height: 0;
-            border-left: 7px solid transparent;
-            border-right: 7px solid transparent;
-            border-top: 8px solid #facc15;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 8px solid var(--playhead-color);
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
@@ -185,6 +301,13 @@
                         0 0 60px rgba(251, 191, 36, 0.6),
                         0 6px 12px rgba(0, 0, 0, 0.4);
         }
+
+        /* Record button pulse animation */
+        @keyframes recording-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .recording { animation: recording-pulse 1s infinite; }
 
         @keyframes glow-pulse {
             0%, 100% {
@@ -516,8 +639,8 @@
             display: none;
         }
         .note.selected {
-            border: 2px solid #60a5fa !important;
-            box-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
+            background: linear-gradient(180deg, var(--note-selected) 0%, #cc4030 100%) !important;
+            box-shadow: 0 2px 8px rgba(255,107,74,0.5);
         }
         .context-menu {
             position: fixed;
@@ -750,12 +873,110 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
         }
+
+        /* Falling Keys Mode */
+        #daw-title {
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.2s;
+        }
+        #daw-title:hover {
+            transform: scale(1.05);
+        }
+        @keyframes title-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .title-transitioning {
+            animation: title-pulse 0.5s ease-in-out;
+        }
+        
+        #falling-keys-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 10000;
+            display: none;
+            overflow: hidden;
+        }
+        #falling-keys-overlay.active {
+            display: block;
+        }
+        #pixi-canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        .fk-controls {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 10001;
+        }
+        .fk-control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.3);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .fk-control-btn:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.6);
+            transform: scale(1.1);
+        }
+        .fk-control-btn svg {
+            width: 28px;
+            height: 28px;
+            fill: #fff;
+        }
+        .fk-close-btn {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.3);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10001;
+        }
+        .fk-close-btn:hover {
+            background: rgba(255,0,0,0.3);
+            border-color: rgba(255,0,0,0.8);
+            transform: scale(1.1);
+        }
+        .fk-close-btn svg {
+            width: 24px;
+            height: 24px;
+            stroke: #fff;
+            stroke-width: 3;
+        }
     </style>
 </head>
 <body class="flex flex-col h-screen overflow-hidden">
 
     <div class="top-bar">
-        <h1 class="text-xl font-bold text-white mr-4">JS MIDI DAW</h1>
+        <h1 id="daw-title" class="text-lg font-bold text-white mr-2" style="color: var(--accent);" title="Click to launch Falling Keys mode">JS MIDI DAW</h1>
+        <div class="toolbar-divider"></div>
         
         <div class="control-group">
             <label for="upload" class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md shadow transition-colors text-sm">
@@ -765,8 +986,10 @@
             <button id="export" class="ml-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md shadow transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed text-sm" disabled>Export MIDI</button>
         </div>
 
+        <div class="toolbar-divider"></div>
+
         <div class="control-group">
-            <button id="rewind-btn" class="transport-btn" title="Rewind to Start">
+            <button id="rewind-btn" class="transport-btn" title="Rewind">
                 <svg fill="currentColor" viewBox="0 0 20 20"><path d="M8.445 14.832A1 1 0 0010 14.032V5.968a1 1 0 00-1.555-.832L4 9.168V6a1 1 0 00-2 0v8a1 1 0 102 0v-3.168l4.445 4zM15.555 14.832A1 1 0 0017 14.032V5.968a1 1 0 00-1.555-.832L11 9.168V6a1 1 0 10-2 0v8a1 1 0 102 0v-3.168l4.555 4z"/></svg>
             </button>
             <button id="prev-measure-btn" class="transport-btn" title="Previous Measure (←)">
@@ -779,17 +1002,22 @@
             <button id="stop-btn" class="transport-btn" title="Stop">
                 <svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3.75A1.75 1.75 0 016.75 2h6.5A1.75 1.75 0 0115 3.75v12.5A1.75 1.75 0 0113.25 18h-6.5A1.75 1.75 0 015 16.25V3.75z"/></svg>
             </button>
+            <button id="record-btn" class="transport-btn" title="Record" style="color:#ef4444;">
+                <svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="6"/></svg>
+            </button>
             <button id="loop-btn" class="transport-btn" title="Toggle Loop">
                 <svg viewBox="0 0 20 20" fill="currentColor"><path d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm-11.90-5.126a.75.75 0 00.42.404 7 7 0 0011.712-3.138.75.75 0 00-1.449-.39 5.5 5.5 0 01-9.201 2.466l-.312-.311v-2.43a.75.75 0 00-1.5 0v4.242c0 .414.336.75.75.75h4.243a.75.75 0 000-1.5H6.1l.31-.31z"/></svg>
             </button>
             <button id="next-measure-btn" class="transport-btn" title="Next Measure (→)">
                 <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>
             </button>
-            <div class="playback-position" id="playback-position">0:00:000</div>
+            <div class="playback-position mono" id="playback-position">1:1:00:000</div>
         </div>
         
+        <div class="toolbar-divider"></div>
+
         <div class="control-group">
-            <label for="instrument-select" class="text-sm mr-2">Instrument:</label>
+            <span class="control-label">Inst</span>
             <select id="instrument-select" class="instrument-selector">
                 <option value="PolySynth">Poly Synth</option>
                 <option value="MonoSynth">Mono Synth</option>
@@ -804,41 +1032,42 @@
             <button id="expand-params-btn" class="expand-btn" title="Edit Instrument Parameters">⚙️ Edit</button>
         </div>
 
+        <div class="toolbar-divider"></div>
+
         <div class="control-group">
-            <label for="signature-select" class="text-sm mr-2">Signature:</label>
+            <span class="control-label">Sig</span>
             <select id="signature-select" class="text-sm rounded-md p-1">
                 <option value="4/4">4/4</option>
                 <option value="3/4">3/4</option>
                 <option value="6/8">6/8</option>
                 <option value="5/4">5/4</option>
             </select>
-            <label for="tempo-input" class="text-sm ml-4 mr-2">Tempo:</label>
-            <input type="number" id="tempo-input" min="20" max="300" value="120" class="w-16 text-sm">
+            <span class="control-label" style="margin-left:8px">BPM</span>
+            <input type="number" id="tempo-input" min="20" max="300" value="120" class="w-14 text-sm" style="background:var(--bg-deep);border:1px solid var(--border);border-radius:4px;padding:4px 6px;color:var(--text-primary);text-align:center;">
+        </div>
+
+        <div class="toolbar-divider"></div>
+
+        <div class="control-group">
+            <span class="control-label">Snap</span>
+            <select id="snap-select" class="snap-select">
+                <option value="0">Off</option>
+                <option value="1">1/1</option>
+                <option value="2">1/2</option>
+                <option value="4" selected>1/4</option>
+                <option value="8">1/8</option>
+                <option value="16">1/16</option>
+                <option value="32">1/32</option>
+            </select>
         </div>
 
         <div class="control-group">
-            <label class="text-sm mr-2">Snap:</label>
-            <div class="time-subdivisions">
-                <button class="subdivision-btn" data-subdivision="1">1/1</button>
-                <button class="subdivision-btn" data-subdivision="2">1/2</button>
-                <button class="subdivision-btn active" data-subdivision="4">1/4</button>
-                <button class="subdivision-btn" data-subdivision="8">1/8</button>
-                <button class="subdivision-btn" data-subdivision="16">1/16</button>
-                <button class="subdivision-btn" data-subdivision="32">1/32</button>
-            </div>
-            <label class="text-sm ml-4 mr-2">
-                <input type="checkbox" id="snap-enabled" checked class="mr-1">
-                Snap to Grid
-            </label>
-        </div>
-
-        <div class="control-group">
-            <label for="zoom-range" class="text-sm mr-2">Zoom:</label>
-            <input type="range" id="zoom-range" min="20" max="500" value="100" class="w-24">
+            <span class="control-label">Zoom</span>
+            <input type="range" id="zoom-range" min="20" max="500" value="100" class="w-20" style="accent-color: var(--accent);">
         </div>
     </div>
     
-    <div id="toolbar" class="flex items-center h-10 bg-zinc-800/80 backdrop-blur-sm border-b border-zinc-700 px-2 space-x-1 shrink-0">
+    <div id="toolbar" class="flex items-center h-9 px-2 space-x-1 shrink-0" style="background:var(--bg-dark);border-bottom:1px solid var(--border);">
         <button id="tool-select" title="Select Tool (V)">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M2 3L8 21L11 14L18 11L2 3Z"/>
@@ -851,6 +1080,12 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M9.64 7.64L11 9L13 7L22 16V22H16L7 13L9.64 7.64Z"/>
                 <path d="M7 2L2 7L7 12L12 7L7 2ZM7 7.5C6.72 7.5 6.5 7.28 6.5 7S6.72 6.5 7 6.5 7.5 6.72 7.5 7 7.28 7.5 7 7.5Z"/>
+            </svg>
+        </button>
+        <button id="tool-erase" title="Erase Tool (E)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 20H7L3 16l9-9 8 8-4 4"/>
+                <path d="M6.5 13.5L3 10"/>
             </svg>
         </button>
     </div>
@@ -880,11 +1115,46 @@
         </div>
     </main>
 
+    <!-- Velocity Panel -->
+    <div class="velocity-panel" id="velocity-panel">
+        <div class="velocity-content" id="velocity-content"></div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="flex items-center gap-4">
+            <span id="positionDisplay">Position: 1.1.1</span>
+            <span id="notesCount">Notes: 0</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <span>Del = remove selected</span>
+            <span>Ctrl+A = select all</span>
+            <span>Click piano key = load sample</span>
+        </div>
+    </div>
+
     <!-- Context Menu -->
     <div id="context-menu" class="context-menu">
+        <div class="context-menu-item" data-action="cut">
+            <span>Cut</span>
+            <span class="shortcut">Ctrl+X</span>
+        </div>
+        <div class="context-menu-item" data-action="copy">
+            <span>Copy</span>
+            <span class="shortcut">Ctrl+C</span>
+        </div>
+        <div class="context-menu-item" data-action="paste">
+            <span>Paste</span>
+            <span class="shortcut">Ctrl+V</span>
+        </div>
+        <div class="context-menu-separator"></div>
         <div class="context-menu-item" data-action="delete">
             <span>Delete</span>
             <span class="shortcut">Del</span>
+        </div>
+        <div class="context-menu-item" data-action="selectall">
+            <span>Select All</span>
+            <span class="shortcut">Ctrl+A</span>
         </div>
         <div class="context-menu-separator"></div>
         <div class="context-menu-item" data-action="transpose-up-semitone">
@@ -930,6 +1200,42 @@
         </div>
     </div>
 
+    <!-- Falling Keys Visualization Overlay -->
+    <div id="falling-keys-overlay">
+        <div id="pixi-canvas-container"></div>
+        
+        <!-- Close Button -->
+        <button class="fk-close-btn" id="fk-close" title="Exit Falling Keys Mode">
+            <svg viewBox="0 0 24 24" fill="none">
+                <path d="M6 6L18 18M18 6L6 18" stroke="currentColor"/>
+            </svg>
+        </button>
+        
+        <!-- Playback Controls -->
+        <div class="fk-controls">
+            <button class="fk-control-btn" id="fk-back-5" title="Skip Back 5s">
+                <svg viewBox="0 0 24 24">
+                    <path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                    <text x="10" y="16" font-size="6" fill="white" text-anchor="middle">5</text>
+                </svg>
+            </button>
+            <button class="fk-control-btn" id="fk-play" title="Play/Pause">
+                <svg viewBox="0 0 24 24" id="fk-play-icon">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                <svg viewBox="0 0 24 24" id="fk-pause-icon" style="display:none;">
+                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                </svg>
+            </button>
+            <button class="fk-control-btn" id="fk-forward-5" title="Skip Forward 5s">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/>
+                    <text x="14" y="16" font-size="6" fill="white" text-anchor="middle">5</text>
+                </svg>
+            </button>
+        </div>
+    </div>
+
     <script>
         // --- Tone.js Start Context ---
         document.documentElement.addEventListener('mousedown', async () => {
@@ -961,7 +1267,8 @@
         const zoomRange = document.getElementById('zoom-range');
         const signatureSelect = document.getElementById('signature-select');
         const toolbar = document.getElementById('toolbar');
-        const snapEnabledCheckbox = document.getElementById('snap-enabled');
+        const snapEnabledCheckbox = null; // removed - using snap-select dropdown
+        const snapSelectDropdown = document.getElementById('snap-select');
         const snapIndicator = document.getElementById('snap-indicator');
         const timelineContainer = document.getElementById('timeline-container');
         const timelinePlayhead = document.getElementById('timeline-playhead');
@@ -1006,6 +1313,15 @@
         let isDraggingNotes = false;
         let dragStartY = 0;
         let noteDragData = [];
+        // Resize handle state (PianoRollUX)
+        let isResizingNote = false;
+        let resizeNoteEl = null;
+        let resizeStartX = 0;
+        let resizeOriginalWidth = 0;
+        // Clipboard for copy/paste
+        let noteClipboard = [];
+        // Playback cursor animation frame
+        let cursorAnimationFrame = null;
 
         // --- Instruments ---
         let sampler = new Tone.Sampler().toDestination();
@@ -1433,21 +1749,53 @@
         gridContainer.addEventListener('scroll', () => {
             pianoKeysSVG.style.marginTop = `-${gridContainer.scrollTop}px`;
             timelineHeader.scrollLeft = gridContainer.scrollLeft;
+            // Sync velocity panel scroll with grid
+            const velPanel = document.getElementById('velocity-panel');
+            if (velPanel) velPanel.scrollLeft = gridContainer.scrollLeft;
             // Update timeline playhead position when scrolling
             if (timelinePlayhead.style.display !== 'none') {
                 updateTimelinePlayhead();
             }
         });
 
-        playBtn.addEventListener('click', handlePlayPause);
-        stopBtn.addEventListener('click', handleStop);
-        rewindBtn.addEventListener('click', handleRewind);
-        prevMeasureBtn.addEventListener('click', handlePrevMeasure);
-        nextMeasureBtn.addEventListener('click', handleNextMeasure);
-        snapEnabledCheckbox.addEventListener('change', (e) => {
-            snapToGrid = e.target.checked;
+        if (playBtn) playBtn.addEventListener('click', handlePlayPause);
+        if (stopBtn) stopBtn.addEventListener('click', handleStop);
+        if (rewindBtn) rewindBtn.addEventListener('click', handleRewind);
+        if (prevMeasureBtn) prevMeasureBtn.addEventListener('click', handlePrevMeasure);
+        if (nextMeasureBtn) nextMeasureBtn.addEventListener('click', handleNextMeasure);
+        // Snap dropdown replaces old subdivision buttons + checkbox
+        snapSelectDropdown.addEventListener('change', (e) => {
+            const val = parseInt(e.target.value);
+            if (val === 0) {
+                snapToGrid = false;
+                currentSubdivision = 4;
+            } else {
+                snapToGrid = true;
+                currentSubdivision = val;
+            }
+            draw();
         });
         loopBtn.addEventListener('click', toggleLoop);
+        // Record button
+        let isRecording = false;
+        const recordBtn = document.getElementById('record-btn');
+        if (recordBtn) {
+            recordBtn.addEventListener('click', () => {
+                isRecording = !isRecording;
+                recordBtn.classList.toggle('active', isRecording);
+                if (isRecording) {
+                    recordBtn.style.background = '#ef4444';
+                    recordBtn.style.color = '#fff';
+                    recordBtn.style.borderColor = '#ef4444';
+                    recordBtn.classList.add('recording');
+                } else {
+                    recordBtn.style.background = '';
+                    recordBtn.style.color = '#ef4444';
+                    recordBtn.style.borderColor = '';
+                    recordBtn.classList.remove('recording');
+                }
+            });
+        }
         instrumentSelect.addEventListener('change', (e) => {
             handleInstrumentChange(e.target.value);
         });
@@ -1508,6 +1856,10 @@
             const tick = Math.floor(((totalBeats % 1) * (currentSubdivision / 4) % 1) * 1000);
             
             playbackPosition.textContent = `${measure}:${beat}:${subdivision.toString().padStart(2, '0')}:${tick.toString().padStart(3, '0')}`;
+            
+            // Also update status bar position
+            const posEl = document.getElementById('positionDisplay');
+            if (posEl) posEl.textContent = `Position: ${measure}.${beat}.${subdivision}`;
         }
 
         function toggleLoop() {
@@ -1616,15 +1968,7 @@
         
         // --- Time Management Functions ---
         function setupSubdivisionControls() {
-            const subdivisionBtns = document.querySelectorAll('.subdivision-btn');
-            subdivisionBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    subdivisionBtns.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    currentSubdivision = parseInt(btn.dataset.subdivision);
-                    draw();
-                });
-            });
+            // Now handled by snap-select dropdown - no-op for backwards compat
         }
 
         function getTimeForPosition(x) {
@@ -1714,11 +2058,23 @@
                     }
                 } else if (activeTool === 'pencil') {
                     handlePencilDown(e);
+                } else if (activeTool === 'erase') {
+                    // Erase tool: click on note to delete it
+                    const target = e.target;
+                    if (target.classList.contains('note') && !target.classList.contains('preview')) {
+                        deleteNoteElement(target);
+                        drawPianoRoll();
+                    }
                 }
             });
 
             gridContainer.addEventListener('mousemove', (e) => {
-                if (isRightClickDeleting) {
+                if (isResizingNote && resizeNoteEl) {
+                    // Resize note horizontally by dragging handle
+                    const deltaX = e.clientX - resizeStartX;
+                    const newWidth = Math.max(NOTE_HEIGHT, resizeOriginalWidth + deltaX);
+                    resizeNoteEl.style.width = `${newWidth}px`;
+                } else if (isRightClickDeleting) {
                     // Right click drag to delete notes
                     const target = e.target;
                     if (target.classList.contains('note') && !target.classList.contains('preview')) {
@@ -1758,6 +2114,13 @@
                     updateSelectionFromRectangle(left, top, width, height);
                 } else if (activeTool === 'pencil') {
                     handlePencilMove(e);
+                } else if (activeTool === 'erase' && e.buttons === 1) {
+                    // Erase tool: drag over notes to delete them
+                    const target = e.target;
+                    if (target.classList.contains('note') && !target.classList.contains('preview')) {
+                        deleteNoteElement(target);
+                        drawPianoRoll();
+                    }
                 }
                 
                 if (snapToGrid && activeTool === 'pencil') {
@@ -1766,6 +2129,20 @@
             });
 
             gridContainer.addEventListener('mouseup', (e) => {
+                if (isResizingNote && resizeNoteEl) {
+                    // Finalize note resize — update duration in midiData
+                    const newWidth = parseFloat(resizeNoteEl.style.width);
+                    const newDuration = newWidth / zoom;
+                    const trackIdx = parseInt(resizeNoteEl.dataset.track);
+                    const noteIdx = parseInt(resizeNoteEl.dataset.index);
+                    if (midiData && midiData.tracks[trackIdx] && midiData.tracks[trackIdx].notes[noteIdx]) {
+                        midiData.tracks[trackIdx].notes[noteIdx].duration = Math.max(0.05, newDuration);
+                    }
+                    isResizingNote = false;
+                    resizeNoteEl = null;
+                    drawPianoRoll();
+                    return;
+                }
                 if (isRightClickDeleting) {
                     isRightClickDeleting = false;
                     return;
@@ -1919,6 +2296,13 @@
             startX = x;
             startNote = { time, midi };
             
+            // Trigger sound when drawing (PianoRollUX feature)
+            try {
+                const noteName = Tone.Midi(midi).toNote();
+                const inst = (currentInstrumentType === 'Sampler' && samplesLoaded) ? sampler : currentInstrument;
+                if (inst) inst.triggerAttackRelease(noteName, '8n');
+            } catch(e) { /* ignore audio errors */ }
+            
             createPreviewNote(time, midi, 0.25); // Default quarter note duration
             e.preventDefault();
         }
@@ -2023,7 +2407,7 @@
 
         // --- Drawing and UI ---
         function setupToolbar() {
-            const tools = ['select', 'pencil', 'cutter'];
+            const tools = ['select', 'pencil', 'cutter', 'erase'];
             tools.forEach(tool => {
                 const btn = document.getElementById(`tool-${tool}`);
                 if(btn) btn.addEventListener('click', () => setActiveTool(tool));
@@ -2035,11 +2419,11 @@
 
         function setActiveTool(toolName) {
             activeTool = toolName;
-            ['select', 'pencil', 'cutter'].forEach(tool => {
+            ['select', 'pencil', 'cutter', 'erase'].forEach(tool => {
                 const btn = document.getElementById(`tool-${tool}`);
                 if(btn) btn.dataset.active = (tool === toolName);
             });
-            gridContainer.style.cursor = toolName === 'pencil' ? 'crosshair' : 'default';
+            gridContainer.style.cursor = toolName === 'pencil' ? 'crosshair' : (toolName === 'erase' ? 'not-allowed' : 'default');
         }
 
         // --- Keyboard Shortcuts ---
@@ -2050,13 +2434,63 @@
                 
                 switch(e.key.toLowerCase()) {
                     case 'v':
-                        setActiveTool('select');
+                        if (e.ctrlKey || e.metaKey) {
+                            // Ctrl+V: paste notes
+                            e.preventDefault();
+                            if (noteClipboard.length > 0 && midiData) {
+                                noteClipboard.forEach(clip => {
+                                    const srcTrack = midiData.tracks[clip.track];
+                                    if (srcTrack && srcTrack.notes[clip.index]) {
+                                        const srcNote = srcTrack.notes[clip.index];
+                                        const secondsPerBeat = 60 / Tone.Transport.bpm.value;
+                                        addNoteToMidiData(srcNote.time + secondsPerBeat, clip.midi, srcNote.duration, srcNote.velocity);
+                                    }
+                                });
+                                drawPianoRoll();
+                            }
+                        } else {
+                            setActiveTool('select');
+                        }
                         break;
                     case 'b':
+                    case 'd': // PianoRollUX: D for draw
                         setActiveTool('pencil');
                         break;
                     case 'c':
+                        if (e.ctrlKey || e.metaKey) {
+                            // Ctrl+C: copy selected notes
+                            if (selectedNotes.size > 0) {
+                                e.preventDefault();
+                                noteClipboard = Array.from(selectedNotes).map(el => ({
+                                    track: parseInt(el.dataset.track),
+                                    index: parseInt(el.dataset.index),
+                                    midi: parseInt(el.dataset.midi)
+                                }));
+                            }
+                        } else {
+                            setActiveTool('cutter');
+                        }
+                        break;
+                    case 'x':
+                        if (e.ctrlKey || e.metaKey) {
+                            // Ctrl+X: cut selected notes
+                            if (selectedNotes.size > 0) {
+                                e.preventDefault();
+                                noteClipboard = Array.from(selectedNotes).map(el => ({
+                                    track: parseInt(el.dataset.track),
+                                    index: parseInt(el.dataset.index),
+                                    midi: parseInt(el.dataset.midi)
+                                }));
+                                deleteSelectedNotes();
+                            }
+                        }
+                        break;
+                    case 'e': // PianoRollUX: E for erase
                         setActiveTool('cutter');
+                        break;
+                    case ' ': // Space: play/pause toggle
+                        e.preventDefault();
+                        handlePlayPause();
                         break;
                     case 'delete':
                     case 'backspace':
@@ -2131,6 +2565,37 @@
 
         function handleContextMenuAction(action) {
             switch(action) {
+                case 'cut':
+                    noteClipboard = Array.from(selectedNotes).map(el => ({
+                        track: parseInt(el.dataset.track),
+                        index: parseInt(el.dataset.index),
+                        midi: parseInt(el.dataset.midi)
+                    }));
+                    deleteSelectedNotes();
+                    break;
+                case 'copy':
+                    noteClipboard = Array.from(selectedNotes).map(el => ({
+                        track: parseInt(el.dataset.track),
+                        index: parseInt(el.dataset.index),
+                        midi: parseInt(el.dataset.midi)
+                    }));
+                    break;
+                case 'paste':
+                    if (noteClipboard.length > 0 && midiData) {
+                        noteClipboard.forEach(clip => {
+                            const srcTrack = midiData.tracks[clip.track];
+                            if (srcTrack && srcTrack.notes[clip.index]) {
+                                const srcNote = srcTrack.notes[clip.index];
+                                const secondsPerBeat = 60 / Tone.Transport.bpm.value;
+                                addNoteToMidiData(srcNote.time + secondsPerBeat, clip.midi, srcNote.duration, srcNote.velocity);
+                            }
+                        });
+                        drawPianoRoll();
+                    }
+                    break;
+                case 'selectall':
+                    selectAllNotes();
+                    break;
                 case 'delete':
                     deleteSelectedNotes();
                     break;
@@ -2369,6 +2834,33 @@
                 rect.dataset.midi = key.midi;
                 pianoKeysSVG.appendChild(rect);
 
+                // Play sound on mousedown ONLY if not loading a sample
+                rect.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    const noteName = Tone.Midi(key.midi).toNote();
+                    rect.classList.add('playing');
+                    const inst = (currentInstrumentType === 'Sampler' && samplesLoaded) ? sampler : currentInstrument;
+                    if (inst) {
+                        try { inst.triggerAttack(noteName); } catch(ex) {}
+                    }
+                });
+                rect.addEventListener('mouseup', () => {
+                    const noteName = Tone.Midi(key.midi).toNote();
+                    rect.classList.remove('playing');
+                    const inst = (currentInstrumentType === 'Sampler' && samplesLoaded) ? sampler : currentInstrument;
+                    if (inst) {
+                        try { inst.triggerRelease(noteName); } catch(ex) {}
+                    }
+                });
+                rect.addEventListener('mouseleave', () => {
+                    rect.classList.remove('playing');
+                    const noteName = Tone.Midi(key.midi).toNote();
+                    const inst = (currentInstrumentType === 'Sampler' && samplesLoaded) ? sampler : currentInstrument;
+                    if (inst) {
+                        try { inst.triggerRelease(noteName); } catch(ex) {}
+                    }
+                });
+
                 if (!key.black) {
                     const text = document.createElementNS(svgNS, 'text');
                     text.setAttribute('x', keyWidth - 5);
@@ -2481,6 +2973,19 @@
                     noteDiv.style.backgroundColor = color;
                     noteDiv.style.opacity = note.velocity * 0.7 + 0.3;
                     noteDiv.title = `Track ${trackIndex + 1}\nNote: ${note.name}\nTime: ${note.time.toFixed(2)}s\nVel: ${Math.round(note.velocity * 100)}%`;
+                    
+                    // Resize handle (from PianoRollUX)
+                    const handle = document.createElement('div');
+                    handle.className = 'note-handle';
+                    handle.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        isResizingNote = true;
+                        resizeNoteEl = noteDiv;
+                        resizeStartX = e.clientX;
+                        resizeOriginalWidth = parseFloat(noteDiv.style.width);
+                    });
+                    noteDiv.appendChild(handle);
+                    
                     noteContainer.appendChild(noteDiv);
                     
                     // Restore selection if this note was selected
@@ -2492,6 +2997,69 @@
                     }
                 });
             });
+            
+            // Update velocity panel and note count
+            updateVelocityPanel();
+            updateNoteCount();
+        }
+
+        // --- Velocity Panel (from PianoRollUX) ---
+        function updateVelocityPanel() {
+            const panel = document.getElementById('velocity-content');
+            if (!panel) return;
+            panel.innerHTML = '';
+            
+            if (!midiData) return;
+            
+            midiData.tracks.forEach((track, trackIndex) => {
+                const color = trackColors[trackIndex % trackColors.length];
+                track.notes.forEach((note, noteIndex) => {
+                    const bar = document.createElement('div');
+                    bar.className = 'velocity-bar';
+                    bar.style.left = (note.time * zoom + 2) + 'px';
+                    bar.style.height = (note.velocity * 70) + 'px';
+                    bar.style.background = color;
+                    bar.dataset.track = trackIndex;
+                    bar.dataset.index = noteIndex;
+                    bar.title = `Velocity: ${Math.round(note.velocity * 127)}`;
+                    
+                    bar.addEventListener('mousedown', (e) => handleVelocityDrag(e, trackIndex, noteIndex));
+                    
+                    panel.appendChild(bar);
+                });
+            });
+        }
+        
+        function handleVelocityDrag(e, trackIndex, noteIndex) {
+            e.preventDefault();
+            const startY = e.clientY;
+            const note = midiData.tracks[trackIndex].notes[noteIndex];
+            const startVel = note.velocity;
+            
+            const onMouseMove = (moveE) => {
+                const delta = (startY - moveE.clientY) / 70;
+                note.velocity = Math.max(0.05, Math.min(1, startVel + delta));
+                updateVelocityPanel();
+                drawPianoRoll(); // Update note opacity
+            };
+            
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+            
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        }
+        
+        function updateNoteCount() {
+            const el = document.getElementById('notesCount');
+            if (!el) return;
+            let count = 0;
+            if (midiData) {
+                midiData.tracks.forEach(t => count += t.notes.length);
+            }
+            el.textContent = `Notes: ${count}`;
         }
 
         function drawTimeline() {
@@ -2555,13 +3123,13 @@
             updateTimelinePlayhead();
         }
 
-        // --- Piano Key Interaction & Sample Loading ---
+        // --- Piano Key Interaction & Sample Loading (Click to load sample) ---
         pianoKeysSVG.addEventListener('click', async (e) => {
             if (!e.target.dataset.midi) return;
             const midi = parseInt(e.target.dataset.midi);
             const noteName = Tone.Midi(midi).toNote();
             
-            // Always allow sample loading - sampler pitches samples automatically
+            // Click on piano key opens file picker to load a sound sample
             const fileInput = document.createElement('input');
             fileInput.type = 'file';
             fileInput.accept = 'audio/*';
@@ -2572,7 +3140,10 @@
                 sampler.add(noteName, url, () => {
                     console.log(`Sample for ${noteName} loaded.`);
                     samplesLoaded = true;
-                    alert(`Sample for ${noteName} loaded successfully!`);
+                    // Auto-switch to Sampler instrument
+                    instrumentSelect.value = 'Sampler';
+                    handleInstrumentChange('Sampler');
+                    alert(`Sample loaded on ${noteName}! The keyboard will now pitch this sample up and down.`);
                 });
             };
             fileInput.click();
@@ -2676,8 +3247,6 @@
         }
 
         // --- Playback Cursor ---
-        let cursorAnimationFrame = null;
-
         function showPlaybackCursor() {
             playbackCursor.style.display = 'block';
             timelinePlayhead.style.display = 'block';
@@ -2894,6 +3463,521 @@
             tutorialHighlights = [];
             tutorialArrows = [];
         }
+        
+        // ==================== FALLING KEYS MODE ====================
+        
+        // Title animation - alternate between "JS MIDI DAW" and "Falling Keys"
+        let titleAnimationInterval = null;
+        let titleState = 0; // 0 = JS MIDI DAW, 1 = Falling Keys
+        
+        function startTitleAnimation() {
+            const title = document.getElementById('daw-title');
+            if (!title) return;
+            
+            titleAnimationInterval = setInterval(() => {
+                title.classList.add('title-transitioning');
+                
+                setTimeout(() => {
+                    if (titleState === 0) {
+                        title.textContent = 'Falling Keys';
+                        titleState = 1;
+                    } else {
+                        title.textContent = 'JS MIDI DAW';
+                        titleState = 0;
+                    }
+                    title.classList.remove('title-transitioning');
+                }, 250);
+            }, 5000);
+        }
+        
+        // Start title animation on load
+        window.addEventListener('load', startTitleAnimation);
+        
+        // Falling Keys Visualization System
+        let fallingKeysApp = null;
+        let fallingKeysActive = false;
+        let fkNotes = [];
+        let fkPianoKeys = [];
+        let fkKeyMap = new Map();
+        let fkParticles = [];
+        let fkCurrentTime = 0;
+        let fkStartOffset = 0;
+        let fkStartAudioTime = 0;
+        let fkIsPlaying = false;
+        
+        const fkConfig = {
+            minMidi: 21,
+            maxMidi: 108,
+            whiteKeys: 52,
+            keyHeight: 130,
+            blackKeyHeight: 84,
+            fallLeadSeconds: 2.2,
+            pixelsPerSecond: 260,
+            noteWidthWhite: 14,
+            noteWidthBlack: 10,
+            smokeLife: 0.55,
+            lookAhead: 0.08
+        };
+        
+        const whiteKeyIndices = [0, 2, 4, 5, 7, 9, 11];
+        const noteColors = [
+            0xFF6B6B, 0xFF8E53, 0xFFC93C, 0xDDFF6B,
+            0x7CFC00, 0x00FFA3, 0x00D4AA, 0x4DA3FF,
+            0x6B8DFF, 0x9D6BFF, 0xD46BFF, 0xFF6BD4
+        ];
+        
+        function isWhiteKey(midiNote) {
+            return whiteKeyIndices.includes(midiNote % 12);
+        }
+        
+        function getNoteColor(midiNote) {
+            return noteColors[midiNote % 12];
+        }
+        
+        function getFallingKeysDuration() {
+            return fkNotes.reduce((max, n) => Math.max(max, n.startTime + n.duration), 0);
+        }
+        
+        function getFallingInstrument() {
+            return (currentInstrumentType === 'Sampler' && samplesLoaded) ? sampler : currentInstrument;
+        }
+        
+        function initFallingKeys() {
+            if (fallingKeysApp) return;
+            
+            const container = document.getElementById('pixi-canvas-container');
+            if (!container) return;
+            
+            fallingKeysApp = new PIXI.Application({
+                width: window.innerWidth,
+                height: window.innerHeight,
+                backgroundColor: 0x000000,
+                antialias: true,
+                resolution: window.devicePixelRatio || 1
+            });
+            container.appendChild(fallingKeysApp.view);
+            
+            const backgroundContainer = new PIXI.Container();
+            const notesContainer = new PIXI.Container();
+            const particlesContainer = new PIXI.Container();
+            const pianoContainer = new PIXI.Container();
+            
+            fallingKeysApp.stage.addChild(backgroundContainer);
+            fallingKeysApp.stage.addChild(notesContainer);
+            fallingKeysApp.stage.addChild(particlesContainer);
+            fallingKeysApp.stage.addChild(pianoContainer);
+            
+            fallingKeysApp.backgroundContainer = backgroundContainer;
+            fallingKeysApp.fallingNotesContainer = notesContainer;
+            fallingKeysApp.particlesContainer = particlesContainer;
+            fallingKeysApp.pianoContainer = pianoContainer;
+            
+            createFallingBackground();
+            createPiano2DWithDepth();
+            
+            window.addEventListener('resize', () => {
+                if (!fallingKeysApp) return;
+                fallingKeysApp.renderer.resize(window.innerWidth, window.innerHeight);
+                createFallingBackground();
+                createPiano2DWithDepth();
+                rebuildFallingNotesForLayout();
+            });
+        }
+        
+        function createFallingBackground() {
+            if (!fallingKeysApp) return;
+            
+            const bg = fallingKeysApp.backgroundContainer;
+            bg.removeChildren();
+            
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const g = new PIXI.Graphics();
+            
+            g.beginFill(0x020202);
+            g.drawRect(0, 0, width, height);
+            g.endFill();
+            
+            g.beginFill(0x0a0a0a, 0.5);
+            g.drawRect(0, 0, width, height * 0.72);
+            g.endFill();
+            
+            bg.addChild(g);
+        }
+        
+        function createPiano2DWithDepth() {
+            if (!fallingKeysApp) return;
+            
+            const container = fallingKeysApp.pianoContainer;
+            container.removeChildren();
+            fkPianoKeys = [];
+            fkKeyMap.clear();
+            
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const keyTopY = height - fkConfig.keyHeight - 24;
+            const whiteKeyHeight = fkConfig.keyHeight;
+            const pianoWidth = Math.min(width * 0.95, 1900);
+            const leftX = (width - pianoWidth) / 2;
+            const whiteKeyWidth = pianoWidth / fkConfig.whiteKeys;
+            const blackKeyWidth = whiteKeyWidth * 0.62;
+            
+            const bedShadow = new PIXI.Graphics();
+            bedShadow.beginFill(0x000000, 0.55);
+            bedShadow.drawRoundedRect(leftX + 4, keyTopY + 8, pianoWidth, whiteKeyHeight + 22, 8);
+            bedShadow.endFill();
+            container.addChild(bedShadow);
+            
+            const keyBed = new PIXI.Graphics();
+            keyBed.beginFill(0x111111);
+            keyBed.drawRoundedRect(leftX, keyTopY + whiteKeyHeight - 2, pianoWidth, 26, 6);
+            keyBed.endFill();
+            container.addChild(keyBed);
+            
+            let currentWhiteX = leftX;
+            for (let midi = fkConfig.minMidi; midi <= fkConfig.maxMidi; midi++) {
+                if (!isWhiteKey(midi)) continue;
+                
+                const shadow = new PIXI.Graphics();
+                shadow.beginFill(0x000000, 0.35);
+                shadow.drawRect(currentWhiteX + 3, keyTopY + 4, whiteKeyWidth - 2, whiteKeyHeight);
+                shadow.endFill();
+                container.addChild(shadow);
+                
+                const key = new PIXI.Graphics();
+                key.beginFill(0xF6F6F6);
+                key.drawRect(currentWhiteX, keyTopY, whiteKeyWidth - 1, whiteKeyHeight);
+                key.endFill();
+                key.lineStyle(1, 0x999999, 1);
+                key.drawRect(currentWhiteX, keyTopY, whiteKeyWidth - 1, whiteKeyHeight);
+                container.addChild(key);
+                
+                const keyData = {
+                    midiNote: midi,
+                    x: currentWhiteX + whiteKeyWidth / 2,
+                    topY: keyTopY,
+                    width: whiteKeyWidth,
+                    isBlack: false,
+                    baseColor: 0xF6F6F6,
+                    graphic: key
+                };
+                fkPianoKeys.push(keyData);
+                fkKeyMap.set(midi, keyData);
+                
+                currentWhiteX += whiteKeyWidth;
+            }
+            
+            currentWhiteX = leftX;
+            for (let midi = fkConfig.minMidi; midi <= fkConfig.maxMidi; midi++) {
+                if (isWhiteKey(midi)) {
+                    currentWhiteX += whiteKeyWidth;
+                    continue;
+                }
+                
+                const x = currentWhiteX - blackKeyWidth * 0.5;
+                const blackShadow = new PIXI.Graphics();
+                blackShadow.beginFill(0x000000, 0.45);
+                blackShadow.drawRoundedRect(x + 2, keyTopY + 4, blackKeyWidth, fkConfig.blackKeyHeight, 3);
+                blackShadow.endFill();
+                container.addChild(blackShadow);
+                
+                const blackKey = new PIXI.Graphics();
+                blackKey.beginFill(0x151515);
+                blackKey.drawRoundedRect(x, keyTopY, blackKeyWidth, fkConfig.blackKeyHeight, 3);
+                blackKey.endFill();
+                blackKey.lineStyle(1, 0x050505, 1);
+                blackKey.drawRoundedRect(x, keyTopY, blackKeyWidth, fkConfig.blackKeyHeight, 3);
+                container.addChild(blackKey);
+                
+                const keyData = {
+                    midiNote: midi,
+                    x: x + blackKeyWidth / 2,
+                    topY: keyTopY,
+                    width: blackKeyWidth,
+                    isBlack: true,
+                    baseColor: 0x151515,
+                    graphic: blackKey
+                };
+                fkPianoKeys.push(keyData);
+                fkKeyMap.set(midi, keyData);
+            }
+        }
+        
+        function clearFallingVisuals() {
+            if (!fallingKeysApp) return;
+            fallingKeysApp.fallingNotesContainer.removeChildren();
+            fallingKeysApp.particlesContainer.removeChildren();
+            fkParticles = [];
+            fkNotes.forEach(note => {
+                note.graphic = null;
+            });
+            fkPianoKeys.forEach(key => {
+                if (key.graphic) key.graphic.tint = key.baseColor;
+            });
+        }
+        
+        function buildFallingNoteGraphic(note) {
+            if (!fallingKeysApp) return null;
+            const g = new PIXI.Graphics();
+            g.beginFill(note.color, Math.max(0.28, note.velocity));
+            g.drawRoundedRect(0, 0, note.width, note.pixelHeight, Math.min(5, note.width * 0.35));
+            g.endFill();
+            g.beginFill(0xFFFFFF, 0.18);
+            g.drawRoundedRect(1, 1, Math.max(2, note.width * 0.25), note.pixelHeight - 2, 2);
+            g.endFill();
+            fallingKeysApp.fallingNotesContainer.addChild(g);
+            return g;
+        }
+        
+        function rebuildFallingNotesForLayout() {
+            if (!midiData || !midiData.tracks) return;
+            
+            const keepTime = fkCurrentTime;
+            prepareFallingNotes();
+            fkCurrentTime = keepTime;
+            setFallingTime(keepTime);
+        }
+        
+        function prepareFallingNotes() {
+            fkNotes = [];
+            clearFallingVisuals();
+            
+            if (!midiData || !midiData.tracks) return;
+            
+            midiData.tracks.forEach(track => {
+                track.notes.forEach(note => {
+                    const keyData = fkKeyMap.get(note.midi);
+                    if (!keyData) return;
+                    
+                    fkNotes.push({
+                        midi: note.midi,
+                        startTime: note.time,
+                        duration: Math.max(0.03, note.duration),
+                        velocity: Math.max(0.12, note.velocity ?? 0.7),
+                        keyX: keyData.x,
+                        keyTopY: keyData.topY,
+                        width: keyData.isBlack ? fkConfig.noteWidthBlack : fkConfig.noteWidthWhite,
+                        pixelHeight: Math.max(16, Math.max(0.03, note.duration) * fkConfig.pixelsPerSecond),
+                        color: getNoteColor(note.midi),
+                        graphic: null,
+                        triggered: false,
+                        impacted: false
+                    });
+                });
+            });
+            
+            fkNotes.sort((a, b) => a.startTime - b.startTime);
+        }
+        
+        function flashPianoKey(note) {
+            const keyData = fkKeyMap.get(note.midi);
+            if (!keyData || !keyData.graphic) return;
+            keyData.graphic.tint = note.color;
+            setTimeout(() => {
+                if (keyData.graphic) keyData.graphic.tint = keyData.baseColor;
+            }, 120);
+        }
+        
+        function createSmokeBurst(x, y, color, count = 22) {
+            if (!fallingKeysApp) return;
+            
+            for (let i = 0; i < count; i++) {
+                const puff = new PIXI.Graphics();
+                const radius = Math.random() * 5 + 2;
+                puff.beginFill(color, 0.9);
+                puff.drawCircle(0, 0, radius);
+                puff.endFill();
+                
+                puff.x = x + (Math.random() - 0.5) * 12;
+                puff.y = y + (Math.random() - 0.5) * 6;
+                puff.vx = (Math.random() - 0.5) * 110;
+                puff.vy = -(40 + Math.random() * 90);
+                puff.life = fkConfig.smokeLife + Math.random() * 0.2;
+                puff.maxLife = puff.life;
+                puff.grow = 1 + Math.random() * 0.9;
+                
+                fallingKeysApp.particlesContainer.addChild(puff);
+                fkParticles.push(puff);
+            }
+        }
+        
+        function updateSmokeParticles(dt) {
+            if (!fallingKeysApp) return;
+            
+            fkParticles = fkParticles.filter(p => {
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.vx *= 0.97;
+                p.vy += 70 * dt;
+                p.life -= dt;
+                
+                const t = Math.max(0, p.life / p.maxLife);
+                p.alpha = t * 0.9;
+                p.scale.set(1 + (1 - t) * p.grow);
+                
+                if (p.life <= 0) {
+                    fallingKeysApp.particlesContainer.removeChild(p);
+                    return false;
+                }
+                return true;
+            });
+        }
+        
+        function scheduleFallingNoteAudio(note, nowTime) {
+            const inst = getFallingInstrument();
+            if (!inst) return;
+            
+            try {
+                const delay = Math.max(0, note.startTime - fkCurrentTime);
+                const when = nowTime + delay;
+                const noteName = Tone.Midi(note.midi).toNote();
+                inst.triggerAttackRelease(noteName, note.duration, when, note.velocity);
+                note.triggered = true;
+            } catch (e) {
+                console.error('Falling keys trigger error:', e);
+            }
+        }
+        
+        function updateFallingVisualNotes() {
+            if (!fallingKeysApp) return;
+            
+            const hitY = fkPianoKeys.length > 0 ? fkPianoKeys[0].topY : (window.innerHeight - fkConfig.keyHeight);
+            const lead = fkConfig.fallLeadSeconds;
+            const now = Tone.now();
+            
+            fkNotes.forEach(note => {
+                const timeUntilStart = note.startTime - fkCurrentTime;
+                const noteEnd = note.startTime + note.duration;
+                const visible = timeUntilStart <= lead && fkCurrentTime <= noteEnd + 0.25;
+                
+                if (!note.triggered && note.startTime <= fkCurrentTime + fkConfig.lookAhead) {
+                    scheduleFallingNoteAudio(note, now);
+                }
+                
+                if (!note.impacted && fkCurrentTime >= note.startTime) {
+                    note.impacted = true;
+                    flashPianoKey(note);
+                    createSmokeBurst(note.keyX, hitY + 4, note.color);
+                    if (note.graphic) {
+                        fallingKeysApp.fallingNotesContainer.removeChild(note.graphic);
+                        note.graphic = null;
+                    }
+                }
+                
+                if (visible && !note.impacted) {
+                    if (!note.graphic) note.graphic = buildFallingNoteGraphic(note);
+                    if (note.graphic) {
+                        const topY = hitY - (note.startTime - fkCurrentTime) * fkConfig.pixelsPerSecond - note.pixelHeight;
+                        note.graphic.x = note.keyX - note.width * 0.5;
+                        note.graphic.y = topY;
+                    }
+                } else if (note.graphic) {
+                    fallingKeysApp.fallingNotesContainer.removeChild(note.graphic);
+                    note.graphic = null;
+                }
+            });
+        }
+        
+        function setFallingTime(newTime) {
+            const duration = getFallingKeysDuration();
+            fkCurrentTime = Math.max(0, Math.min(duration, newTime));
+            fkStartOffset = fkCurrentTime;
+            fkStartAudioTime = Tone.now();
+            clearFallingVisuals();
+            
+            fkNotes.forEach(note => {
+                const inPast = note.startTime < fkCurrentTime;
+                note.triggered = inPast;
+                note.impacted = inPast;
+            });
+            
+            updateFallingVisualNotes();
+        }
+        
+        function animateFallingKeys() {
+            if (!fallingKeysApp || !fkIsPlaying) return;
+            
+            const dt = Math.max(0.001, fallingKeysApp.ticker.deltaMS / 1000);
+            fkCurrentTime = fkStartOffset + (Tone.now() - fkStartAudioTime);
+            
+            updateFallingVisualNotes();
+            updateSmokeParticles(dt);
+            
+            if (fkCurrentTime >= getFallingKeysDuration() + 0.1) {
+                toggleFallingPlayback(false);
+            }
+        }
+        
+        function toggleFallingPlayback(shouldPlay) {
+            if (!fallingKeysApp) return;
+            
+            const playIconEl = document.getElementById('fk-play-icon');
+            const pauseIconEl = document.getElementById('fk-pause-icon');
+            
+            if (shouldPlay) {
+                fkIsPlaying = true;
+                fkStartOffset = fkCurrentTime;
+                fkStartAudioTime = Tone.now();
+                fallingKeysApp.ticker.remove(animateFallingKeys);
+                fallingKeysApp.ticker.add(animateFallingKeys);
+                if (playIconEl) playIconEl.style.display = 'none';
+                if (pauseIconEl) pauseIconEl.style.display = 'block';
+            } else {
+                fkIsPlaying = false;
+                fallingKeysApp.ticker.remove(animateFallingKeys);
+                if (playIconEl) playIconEl.style.display = 'block';
+                if (pauseIconEl) pauseIconEl.style.display = 'none';
+            }
+        }
+        
+        function openFallingKeys() {
+            if (!midiData || !midiData.tracks || midiData.tracks.length === 0) {
+                alert('Please load a MIDI file first!');
+                return;
+            }
+            
+            const overlay = document.getElementById('falling-keys-overlay');
+            if (!overlay) return;
+            
+            overlay.classList.add('active');
+            fallingKeysActive = true;
+            
+            initFallingKeys();
+            prepareFallingNotes();
+            setFallingTime(0);
+            toggleFallingPlayback(false);
+        }
+        
+        function closeFallingKeys() {
+            const overlay = document.getElementById('falling-keys-overlay');
+            if (!overlay) return;
+            
+            toggleFallingPlayback(false);
+            overlay.classList.remove('active');
+            fallingKeysActive = false;
+            clearFallingVisuals();
+        }
+        
+        document.getElementById('daw-title')?.addEventListener('click', openFallingKeys);
+        document.getElementById('fk-close')?.addEventListener('click', closeFallingKeys);
+        
+        document.getElementById('fk-play')?.addEventListener('click', async () => {
+            if (!fallingKeysApp || !fallingKeysActive) return;
+            if (Tone.context.state !== 'running') await Tone.start();
+            toggleFallingPlayback(!fkIsPlaying);
+        });
+        
+        document.getElementById('fk-back-5')?.addEventListener('click', () => {
+            if (!fallingKeysActive) return;
+            setFallingTime(fkCurrentTime - 5);
+        });
+        
+        document.getElementById('fk-forward-5')?.addEventListener('click', () => {
+            if (!fallingKeysActive) return;
+            setFallingTime(fkCurrentTime + 5);
+        });
+        
+        // ==================== END FALLING KEYS MODE ====================
         
         // Tutorial button click handler
         document.getElementById('tutorial-btn').addEventListener('click', startTutorial);
