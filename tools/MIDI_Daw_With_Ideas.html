@@ -87,6 +87,299 @@
             color: var(--text-dim);
             flex-shrink: 0;
         }
+        /* Arrangement / Track Lanes */
+        .arrangement-view {
+            height: 230px;
+            background: linear-gradient(180deg, #12131a 0%, #0f1016 100%);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .arrangement-header {
+            height: 32px;
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            border-bottom: 1px solid var(--border);
+            background: #171924;
+        }
+        .arrangement-track-header-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            border-right: 1px solid var(--border);
+            gap: 8px;
+        }
+        .arrangement-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .arrangement-mini-btn {
+            border: 1px solid var(--border);
+            background: #1f2230;
+            color: var(--text-secondary);
+            font-size: 10px;
+            border-radius: 4px;
+            padding: 3px 6px;
+            cursor: pointer;
+            text-transform: none;
+            letter-spacing: normal;
+            transition: all 0.12s ease;
+        }
+        .arrangement-mini-btn:hover {
+            background: #2b3042;
+            color: var(--text-primary);
+        }
+        .arrangement-mini-btn.active {
+            background: rgba(0, 212, 170, 0.22);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .arrangement-timeline-header {
+            position: relative;
+            overflow: hidden;
+        }
+        .arrangement-header-marker {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            border-left: 1px solid rgba(255,255,255,0.2);
+            color: var(--text-secondary);
+            font-size: 11px;
+            padding-left: 4px;
+            display: flex;
+            align-items: center;
+            pointer-events: none;
+        }
+        .arrangement-body {
+            flex: 1;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: 220px 1fr;
+        }
+        .arrangement-track-list {
+            overflow-y: auto;
+            overflow-x: hidden;
+            border-right: 1px solid var(--border);
+            background: #141622;
+        }
+        .arrangement-track-row {
+            height: 44px;
+            border-bottom: 1px solid #252838;
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .arrangement-row-main {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            flex: 1;
+        }
+        .arrangement-row-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .arr-track-instrument {
+            width: 88px;
+            font-size: 10px;
+            border: 1px solid #3a3f55;
+            background: #1b1e2b;
+            color: #d9dbe7;
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+        .arr-action-btn {
+            border: 1px solid #3a3f55;
+            background: #1b1e2b;
+            color: #c0c5dc;
+            border-radius: 4px;
+            font-size: 10px;
+            padding: 2px 5px;
+            cursor: pointer;
+            min-width: 24px;
+        }
+        .arr-action-btn:hover {
+            background: #2a2f45;
+            color: #ffffff;
+        }
+        .arr-action-btn.active {
+            background: rgba(0, 212, 170, 0.22);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .arrangement-track-row:hover {
+            background: rgba(255,255,255,0.04);
+        }
+        .arrangement-track-row.active {
+            background: rgba(0, 212, 170, 0.12);
+            box-shadow: inset 3px 0 0 var(--accent);
+        }
+        .arr-track-name {
+            font-size: 12px;
+            color: var(--text-primary);
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .arr-track-meta {
+            font-size: 10px;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+        .arrangement-scroll {
+            overflow: auto;
+            position: relative;
+            background: #10121b;
+        }
+        .arrangement-grid {
+            position: relative;
+            min-height: 100%;
+        }
+        .arrangement-lane-bg {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 44px;
+            border-bottom: 1px solid #252838;
+        }
+        .arrangement-measure-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(255,255,255,0.15);
+        }
+        .arrangement-beat-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(255,255,255,0.06);
+        }
+        .arrangement-clip {
+            position: absolute;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            padding: 3px 8px;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.95);
+        }
+        .arrangement-clip::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.2), rgba(255,255,255,0));
+            pointer-events: none;
+        }
+        .arrangement-view.collapsed {
+            height: 32px;
+        }
+        .arrangement-view.collapsed .arrangement-body {
+            display: none;
+        }
+        /* History / Undo Tree */
+        .history-btn {
+            border: 1px solid var(--border);
+            background: var(--bg-mid);
+            color: var(--text-secondary);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .history-btn:hover {
+            background: var(--bg-light);
+            color: var(--text-primary);
+        }
+        .history-panel {
+            position: fixed;
+            right: 14px;
+            top: 94px;
+            width: 320px;
+            max-height: 62vh;
+            display: none;
+            flex-direction: column;
+            background: rgba(14, 16, 24, 0.97);
+            border: 1px solid #31374b;
+            border-radius: 10px;
+            z-index: 11000;
+            box-shadow: 0 14px 36px rgba(0,0,0,0.42);
+            overflow: hidden;
+        }
+        .history-panel.visible {
+            display: flex;
+        }
+        .history-panel-header {
+            padding: 8px 10px;
+            background: #1a1d2a;
+            border-bottom: 1px solid #31374b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #d7def8;
+        }
+        .history-log {
+            overflow: auto;
+            padding: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            line-height: 1.35;
+        }
+        .history-node {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid #2e3547;
+            border-radius: 6px;
+            padding: 5px 7px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            background: #141927;
+            color: #c7ceeb;
+        }
+        .history-node:hover {
+            background: #1c2335;
+        }
+        .history-node.current {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.35) inset;
+            color: #eafffb;
+        }
+        .history-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #6f7896;
+            flex-shrink: 0;
+        }
+        .history-node.current .history-dot {
+            background: var(--accent);
+        }
         /* Divider for toolbar groups */
         .toolbar-divider {
             width: 1px;
@@ -1065,6 +1358,14 @@
             <span class="control-label">Zoom</span>
             <input type="range" id="zoom-range" min="20" max="500" value="100" class="w-20" style="accent-color: var(--accent);">
         </div>
+
+        <div class="toolbar-divider"></div>
+
+        <div class="control-group">
+            <button id="undo-btn" class="history-btn" title="Undo (Ctrl+Z)">Undo</button>
+            <button id="redo-btn" class="history-btn" title="Redo (Ctrl+Y)">Redo</button>
+            <button id="history-toggle-btn" class="history-btn" title="Toggle history tree log">History</button>
+        </div>
     </div>
     
     <div id="toolbar" class="flex items-center h-9 px-2 space-x-1 shrink-0" style="background:var(--bg-dark);border-bottom:1px solid var(--border);">
@@ -1114,6 +1415,25 @@
             </div>
         </div>
     </main>
+
+    <section id="arrangement-view" class="arrangement-view">
+        <div class="arrangement-header">
+            <div class="arrangement-track-header-title">
+                <span>Track Lanes</span>
+                <div class="arrangement-header-actions">
+                    <button id="show-selected-tracks-btn" class="arrangement-mini-btn" title="Show only selected tracks">Show Selected</button>
+                    <button id="collapse-track-panel-btn" class="arrangement-mini-btn" title="Collapse track panel">Collapse</button>
+                </div>
+            </div>
+            <div id="arrangement-timeline-header" class="arrangement-timeline-header mono"></div>
+        </div>
+        <div class="arrangement-body">
+            <div id="arrangement-track-list" class="arrangement-track-list"></div>
+            <div id="arrangement-scroll" class="arrangement-scroll">
+                <div id="arrangement-grid" class="arrangement-grid"></div>
+            </div>
+        </div>
+    </section>
 
     <!-- Velocity Panel -->
     <div class="velocity-panel" id="velocity-panel">
@@ -1185,6 +1505,15 @@
         <div class="plugin-body" id="plugin-body">
             <!-- Parameters will be dynamically generated here -->
         </div>
+    </div>
+
+    <!-- History Tree Panel -->
+    <div id="history-panel" class="history-panel">
+        <div class="history-panel-header">
+            <span>Undo/Redo Tree</span>
+            <button id="history-panel-close" class="history-btn" style="padding:2px 6px;">Close</button>
+        </div>
+        <div id="history-log" class="history-log"></div>
     </div>
 
     <!-- Tutorial System -->
@@ -1288,6 +1617,19 @@
         const pluginClose = document.getElementById('plugin-close');
         const pluginTitle = document.getElementById('plugin-title');
         const pluginBody = document.getElementById('plugin-body');
+        const arrangementTrackList = document.getElementById('arrangement-track-list');
+        const arrangementScroll = document.getElementById('arrangement-scroll');
+        const arrangementGrid = document.getElementById('arrangement-grid');
+        const arrangementTimelineHeader = document.getElementById('arrangement-timeline-header');
+        const arrangementView = document.getElementById('arrangement-view');
+        const showSelectedTracksBtn = document.getElementById('show-selected-tracks-btn');
+        const collapseTrackPanelBtn = document.getElementById('collapse-track-panel-btn');
+        const undoBtn = document.getElementById('undo-btn');
+        const redoBtn = document.getElementById('redo-btn');
+        const historyToggleBtn = document.getElementById('history-toggle-btn');
+        const historyPanel = document.getElementById('history-panel');
+        const historyLog = document.getElementById('history-log');
+        const historyPanelClose = document.getElementById('history-panel-close');
 
         // --- State ---
         let midiData = null;
@@ -1322,6 +1664,16 @@
         let noteClipboard = [];
         // Playback cursor animation frame
         let cursorAnimationFrame = null;
+        let activeTrackIndex = 0;
+        let trackSettings = [];
+        let selectedTrackSet = new Set();
+        let showOnlySelectedTracks = false;
+        let isTrackPanelCollapsed = false;
+        let historyTree = [];
+        let historyNodeMap = new Map();
+        let historyCurrentNodeId = null;
+        let historyNextId = 1;
+        let isApplyingHistory = false;
 
         // --- Instruments ---
         let sampler = new Tone.Sampler().toDestination();
@@ -1727,6 +2079,7 @@
             // Show timeline playhead at start
             timelinePlayhead.style.display = 'block';
             updateTimelinePlayhead();
+            pushHistory('Initial State');
         };
 
         // --- Event Listeners ---
@@ -1752,11 +2105,47 @@
             // Sync velocity panel scroll with grid
             const velPanel = document.getElementById('velocity-panel');
             if (velPanel) velPanel.scrollLeft = gridContainer.scrollLeft;
+            if (arrangementScroll && Math.abs(arrangementScroll.scrollLeft - gridContainer.scrollLeft) > 1) {
+                arrangementScroll.scrollLeft = gridContainer.scrollLeft;
+            }
             // Update timeline playhead position when scrolling
             if (timelinePlayhead.style.display !== 'none') {
                 updateTimelinePlayhead();
             }
         });
+
+        if (arrangementScroll) {
+            arrangementScroll.addEventListener('scroll', () => {
+                if (Math.abs(gridContainer.scrollLeft - arrangementScroll.scrollLeft) > 1) {
+                    gridContainer.scrollLeft = arrangementScroll.scrollLeft;
+                    timelineHeader.scrollLeft = gridContainer.scrollLeft;
+                }
+            });
+        }
+        if (showSelectedTracksBtn) {
+            showSelectedTracksBtn.addEventListener('click', () => {
+                showOnlySelectedTracks = !showOnlySelectedTracks;
+                draw();
+                pushHistory(showOnlySelectedTracks ? 'Show Selected Tracks' : 'Show All Tracks');
+            });
+        }
+        if (collapseTrackPanelBtn) {
+            collapseTrackPanelBtn.addEventListener('click', () => {
+                isTrackPanelCollapsed = !isTrackPanelCollapsed;
+                updateCollapseButtonState();
+                pushHistory(isTrackPanelCollapsed ? 'Collapse Track Panel' : 'Expand Track Panel');
+            });
+        }
+        if (undoBtn) undoBtn.addEventListener('click', undoHistory);
+        if (redoBtn) redoBtn.addEventListener('click', redoHistory);
+        if (historyToggleBtn && historyPanel) {
+            historyToggleBtn.addEventListener('click', () => {
+                historyPanel.classList.toggle('visible');
+            });
+        }
+        if (historyPanelClose && historyPanel) {
+            historyPanelClose.addEventListener('click', () => historyPanel.classList.remove('visible'));
+        }
 
         if (playBtn) playBtn.addEventListener('click', handlePlayPause);
         if (stopBtn) stopBtn.addEventListener('click', handleStop);
@@ -1929,6 +2318,7 @@
             try {
                 const arrayBuffer = await file.arrayBuffer();
                 midiData = new Midi(arrayBuffer);
+                normalizeImportedTracks();
                 exportButton.disabled = false;
                 
                 if (midiData.header.tempos.length > 0) {
@@ -1945,6 +2335,7 @@
                     }
                 }
                 draw();
+                pushHistory(`Import MIDI: ${file.name}`);
             } catch (error) {
                 console.error("Error parsing MIDI file:", error);
                 alert("Could not parse the MIDI file.");
@@ -2034,6 +2425,11 @@
                 if (activeTool === 'select') {
                     const target = e.target;
                     if (target.classList.contains('note') && !target.classList.contains('preview')) {
+                        const trackFromNote = parseInt(target.dataset.track, 10);
+                        if (!Number.isNaN(trackFromNote)) {
+                            activeTrackIndex = trackFromNote;
+                            drawArrangementView();
+                        }
                         // Clicked on a note
                         if (!e.shiftKey && !selectedNotes.has(target)) {
                             clearSelection();
@@ -2141,6 +2537,7 @@
                     isResizingNote = false;
                     resizeNoteEl = null;
                     drawPianoRoll();
+                    pushHistory('Resize Note');
                     return;
                 }
                 if (isRightClickDeleting) {
@@ -2157,6 +2554,7 @@
                     isDraggingNotes = false;
                     noteDragData = [];
                     drawPianoRoll();
+                    pushHistory('Move Notes');
                 }
                 
                 if (isSelecting) {
@@ -2237,6 +2635,7 @@
             
             clearSelection();
             drawPianoRoll();
+            pushHistory('Delete Notes');
         }
 
         function deleteNoteElement(noteElement) {
@@ -2268,6 +2667,7 @@
             });
             
             drawPianoRoll();
+            pushHistory(semitones > 0 ? 'Transpose Up' : 'Transpose Down');
         }
 
         function updateNoteInMidiData(noteElement, newMidi) {
@@ -2342,6 +2742,7 @@
             
             // Redraw to show the actual note
             drawPianoRoll();
+            pushHistory('Draw Note');
         }
 
         function createPreviewNote(time, midi, duration) {
@@ -2391,8 +2792,9 @@
                 midiData.addTrack();
             }
             
-            // Add to first track for now
-            const track = midiData.tracks[0];
+            // Add to currently active track lane
+            const targetTrack = Math.max(0, Math.min(activeTrackIndex, midiData.tracks.length - 1));
+            const track = midiData.tracks[targetTrack];
             const noteName = Tone.Midi(midi).toNote();
             
             track.addNote({
@@ -2401,6 +2803,8 @@
                 duration: duration,
                 velocity: velocity
             });
+            ensureTrackSettings();
+            selectedTrackSet.add(targetTrack);
             
             console.log(`Added note: ${noteName} at ${time}s for ${duration}s`);
         }
@@ -2433,6 +2837,22 @@
                 if (e.target.tagName === 'INPUT') return;
                 
                 switch(e.key.toLowerCase()) {
+                    case 'z':
+                        if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            if (e.shiftKey) {
+                                redoHistory();
+                            } else {
+                                undoHistory();
+                            }
+                        }
+                        break;
+                    case 'y':
+                        if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            redoHistory();
+                        }
+                        break;
                     case 'v':
                         if (e.ctrlKey || e.metaKey) {
                             // Ctrl+V: paste notes
@@ -2447,6 +2867,7 @@
                                     }
                                 });
                                 drawPianoRoll();
+                                pushHistory('Paste Notes');
                             }
                         } else {
                             setActiveTool('select');
@@ -2797,12 +3218,614 @@
             return value.toFixed(3);
         }
 
+        function toByteArray() {
+            if (!midiData) return null;
+            try {
+                return Array.from(midiData.toArray());
+            } catch (e) {
+                console.warn('History snapshot MIDI serialization failed:', e);
+                return null;
+            }
+        }
+
+        function createHistorySnapshot() {
+            return {
+                midiBytes: toByteArray(),
+                tempo: parseInt(tempoInput.value, 10) || 120,
+                timeSignature: signatureSelect.value,
+                zoom,
+                currentSubdivision,
+                snapToGrid,
+                activeTrackIndex,
+                trackSettings: JSON.parse(JSON.stringify(trackSettings)),
+                selectedTrackIndices: Array.from(selectedTrackSet),
+                showOnlySelectedTracks,
+                isTrackPanelCollapsed,
+                currentInstrumentType
+            };
+        }
+
+        function restoreHistorySnapshot(snapshot) {
+            isApplyingHistory = true;
+            try {
+                if (snapshot.midiBytes && snapshot.midiBytes.length > 0) {
+                    const bytes = new Uint8Array(snapshot.midiBytes);
+                    midiData = new Midi(bytes.buffer);
+                    exportButton.disabled = false;
+                } else {
+                    midiData = null;
+                    exportButton.disabled = true;
+                }
+
+                tempoInput.value = snapshot.tempo ?? 120;
+                Tone.Transport.bpm.value = parseInt(tempoInput.value, 10) || 120;
+
+                if (snapshot.timeSignature && [...signatureSelect.options].some(o => o.value === snapshot.timeSignature)) {
+                    signatureSelect.value = snapshot.timeSignature;
+                    Tone.Transport.timeSignature = snapshot.timeSignature.split('/').map(n => parseInt(n, 10));
+                }
+
+                zoom = snapshot.zoom ?? 100;
+                zoomRange.value = zoom;
+                currentSubdivision = snapshot.currentSubdivision ?? 4;
+                snapToGrid = snapshot.snapToGrid !== false;
+                snapSelectDropdown.value = snapToGrid ? String(currentSubdivision) : '0';
+
+                activeTrackIndex = snapshot.activeTrackIndex ?? 0;
+                trackSettings = Array.isArray(snapshot.trackSettings) ? JSON.parse(JSON.stringify(snapshot.trackSettings)) : [];
+                selectedTrackSet = new Set(Array.isArray(snapshot.selectedTrackIndices) ? snapshot.selectedTrackIndices : []);
+                showOnlySelectedTracks = !!snapshot.showOnlySelectedTracks;
+                isTrackPanelCollapsed = !!snapshot.isTrackPanelCollapsed;
+
+                if (snapshot.currentInstrumentType && snapshot.currentInstrumentType !== currentInstrumentType) {
+                    currentInstrumentType = snapshot.currentInstrumentType;
+                    instrumentSelect.value = currentInstrumentType;
+                    initializeInstrument();
+                }
+
+                ensureTrackSettings();
+                draw();
+            } finally {
+                isApplyingHistory = false;
+                renderHistoryLog();
+            }
+        }
+
+        function flattenHistoryTree(node, depth, rows) {
+            rows.push({ node, depth });
+            node.children.forEach(childId => {
+                const child = historyNodeMap.get(childId);
+                if (child) flattenHistoryTree(child, depth + 1, rows);
+            });
+        }
+
+        function renderHistoryLog() {
+            if (!historyLog) return;
+            historyLog.innerHTML = '';
+
+            const rows = [];
+            historyTree.forEach(rootId => {
+                const root = historyNodeMap.get(rootId);
+                if (root) flattenHistoryTree(root, 0, rows);
+            });
+
+            rows.forEach(({ node, depth }) => {
+                const row = document.createElement('div');
+                row.className = `history-node ${node.id === historyCurrentNodeId ? 'current' : ''}`;
+                row.style.marginLeft = `${depth * 14}px`;
+
+                const dot = document.createElement('span');
+                dot.className = 'history-dot';
+                row.appendChild(dot);
+
+                const label = document.createElement('span');
+                const d = new Date(node.timestamp);
+                label.textContent = `${node.label}  [${String(node.id).padStart(3, '0')}]  ${d.toLocaleTimeString()}`;
+                row.appendChild(label);
+
+                row.addEventListener('click', () => historyGoTo(node.id));
+                historyLog.appendChild(row);
+            });
+        }
+
+        function pushHistory(label) {
+            if (isApplyingHistory) return;
+            const snapshot = createHistorySnapshot();
+
+            const newNode = {
+                id: historyNextId++,
+                parentId: historyCurrentNodeId,
+                children: [],
+                label,
+                timestamp: Date.now(),
+                snapshot
+            };
+
+            historyNodeMap.set(newNode.id, newNode);
+            if (historyCurrentNodeId == null) {
+                historyTree.push(newNode.id);
+            } else {
+                const parent = historyNodeMap.get(historyCurrentNodeId);
+                if (parent) parent.children.push(newNode.id);
+            }
+
+            historyCurrentNodeId = newNode.id;
+            renderHistoryLog();
+        }
+
+        function historyGoTo(nodeId) {
+            const node = historyNodeMap.get(nodeId);
+            if (!node) return;
+            historyCurrentNodeId = nodeId;
+            restoreHistorySnapshot(node.snapshot);
+        }
+
+        function undoHistory() {
+            if (historyCurrentNodeId == null) return;
+            const node = historyNodeMap.get(historyCurrentNodeId);
+            if (!node || node.parentId == null) return;
+            historyGoTo(node.parentId);
+        }
+
+        function redoHistory() {
+            if (historyCurrentNodeId == null) return;
+            const node = historyNodeMap.get(historyCurrentNodeId);
+            if (!node || node.children.length === 0) return;
+            const lastChild = node.children[node.children.length - 1];
+            historyGoTo(lastChild);
+        }
+
+        function createDefaultTrackSettings() {
+            return {
+                instrumentType: currentInstrumentType || 'PolySynth',
+                mute: false,
+                solo: false,
+                collapsed: false
+            };
+        }
+
+        function ensureTrackSettings() {
+            const trackCount = (midiData && midiData.tracks) ? midiData.tracks.length : 0;
+            if (trackCount <= 0) {
+                trackSettings = [];
+                selectedTrackSet.clear();
+                return;
+            }
+
+            while (trackSettings.length < trackCount) {
+                trackSettings.push(createDefaultTrackSettings());
+            }
+            if (trackSettings.length > trackCount) {
+                trackSettings = trackSettings.slice(0, trackCount);
+            }
+
+            if (selectedTrackSet.size === 0) {
+                selectedTrackSet.add(Math.max(0, Math.min(activeTrackIndex, trackCount - 1)));
+            } else {
+                const valid = new Set();
+                selectedTrackSet.forEach(idx => {
+                    if (idx >= 0 && idx < trackCount) valid.add(idx);
+                });
+                selectedTrackSet = valid;
+            }
+        }
+
+        function getTrackSettings(index) {
+            ensureTrackSettings();
+            if (!trackSettings[index]) {
+                trackSettings[index] = createDefaultTrackSettings();
+            }
+            return trackSettings[index];
+        }
+
+        function shouldDisplayTrackInEditors(index) {
+            const settings = getTrackSettings(index);
+            if (settings.collapsed) return false;
+            if (showOnlySelectedTracks && !selectedTrackSet.has(index)) return false;
+            return true;
+        }
+
+        function updateShowSelectedButtonState() {
+            if (!showSelectedTracksBtn) return;
+            showSelectedTracksBtn.classList.toggle('active', showOnlySelectedTracks);
+            showSelectedTracksBtn.textContent = showOnlySelectedTracks ? 'Showing Selected' : 'Show Selected';
+        }
+
+        function updateCollapseButtonState() {
+            if (!arrangementView || !collapseTrackPanelBtn) return;
+            arrangementView.classList.toggle('collapsed', isTrackPanelCollapsed);
+            collapseTrackPanelBtn.classList.toggle('active', isTrackPanelCollapsed);
+            collapseTrackPanelBtn.textContent = isTrackPanelCollapsed ? 'Expand' : 'Collapse';
+        }
+
         function draw() {
             if (Tone.Transport.state === 'started') handleStop();
             drawPianoRoll();
             drawTimeline();
             drawGrid();
             updateLoopRegionDisplay();
+        }
+
+        function normalizeImportedTracks() {
+            if (!midiData || !midiData.tracks) return;
+
+            midiData.tracks.forEach((track, idx) => {
+                track.notes.sort((a, b) => a.time - b.time);
+                if (!track.name || !track.name.trim()) {
+                    const instrumentName = track.instrument && track.instrument.name ? track.instrument.name : 'MIDI';
+                    track.name = `${instrumentName} ${idx + 1}`;
+                }
+            });
+
+            ensureTrackSettings();
+            const firstTrackWithNotes = midiData.tracks.findIndex(track => track.notes.length > 0);
+            activeTrackIndex = firstTrackWithNotes >= 0 ? firstTrackWithNotes : 0;
+            selectedTrackSet = new Set([activeTrackIndex]);
+            updateShowSelectedButtonState();
+            updateCollapseButtonState();
+        }
+
+        function getTrackDisplayName(track, index) {
+            if (track.name && track.name.trim()) return track.name;
+            const instrumentName = track.instrument && track.instrument.name ? track.instrument.name : 'Track';
+            return `${instrumentName} ${index + 1}`;
+        }
+
+        function drawArrangementView() {
+            if (!arrangementTrackList || !arrangementGrid || !arrangementTimelineHeader) return;
+            ensureTrackSettings();
+
+            arrangementTrackList.innerHTML = '';
+            arrangementGrid.innerHTML = '';
+            arrangementTimelineHeader.innerHTML = '';
+
+            if (!midiData || !midiData.tracks || midiData.tracks.length === 0) {
+                const emptyRow = document.createElement('div');
+                emptyRow.className = 'arrangement-track-row';
+                emptyRow.innerHTML = '<span class="arr-track-name">No Tracks Loaded</span>';
+                arrangementTrackList.appendChild(emptyRow);
+                arrangementGrid.style.width = `${Math.max(32 * zoom, gridContainer.clientWidth)}px`;
+                arrangementGrid.style.height = '44px';
+                return;
+            }
+
+            activeTrackIndex = Math.max(0, Math.min(activeTrackIndex, midiData.tracks.length - 1));
+
+            const beatsPerMeasure = Tone.Transport.timeSignature[0];
+            const secondsPerBeat = 60 / Tone.Transport.bpm.value;
+            const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+            const totalDuration = Math.max(midiData.duration || 0, 32);
+            const width = Math.max(totalDuration * zoom, gridContainer.clientWidth);
+            const laneHeight = 44;
+
+            arrangementGrid.style.width = `${width}px`;
+            arrangementGrid.style.height = `${laneHeight * midiData.tracks.length}px`;
+            arrangementTimelineHeader.style.width = `${width}px`;
+
+            const totalMeasures = Math.ceil(totalDuration / secondsPerMeasure);
+            for (let m = 0; m <= totalMeasures; m++) {
+                const x = m * secondsPerMeasure * zoom;
+
+                const measureLine = document.createElement('div');
+                measureLine.className = 'arrangement-measure-line';
+                measureLine.style.left = `${x}px`;
+                arrangementGrid.appendChild(measureLine);
+
+                const marker = document.createElement('div');
+                marker.className = 'arrangement-header-marker';
+                marker.style.left = `${x}px`;
+                marker.style.width = `${secondsPerMeasure * zoom}px`;
+                marker.textContent = `${m + 1}`;
+                arrangementTimelineHeader.appendChild(marker);
+
+                for (let b = 1; b < beatsPerMeasure; b++) {
+                    const beatLine = document.createElement('div');
+                    beatLine.className = 'arrangement-beat-line';
+                    beatLine.style.left = `${x + b * secondsPerBeat * zoom}px`;
+                    arrangementGrid.appendChild(beatLine);
+                }
+            }
+
+            midiData.tracks.forEach((track, trackIndex) => {
+                const settings = getTrackSettings(trackIndex);
+                const row = document.createElement('div');
+                row.className = `arrangement-track-row ${trackIndex === activeTrackIndex ? 'active' : ''}`;
+                row.dataset.track = trackIndex;
+
+                const color = trackColors[trackIndex % trackColors.length];
+                const trackName = getTrackDisplayName(track, trackIndex);
+                const left = document.createElement('div');
+                left.className = 'arrangement-row-main';
+
+                const colorTag = document.createElement('span');
+                colorTag.style.width = '8px';
+                colorTag.style.height = '24px';
+                colorTag.style.borderRadius = '3px';
+                colorTag.style.background = color;
+                colorTag.style.flexShrink = '0';
+
+                const nameEl = document.createElement('span');
+                nameEl.className = 'arr-track-name';
+                nameEl.textContent = trackName;
+
+                const metaEl = document.createElement('span');
+                metaEl.className = 'arr-track-meta';
+                metaEl.textContent = `${track.notes.length} notes`;
+
+                const actions = document.createElement('div');
+                actions.className = 'arrangement-row-actions';
+
+                const selectBtn = document.createElement('button');
+                selectBtn.className = `arr-action-btn ${selectedTrackSet.has(trackIndex) ? 'active' : ''}`;
+                selectBtn.textContent = 'SEL';
+                selectBtn.title = 'Toggle track selected';
+                selectBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (selectedTrackSet.has(trackIndex)) {
+                        selectedTrackSet.delete(trackIndex);
+                    } else {
+                        selectedTrackSet.add(trackIndex);
+                    }
+                    draw();
+                    pushHistory(`Toggle Track Selection ${trackIndex + 1}`);
+                });
+
+                const muteBtn = document.createElement('button');
+                muteBtn.className = `arr-action-btn ${settings.mute ? 'active' : ''}`;
+                muteBtn.textContent = 'M';
+                muteBtn.title = 'Mute track';
+                muteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    settings.mute = !settings.mute;
+                    drawArrangementView();
+                    pushHistory(`${settings.mute ? 'Mute' : 'Unmute'} Track ${trackIndex + 1}`);
+                });
+
+                const soloBtn = document.createElement('button');
+                soloBtn.className = `arr-action-btn ${settings.solo ? 'active' : ''}`;
+                soloBtn.textContent = 'S';
+                soloBtn.title = 'Solo track';
+                soloBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    settings.solo = !settings.solo;
+                    drawArrangementView();
+                    pushHistory(`${settings.solo ? 'Solo' : 'Unsolo'} Track ${trackIndex + 1}`);
+                });
+
+                const collapseBtn = document.createElement('button');
+                collapseBtn.className = `arr-action-btn ${settings.collapsed ? 'active' : ''}`;
+                collapseBtn.textContent = settings.collapsed ? '▸' : '▾';
+                collapseBtn.title = 'Collapse track from piano roll';
+                collapseBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    settings.collapsed = !settings.collapsed;
+                    draw();
+                    pushHistory(`${settings.collapsed ? 'Collapse' : 'Expand'} Track ${trackIndex + 1}`);
+                });
+
+                const instrumentSelectEl = document.createElement('select');
+                instrumentSelectEl.className = 'arr-track-instrument';
+                const instrumentTypes = [...instrumentSelect.options].map(o => o.value);
+                instrumentTypes.forEach(type => {
+                    const opt = document.createElement('option');
+                    opt.value = type;
+                    opt.textContent = type;
+                    instrumentSelectEl.appendChild(opt);
+                });
+                instrumentSelectEl.value = settings.instrumentType;
+                instrumentSelectEl.title = 'Track instrument';
+                instrumentSelectEl.addEventListener('click', (e) => e.stopPropagation());
+                instrumentSelectEl.addEventListener('change', (e) => {
+                    settings.instrumentType = e.target.value;
+                    pushHistory(`Set Track ${trackIndex + 1} Instrument ${settings.instrumentType}`);
+                });
+
+                const moveBtn = document.createElement('button');
+                moveBtn.className = 'arr-action-btn';
+                moveBtn.textContent = 'MV';
+                moveBtn.title = 'Move selected notes to this track';
+                moveBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    moveSelectedNotesToTrack(trackIndex);
+                });
+
+                const duplicateBtn = document.createElement('button');
+                duplicateBtn.className = 'arr-action-btn';
+                duplicateBtn.textContent = 'DUP';
+                duplicateBtn.title = 'Duplicate track';
+                duplicateBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    duplicateTrack(trackIndex);
+                });
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'arr-action-btn';
+                deleteBtn.textContent = 'DEL';
+                deleteBtn.title = 'Delete track';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteTrack(trackIndex);
+                });
+
+                left.appendChild(colorTag);
+                left.appendChild(nameEl);
+                row.appendChild(left);
+                row.appendChild(metaEl);
+                actions.appendChild(selectBtn);
+                actions.appendChild(muteBtn);
+                actions.appendChild(soloBtn);
+                actions.appendChild(collapseBtn);
+                actions.appendChild(instrumentSelectEl);
+                actions.appendChild(moveBtn);
+                actions.appendChild(duplicateBtn);
+                actions.appendChild(deleteBtn);
+                row.appendChild(actions);
+                row.addEventListener('click', () => {
+                    activeTrackIndex = trackIndex;
+                    drawArrangementView();
+                });
+                arrangementTrackList.appendChild(row);
+
+                const laneBg = document.createElement('div');
+                laneBg.className = 'arrangement-lane-bg';
+                laneBg.style.top = `${trackIndex * laneHeight}px`;
+                laneBg.style.background = trackIndex % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'rgba(255,255,255,0.03)';
+                arrangementGrid.appendChild(laneBg);
+
+                const canShowTrack = shouldDisplayTrackInEditors(trackIndex);
+                if (track.notes.length > 0 && canShowTrack) {
+                    const clipStart = Math.min(...track.notes.map(n => n.time));
+                    const clipEnd = Math.max(...track.notes.map(n => n.time + n.duration));
+                    const clip = document.createElement('div');
+                    clip.className = 'arrangement-clip';
+                    clip.style.left = `${clipStart * zoom}px`;
+                    clip.style.top = `${trackIndex * laneHeight + 6}px`;
+                    clip.style.width = `${Math.max(24, (clipEnd - clipStart) * zoom)}px`;
+                    clip.style.background = `linear-gradient(135deg, ${color}, ${color}aa)`;
+                    clip.textContent = `${trackName}`;
+                    clip.title = `${trackName}\nNotes: ${track.notes.length}\nStart: ${clipStart.toFixed(2)}s\nEnd: ${clipEnd.toFixed(2)}s`;
+                    arrangementGrid.appendChild(clip);
+                }
+            });
+
+            if (arrangementScroll) {
+                arrangementScroll.scrollLeft = gridContainer.scrollLeft;
+            }
+
+            updateShowSelectedButtonState();
+            updateCollapseButtonState();
+        }
+
+        function moveSelectedNotesToTrack(targetTrackIndex) {
+            if (!midiData || !midiData.tracks[targetTrackIndex]) return;
+
+            const clips = Array.from(selectedNotes)
+                .filter(noteEl => !noteEl.classList.contains('preview'))
+                .map(noteEl => ({
+                    element: noteEl,
+                    track: parseInt(noteEl.dataset.track, 10),
+                    index: parseInt(noteEl.dataset.index, 10)
+                }))
+                .filter(c => !Number.isNaN(c.track) && !Number.isNaN(c.index));
+
+            if (clips.length === 0) return;
+
+            const moveData = [];
+            clips.forEach(clip => {
+                const srcTrack = midiData.tracks[clip.track];
+                if (srcTrack && srcTrack.notes[clip.index] && clip.track !== targetTrackIndex) {
+                    moveData.push({
+                        sourceTrack: clip.track,
+                        sourceIndex: clip.index,
+                        note: { ...srcTrack.notes[clip.index] }
+                    });
+                }
+            });
+
+            moveData.sort((a, b) => {
+                if (a.sourceTrack !== b.sourceTrack) return b.sourceTrack - a.sourceTrack;
+                return b.sourceIndex - a.sourceIndex;
+            });
+
+            moveData.forEach(item => {
+                midiData.tracks[item.sourceTrack].notes.splice(item.sourceIndex, 1);
+            });
+
+            moveData.forEach(item => {
+                midiData.tracks[targetTrackIndex].addNote({
+                    name: item.note.name,
+                    time: item.note.time,
+                    duration: item.note.duration,
+                    velocity: item.note.velocity,
+                    midi: item.note.midi
+                });
+            });
+
+            midiData.tracks[targetTrackIndex].notes.sort((a, b) => a.time - b.time);
+            clearSelection();
+            activeTrackIndex = targetTrackIndex;
+            draw();
+            pushHistory(`Move Notes to Track ${targetTrackIndex + 1}`);
+        }
+
+        function remapSelectedTracksOnDelete(deletedIndex) {
+            const remapped = new Set();
+            selectedTrackSet.forEach(idx => {
+                if (idx === deletedIndex) return;
+                remapped.add(idx > deletedIndex ? idx - 1 : idx);
+            });
+            selectedTrackSet = remapped;
+        }
+
+        function remapSelectedTracksOnInsert(insertedIndex) {
+            const remapped = new Set();
+            selectedTrackSet.forEach(idx => {
+                remapped.add(idx >= insertedIndex ? idx + 1 : idx);
+            });
+            selectedTrackSet = remapped;
+            selectedTrackSet.add(insertedIndex);
+        }
+
+        function duplicateTrack(trackIndex) {
+            if (!midiData || !midiData.tracks[trackIndex]) return;
+            const sourceTrack = midiData.tracks[trackIndex];
+
+            const newTrack = midiData.addTrack();
+            newTrack.name = `${getTrackDisplayName(sourceTrack, trackIndex)} Copy`;
+            sourceTrack.notes.forEach(note => {
+                newTrack.addNote({
+                    name: note.name,
+                    time: note.time,
+                    duration: note.duration,
+                    velocity: note.velocity,
+                    midi: note.midi
+                });
+            });
+            newTrack.notes.sort((a, b) => a.time - b.time);
+
+            ensureTrackSettings();
+            const sourceSettings = getTrackSettings(trackIndex);
+            trackSettings[trackSettings.length - 1] = {
+                instrumentType: sourceSettings.instrumentType,
+                mute: false,
+                solo: false,
+                collapsed: sourceSettings.collapsed
+            };
+            selectedTrackSet.add(trackSettings.length - 1);
+            activeTrackIndex = trackSettings.length - 1;
+            draw();
+            pushHistory(`Duplicate Track ${trackIndex + 1}`);
+        }
+
+        function deleteTrack(trackIndex) {
+            if (!midiData || !midiData.tracks[trackIndex]) return;
+
+            if (midiData.tracks.length === 1) {
+                midiData.tracks[0].notes = [];
+                const settings = getTrackSettings(0);
+                settings.mute = false;
+                settings.solo = false;
+                settings.collapsed = false;
+                selectedTrackSet = new Set([0]);
+                activeTrackIndex = 0;
+                clearSelection();
+                draw();
+                pushHistory('Clear Last Track');
+                return;
+            }
+
+            midiData.tracks.splice(trackIndex, 1);
+            trackSettings.splice(trackIndex, 1);
+            remapSelectedTracksOnDelete(trackIndex);
+
+            if (selectedTrackSet.size === 0) {
+                selectedTrackSet.add(Math.max(0, trackIndex - 1));
+            }
+
+            activeTrackIndex = Math.max(0, Math.min(activeTrackIndex, midiData.tracks.length - 1));
+            clearSelection();
+            draw();
+            pushHistory(`Delete Track ${trackIndex + 1}`);
         }
 
         function setupPianoKeys() {
@@ -2951,6 +3974,7 @@
             const midiKeys = Array.from({ length: MIDI_NOTE_RANGE.max - MIDI_NOTE_RANGE.min + 1 }, (_, i) => MIDI_NOTE_RANGE.max - i);
 
             midiData.tracks.forEach((track, trackIndex) => {
+                if (!shouldDisplayTrackInEditors(trackIndex)) return;
                 const color = trackColors[trackIndex % trackColors.length];
                 track.notes.forEach((note, noteIndex) => {
                     const keyIdx = midiKeys.indexOf(note.midi);
@@ -3001,6 +4025,7 @@
             // Update velocity panel and note count
             updateVelocityPanel();
             updateNoteCount();
+            drawArrangementView();
         }
 
         // --- Velocity Panel (from PianoRollUX) ---
@@ -3012,6 +4037,7 @@
             if (!midiData) return;
             
             midiData.tracks.forEach((track, trackIndex) => {
+                if (!shouldDisplayTrackInEditors(trackIndex)) return;
                 const color = trackColors[trackIndex % trackColors.length];
                 track.notes.forEach((note, noteIndex) => {
                     const bar = document.createElement('div');
@@ -3046,6 +4072,7 @@
             const onMouseUp = () => {
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp);
+                pushHistory('Edit Velocity');
             };
             
             document.addEventListener('mousemove', onMouseMove);
@@ -3057,7 +4084,11 @@
             if (!el) return;
             let count = 0;
             if (midiData) {
-                midiData.tracks.forEach(t => count += t.notes.length);
+                midiData.tracks.forEach((track, trackIndex) => {
+                    if (shouldDisplayTrackInEditors(trackIndex)) {
+                        count += track.notes.length;
+                    }
+                });
             }
             el.textContent = `Notes: ${count}`;
         }
@@ -3201,27 +4232,44 @@
             updatePlaybackDisplay();
         }
 
+        function getPlaybackInstrumentForTrack(trackIndex) {
+            const settings = getTrackSettings(trackIndex);
+            const type = settings.instrumentType || currentInstrumentType;
+
+            if (type === 'Sampler') {
+                return samplesLoaded ? sampler : currentInstrument;
+            }
+
+            if (type === currentInstrumentType && currentInstrument) {
+                return currentInstrument;
+            }
+
+            const trackInstrument = createInstrument(type);
+            if (trackInstrument) {
+                synths.push(trackInstrument);
+            }
+            return trackInstrument;
+        }
+
         function prepareParts() {
             if (parts.length > 0) handleStop();
             if (!midiData) return;
 
-            midiData.tracks.forEach(track => {
+            ensureTrackSettings();
+            const hasSolo = trackSettings.some(s => s && s.solo);
+
+            midiData.tracks.forEach((track, trackIndex) => {
                 if (track.notes.length === 0) return;
-                
-                // Use the current instrument or sampler if samples are loaded
-                const instrument = (currentInstrumentType === 'Sampler' && samplesLoaded) ? sampler : currentInstrument;
-                
-                // For monophonic synths, handle notes differently
-                const isMonophonic = ['MonoSynth', 'MembraneSynth', 'MetalSynth'].includes(currentInstrumentType);
-                
+
+                const settings = getTrackSettings(trackIndex);
+                if (settings.mute) return;
+                if (hasSolo && !settings.solo) return;
+
+                const instrument = getPlaybackInstrumentForTrack(trackIndex);
+                if (!instrument) return;
+
                 const part = new Tone.Part((time, note) => {
-                    if (isMonophonic) {
-                        // For mono synths, use simple trigger
-                        instrument.triggerAttackRelease(note.name, note.duration, time, note.velocity);
-                    } else {
-                        // For poly synths, standard trigger
-                        instrument.triggerAttackRelease(note.name, note.duration, time, note.velocity);
-                    }
+                    instrument.triggerAttackRelease(note.name, note.duration, time, note.velocity);
                 }, track.notes).start(0);
                 parts.push(part);
             });

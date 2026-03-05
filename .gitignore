@@ -31,3 +31,13 @@ Code multi-track midi workflow. Implement:
 
 Make the the keys nice and straight 2d, but have a 3d shadow depth effect. and play the sound the midi trigger in falling keys mode.
 And the notes animation is funky. Make sure the sound is in sync with visuals. notes should intersect the keys and turn to smoke right when the actual midi sound is triggered by the note.
+
+Add actions for the tracks
+-migrating notes between tracks
+-choosing different instruments for tracks
+-mute, solo, delete, duplicate
+-show only selected tracks
+-show colapse track 
+
+add actions to right click tracks, so 
+last 
