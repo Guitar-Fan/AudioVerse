@@ -1,5 +1,7 @@
 # AudioVerse
 
+## Demo Link: https://audioverse.pages.dev/
+
 A collection of browser-based audio tools for music production, sound design, and experimentation. No installation required—just open and create.
 
 ## Core DAW Workflow
@@ -121,30 +123,6 @@ Performance-critical audio processing compiled to WebAssembly:
 - **Progressive Reverb** (`wasm-tests/prog-reverb/`): Customizable modern ambience
 
 ---
-
-## Quick Start
-
-### Option 1: Open Directly
-Just open any `.html` file in a modern browser. Works offline.
-
-### Option 2: Local Server (Recommended)
-```bash
-python3 -m http.server 8000
-# Visit: http://localhost:8000/
-```
-
-### Option 3: Solar System Navigation
-Open `index.html` for an interactive 3D solar system interface (yes, it's unnecessary, but it looks cool).
-
----
-
-## Technical Notes
-
-- 100% browser-based (HTML, CSS, JavaScript, WebAssembly)
-- No server required
-- Works offline after first load
-- Cross-platform (desktop, tablet, mobile)
-- Tested on Chrome, Firefox, Safari
 
 ## Browser Requirements
 
